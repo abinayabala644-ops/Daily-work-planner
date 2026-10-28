@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Implementation Plan - Daily Work Planner</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-light: #3b82f6;
+      --primary-subtle: #eff6ff;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-light: #64748b;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border: #e2e8f0;
+      --border-dark: #cbd5e1;
+      --badge-high-bg: #fee2e2;
+      --badge-high-text: #991b1b;
+      --badge-med-bg: #fef3c7;
+      --badge-med-text: #92400e;
+      --badge-low-bg: #e0f2fe;
+      --badge-low-text: #075985;
+      --badge-status-bg: #dcfce7;
+      --badge-status-text: #166534;
+      --callout-bg: #fffbeb;
+      --callout-border: #f59e0b;
+      --alert-bg: #fef2f2;
+      --alert-border: #ef4444;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      padding: 0;
+      margin: 0;
+    }
+
+    .doc-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 32px;
+      padding: 40px 24px;
+    }
+
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+    }
+
+    .toc-card {
+      position: sticky;
+      top: 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 20px;
+      box-shadow: var(--shadow-sm);
+      max-height: calc(100vh - 64px);
+      overflow-y: auto;
+    }
+
+    .toc-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-light);
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .toc-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .toc-list a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      display: block;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .toc-list a:hover {
+      color: var(--primary);
+      background-color: var(--primary-subtle);
+      font-weight: 500;
+    }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 48px;
+      box-shadow: var(--shadow);
+    }
+
+    .doc-header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 28px;
+      margin-bottom: 36px;
+    }
+
+    .doc-category {
+      font-size: 0.825rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary-light);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .doc-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .doc-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+      padding: 16px;
+      background-color: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-light);
+      font-weight: 600;
+    }
+
+    .meta-value {
+      font-size: 0.925rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--badge-status-bg);
+      color: var(--badge-status-text);
+      width: fit-content;
+      margin-top: 4px;
+    }
+
+    section {
+      margin-bottom: 44px;
+      scroll-margin-top: 32px;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text-main);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2 .section-num {
+      color: var(--primary-light);
+      font-size: 1.2rem;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 24px 0 12px 0;
+    }
+
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin: 16px 0 8px 0;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      font-size: 0.95rem;
+    }
+
+    ul,
+    ol {
+      color: var(--text-muted);
+      margin: 0 0 18px 24px;
+      font-size: 0.95rem;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    li strong {
+      color: var(--text-main);
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin: 18px 0 24px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    thead {
+      background-color: var(--bg-page);
+      border-bottom: 2px solid var(--border);
+    }
+
+    th {
+      padding: 12px 14px;
+      font-weight: 700;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: #fcfdfe;
+    }
+
+    .req-id,
+    .task-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-high {
+      background-color: var(--badge-high-bg);
+      color: var(--badge-high-text);
+    }
+
+    .badge-med {
+      background-color: var(--badge-med-bg);
+      color: var(--badge-med-text);
+    }
+
+    .badge-low {
+      background-color: var(--badge-low-bg);
+      color: var(--badge-low-text);
+    }
+
+    .callout {
+      border-left: 4px solid var(--callout-border);
+      background-color: var(--callout-bg);
+      padding: 16px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 18px 0;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 6px;
+      font-size: 0.925rem;
+    }
+
+    .callout p {
+      margin: 0;
+      color: #78350f;
+      font-size: 0.9rem;
+    }
+
+    .alert-box {
+      border-left: 4px solid var(--alert-border);
+      background-color: var(--alert-bg);
+      padding: 16px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 18px 0;
+    }
+
+    .alert-title {
+      font-weight: 700;
+      color: var(--badge-high-text);
+      margin-bottom: 6px;
+      font-size: 0.925rem;
+    }
+
+    .alert-box p {
+      margin: 0;
+      color: #7f1d1d;
+      font-size: 0.9rem;
+    }
+
+    .phase-card {
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0 28px 0;
+    }
+
+    .phase-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .phase-badge {
+      background-color: var(--primary);
+      color: #ffffff;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .doc-container {
+        padding: 0;
+        max-width: 100%;
+        display: block;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .content {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      section {
+        page-break-inside: avoid;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .doc-container {
+        flex-direction: column;
+        padding: 20px 16px;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      .toc-card {
+        position: static;
+        max-height: none;
+      }
+
+      .content {
+        padding: 24px 18px;
+      }
+
+      .doc-title {
+        font-size: 1.75rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="doc-container">
+    <aside class="sidebar">
+      <nav class="toc-card">
+        <div class="toc-title">Plan Navigation</div>
+        <ul class="toc-list">
+          <li><a href="#doc-info">1. Document Info</a></li>
+          <li><a href="#plan-summary">2. Plan Summary</a></li>
+          <li><a href="#scope-confirmation">3. Scope Confirmation</a></li>
+          <li><a href="#technical-approach">4. Technical Approach</a></li>
+          <li><a href="#structure-components">5. Structure & Components</a></li>
+          <li><a href="#data-model">6. Data Model</a></li>
+          <li><a href="#behavior-rules">7. Behavior Rules</a></li>
+          <li><a href="#req-mapping">8. Requirement Mapping</a></li>
+          <li><a href="#the-5-phases">9. The 5 Phases</a></li>
+          <li><a href="#task-breakdown">10. Task Breakdown</a></li>
+          <li><a href="#testing-plan">11. Testing Plan (Phase 4)</a></li>
+          <li><a href="#deployment-plan">12. Deployment Plan (Phase 5)</a></li>
+          <li><a href="#risks-mitigations">13. Risks and Mitigations</a></li>
+          <li><a href="#open-questions">14. Open Questions & Decisions</a></li>
+          <li><a href="#acceptance-criteria">15. Acceptance & DoD</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="content">
+
+      <header class="doc-header">
+        <div class="doc-category">Technical Solution Architecture & Project Management</div>
+        <h1 class="doc-title">Implementation Plan: Daily Work Planner</h1>
+        <p class="doc-subtitle">A structured 4-week, 5-phase engineering blueprint and execution roadmap for building
+          the single-page Daily Work Planner based strictly on PRD v1.0.0.</p>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Client / Sponsor</span>
+            <span class="meta-value">Bala</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Plan Version</span>
+            <span class="meta-value">1.0.0 (Baseline Plan)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Target Platform</span>
+            <span class="meta-value">Web (Single Page)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Author & Role</span>
+            <span class="meta-value">Senior TPM & Solution Architect</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Linked PRD Version</span>
+            <span class="meta-value">PRD v1.0.0 (Approved)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Plan Execution Status</span>
+            <span class="status-badge">Ready for Phase 1 Kickoff</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Section 1: Document Info -->
+      <section id="doc-info">
+        <h2><span class="section-num">01.</span> Document Info</h2>
+        <p>This document specifies the technical execution plan, component architecture, requirement traceability, and
+          milestone schedule for developing the Daily Work Planner web application. It operationalizes PRD v1.0.0 into a
+          5-phase work breakdown structure with clear ownership, acceptance criteria, and quality gates.</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Document Attribute</th>
+                <th>Specification</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Document Title</strong></td>
+                <td>Implementation Plan - Daily Work Planner</td>
+              </tr>
+              <tr>
+                <td><strong>Plan Version</strong></td>
+                <td>1.0.0</td>
+              </tr>
+              <tr>
+                <td><strong>Date Published</strong></td>
+                <td>October 19, 2026</td>
+              </tr>
+              <tr>
+                <td><strong>Author Role</strong></td>
+                <td>Senior Technical Project Manager & Solution Architect</td>
+              </tr>
+              <tr>
+                <td><strong>Client Name</strong></td>
+                <td>Bala</td>
+              </tr>
+              <tr>
+                <td><strong>Linked PRD Reference</strong></td>
+                <td>PRD v1.0.0 (Daily Work Planner PRD)</td>
+              </tr>
+              <tr>
+                <td><strong>Phase Governance</strong></td>
+                <td>Strict 5-Phase Model (Weeks 1 to 4, Days 1 to 20)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 2: Plan Summary -->
+      <section id="plan-summary">
+        <h2><span class="section-num">02.</span> Plan Summary</h2>
+        <p>The Daily Work Planner will be constructed as a clean, single-page responsive web application covering the
+          9:00 AM to 6:00 PM workday across eight dedicated 1-hour editable slots and one fixed, non-interactive lunch
+          break row (1:00 PM – 2:00 PM).</p>
+        <p>Each working slot provides a text box, an independent checkbox, and mutually exclusive Completed (tick) and
+          Not Completed (cross) toggle buttons.</p>
+        <p>A separate manual Pending Work section at the bottom allows users to add multiple backlog records with time
+          slots, titles, detailed descriptions, and individual corner checkboxes.</p>
+        <p>The architecture guarantees strict manual operation with zero automated data pre-filling or task transfers
+          between hourly slots and the pending backlog.</p>
+        <p>Delivery will occur across exactly 5 phases over 20 working days, concluding with verified cross-browser
+          acceptance and production deployment.</p>
+      </section>
+
+      <!-- Section 3: Scope Confirmation -->
+      <section id="scope-confirmation">
+        <h2><span class="section-num">03.</span> Scope Confirmation</h2>
+
+        <h3>3.1 In-Scope Deliverables (From PRD)</h3>
+        <ul>
+          <li><strong>Single-Page Architecture:</strong> Unified single web page with zero route reloads or page
+            refreshes required during use (FR-01, FR-20).</li>
+          <li><strong>Recurring Daily Schedule:</strong> 8 working slots: 9-10 AM, 10-11 AM, 11-12 PM, 12-1 PM, 2-3 PM,
+            3-4 PM, 4-5 PM, and 5-6 PM (FR-02).</li>
+          <li><strong>Fixed Lunch Break Row:</strong> Distinct 1:00 PM to 2:00 PM row with no text box, no checkbox, and
+            no toggle buttons (FR-03, FR-04).</li>
+          <li><strong>Working Slot Controls:</strong> Single-line text input field, independent checkbox, Completed
+            button (✓), and Not Completed button (✗) per slot (FR-05, FR-06, FR-07).</li>
+          <li><strong>State Exclusivity Logic:</strong> Strict mutual exclusivity between Completed and Not Completed
+            buttons, including click-to-deselect toggle-off support (FR-08, FR-09, FR-10).</li>
+          <li><strong>Pending Work Section:</strong> Bottom backlog section for manually typing pending slot, work
+            title, and detailed description (FR-11, FR-12, FR-13).</li>
+          <li><strong>Multiple Pending Cards:</strong> Dynamic addition of multiple pending records, each having its own
+            independent corner checkbox and delete action (FR-14, FR-15, FR-16, FR-17).</li>
+          <li><strong>Strict Zero Auto-Fill:</strong> Total system refusal to automatically copy, migrate, or
+            pre-populate data when slots are marked Not Completed (FR-18, FR-19).</li>
+        </ul>
+
+        <h3>3.2 Out-of-Scope Deliverables (Explicitly Excluded)</h3>
+        <ul>
+          <li><strong>No Automated Task Migration:</strong> Marking an hour as Not Completed will never create or
+            pre-fill a pending item.</li>
+          <li><strong>No Calendar Integrations:</strong> No synchronization with Google Calendar, Microsoft Outlook, or
+            Apple Calendar.</li>
+          <li><strong>No Timers or Notifications:</strong> No auditory chimes, desktop alerts, push notifications, or
+            elapsed-time counters.</li>
+          <li><strong>No Multi-User Accounts:</strong> No user authentication, team collaboration, role permissions, or
+            shared team boards.</li>
+          <li><strong>No External Database Syncing:</strong> Version 1.0 operates client-side without cloud database or
+            user account syncing.</li>
+        </ul>
+      </section>
+
+      <!-- Section 4: Technical Approach -->
+      <section id="technical-approach">
+        <h2><span class="section-num">04.</span> Technical Approach</h2>
+        <p>The solution is designed as a lightweight, resilient client-side web application prioritizing fast rendering,
+          zero external bloat, and total privacy.</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Technology Layer</th>
+                <th>Recommended Selection</th>
+                <th>Engineering Justification</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Markup (Structure)</strong></td>
+                <td>Semantic HTML5</td>
+                <td>Ensures clean document structure, native input accessibility, fast parsing, and lightweight DOM
+                  hierarchy without unnecessary framework overhead.</td>
+              </tr>
+              <tr>
+                <td><strong>Styling (Presentation)</strong></td>
+                <td>Vanilla CSS3 (Custom Properties & Flexbox/Grid)</td>
+                <td>Provides precise layout control, zero bundle size overhead, full theme consistency with PRD design
+                  tokens, and flawless print/responsive behavior.</td>
+              </tr>
+              <tr>
+                <td><strong>Logic (Behavior)</strong></td>
+                <td>Vanilla ES6+ JavaScript</td>
+                <td>Delivers sub-10ms UI state toggles, simple in-memory state management, direct DOM manipulation, and
+                  eliminates external framework vulnerabilities and build complexities.</td>
+              </tr>
+              <tr>
+                <td><strong>State & Storage Strategy</strong></td>
+                <td>In-Memory Reactive State Object + Browser LocalStorage fallback</td>
+                <td>Guarantees that mutual exclusivity and dynamic pending lists operate synchronously while protecting
+                  against accidental browser tab refresh data loss.</td>
+              </tr>
+              <tr>
+                <td><strong>Deployment Platform</strong></td>
+                <td>Static Web Hosting (e.g., GitHub Pages, Cloudflare Pages, or Nginx)</td>
+                <td>Offers zero-maintenance, high-availability, instant CDN delivery, and simple HTTPS delivery for a
+                  single-page web asset.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 5: Page Structure and Components -->
+      <section id="structure-components">
+        <h2><span class="section-num">05.</span> Page Structure and Components</h2>
+        <p>The single-page DOM hierarchy is organized into five modular functional components:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Component Name</th>
+                <th>DOM Identifier / Role</th>
+                <th>Functional Elements & Responsibilities</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Header Component</strong></td>
+                <td><code>&lt;header class="planner-header"&gt;</code></td>
+                <td>Displays the product title "Daily Work Planner", date display badge, and concise subtitle explaining
+                  intentional manual planning.</td>
+              </tr>
+              <tr>
+                <td><strong>Hourly Schedule List</strong></td>
+                <td><code>&lt;section class="schedule-container"&gt;</code></td>
+                <td>Container holding the 8 working slots and the 1 fixed lunch break row in sequential chronological
+                  order.</td>
+              </tr>
+              <tr>
+                <td><strong>Working Slot Row (x8)</strong></td>
+                <td><code>&lt;div class="slot-row" data-slot-id="[1-8]"&gt;</code></td>
+                <td>Contains: (1) Time label (e.g., 9:00 AM - 10:00 AM), (2) Task text input, (3) Slot checkbox, (4)
+                  Completed tick button, (5) Not Completed cross button.</td>
+              </tr>
+              <tr>
+                <td><strong>Fixed Lunch Row</strong></td>
+                <td><code>&lt;div class="lunch-break-row"&gt;</code></td>
+                <td>Static amber-accented row at 1:00 PM – 2:00 PM displaying fixed label "☕ Lunch Break (1:00 PM - 2:00
+                  PM)" with zero editable controls.</td>
+              </tr>
+              <tr>
+                <td><strong>Pending Work Form</strong></td>
+                <td><code>&lt;section class="pending-section"&gt;</code></td>
+                <td>Input form containing time slot text input, work name text input, detailed description multi-line
+                  textarea, and "Add Pending Work" button.</td>
+              </tr>
+              <tr>
+                <td><strong>Pending Entry Card</strong></td>
+                <td><code>&lt;div class="pending-card" id="pending-[id]"&gt;</code></td>
+                <td>Rendered card showing associated time slot badge, title, full description, top-right corner
+                  checkbox, and a delete button.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 6: Data Model -->
+      <section id="data-model">
+        <h2><span class="section-num">06.</span> Data Model</h2>
+        <p>The application maintains two primary client-side data schemas within an active session state object:</p>
+
+        <h3>6.1 Hourly Slot Schema (8 Fixed Slots)</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Field Name</th>
+                <th>Data Type</th>
+                <th>Valid Values / Range</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>slotId</code></td>
+                <td>Integer</td>
+                <td>1 to 8</td>
+                <td>Unique sequential identifier for each working slot.</td>
+              </tr>
+              <tr>
+                <td><code>timeRange</code></td>
+                <td>String</td>
+                <td>"9:00 AM - 10:00 AM", etc.</td>
+                <td>Display label representing the 60-minute window.</td>
+              </tr>
+              <tr>
+                <td><code>taskDescription</code></td>
+                <td>String</td>
+                <td>Max 255 chars (free text)</td>
+                <td>User-typed planned task details for the hour.</td>
+              </tr>
+              <tr>
+                <td><code>isChecked</code></td>
+                <td>Boolean</td>
+                <td><code>true</code> | <code>false</code></td>
+                <td>Status of the slot checkbox.</td>
+              </tr>
+              <tr>
+                <td><code>statusState</code></td>
+                <td>String</td>
+                <td><code>"NONE"</code> | <code>"COMPLETED"</code> | <code>"NOT_COMPLETED"</code></td>
+                <td>Represents mutual exclusivity. Only one active button allowed.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>6.2 Pending Work Entry Schema (Dynamic List)</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Field Name</th>
+                <th>Data Type</th>
+                <th>Valid Values / Range</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>entryId</code></td>
+                <td>String / UUID</td>
+                <td>Timestamp-based unique ID</td>
+                <td>Unique key identifying the pending work record.</td>
+              </tr>
+              <tr>
+                <td><code>pendingSlot</code></td>
+                <td>String</td>
+                <td>User-typed string (e.g., "11:00 AM - 12:00 PM")</td>
+                <td>Manually typed reference indicating when work was pending.</td>
+              </tr>
+              <tr>
+                <td><code>workName</code></td>
+                <td>String</td>
+                <td>Free text (max 100 chars)</td>
+                <td>Manually typed title or summary of the unfinished work.</td>
+              </tr>
+              <tr>
+                <td><code>detailedDescription</code></td>
+                <td>String</td>
+                <td>Free multi-line text</td>
+                <td>Manually typed comprehensive notes describing unfinished items.</td>
+              </tr>
+              <tr>
+                <td><code>isResolved</code></td>
+                <td>Boolean</td>
+                <td><code>true</code> | <code>false</code></td>
+                <td>State of the corner checkbox on the pending card.</td>
+              </tr>
+              <tr>
+                <td><code>createdAt</code></td>
+                <td>Timestamp</td>
+                <td>ISO 8601 String</td>
+                <td>Local client creation timestamp for list ordering.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 7: Behavior Rules -->
+      <section id="behavior-rules">
+        <h2><span class="section-num">07.</span> Behavior Rules</h2>
+        <p>The frontend logic strictly implements four core architectural interaction rules:</p>
+
+        <div class="alert-box">
+          <div class="alert-title">RULE 1: STRICT MUTUAL EXCLUSIVITY (FR-08)</div>
+          <p>Within any working slot, the "Completed" (✓) and "Not Completed" (✗) buttons are mutually exclusive. If the
+            user clicks "Completed", any active "Not Completed" state is immediately cleared. Conversely, clicking "Not
+            Completed" immediately clears any active "Completed" state.</p>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">RULE 2: CLICK-TO-DESELECT TOGGLE-OFF (FR-09)</div>
+          <p>If a button is already selected (e.g., "Completed" is active), clicking that exact same button a second
+            time deselects it, reverting the slot's <code>statusState</code> back to <code>"NONE"</code> without error.
+          </p>
+        </div>
+
+        <div class="alert-box">
+          <div class="alert-title">RULE 3: ABSOLUTE ZERO AUTOMATIC FILLING (FR-18, FR-19)</div>
+          <p>Marking a working slot as "Not Completed" SHALL NEVER trigger an automated creation of a Pending Work
+            entry. The system shall never read, copy, or pre-populate slot descriptions or time values into the Pending
+            Work form. Every character in the Pending Work section must be typed manually by the user.</p>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">RULE 4: INDEPENDENT CHECKBOX FREEDOM (FR-06, FR-16)</div>
+          <p>The hourly slot checkbox operates independently of the action buttons (checking it does not force Completed
+            or Not Completed). Similarly, each pending card corner checkbox toggles independently without affecting
+            parent hourly slot states.</p>
+        </div>
+      </section>
+
+      <!-- Section 8: Requirement Mapping -->
+      <section id="req-mapping">
+        <h2><span class="section-num">08.</span> Requirement Mapping</h2>
+        <p>Complete traceability mapping each PRD Functional Requirement (FR-01 to FR-20) to its designated
+          implementation phase, engineering task, and target component:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>PRD ID</th>
+                <th>Requirement Summary</th>
+                <th>Phase</th>
+                <th>Implementation Task ID</th>
+                <th>Target Component</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="req-id">FR-01</td>
+                <td>Single-page daily schedule layout (9 AM - 6 PM)</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-301</span></td>
+                <td>Page Shell & Schedule Container</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-02</td>
+                <td>8 hourly working slots configured</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-302</span></td>
+                <td>Working Slot Component (x8)</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-03</td>
+                <td>Fixed Lunch Break row (1:00 PM - 2:00 PM)</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-303</span></td>
+                <td>Lunch Break Row Component</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-04</td>
+                <td>Lunch row has no text box, checkbox, or buttons</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-303</span></td>
+                <td>Lunch Break Row Component</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-05</td>
+                <td>Single-line text input field in each working slot</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-304</span></td>
+                <td>Working Slot Input Field</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-06</td>
+                <td>Independent checkbox in each working slot</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-305</span></td>
+                <td>Working Slot Checkbox Control</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-07</td>
+                <td>Completed (✓) and Not Completed (✗) buttons</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-306</span></td>
+                <td>Working Slot Action Buttons</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-08</td>
+                <td>Mutual exclusivity between Completed & Not Completed</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-307</span></td>
+                <td>Slot State Logic Controller</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-09</td>
+                <td>Click active button second time to toggle off</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-307</span></td>
+                <td>Slot State Logic Controller</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-10</td>
+                <td>High-contrast visual styling for active buttons</td>
+                <td>Phase 2 & 3</td>
+                <td><span class="task-id">TSK-202, TSK-306</span></td>
+                <td>CSS UI Design System</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-11</td>
+                <td>Pending Work section positioned at bottom</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-308</span></td>
+                <td>Pending Work Section Shell</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-12</td>
+                <td>Pending input fields: slot, work name, description</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-308</span></td>
+                <td>Pending Work Form Component</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-13</td>
+                <td>"Add Pending Work" submission button</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-309</span></td>
+                <td>Pending Work Form Controller</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-14</td>
+                <td>Support multiple pending entries sequentially</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-309</span></td>
+                <td>Pending Cards List Renderer</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-15</td>
+                <td>Pending card displays slot, name, desc, corner checkbox</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-310</span></td>
+                <td>Pending Entry Card Component</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-16</td>
+                <td>Corner checkbox toggles independently</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-310</span></td>
+                <td>Pending Entry Card Component</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-17</td>
+                <td>Delete/remove action for pending work card</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-311</span></td>
+                <td>Pending Entry Card Component</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-18</td>
+                <td>Zero automatic copying/migration on Not Completed</td>
+                <td>Phase 3 & 4</td>
+                <td><span class="task-id">TSK-312, TSK-402</span></td>
+                <td>System Boundary & QA Test Suite</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-19</td>
+                <td>No system pre-filling of pending form fields</td>
+                <td>Phase 3 & 4</td>
+                <td><span class="task-id">TSK-312, TSK-402</span></td>
+                <td>System Boundary & QA Test Suite</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-20</td>
+                <td>Unified single-page view with zero reloads/redirects</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-301</span></td>
+                <td>Application Shell Layout</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 9: The 5 Phases -->
+      <section id="the-5-phases">
+        <h2><span class="section-num">09.</span> The 5 Phases</h2>
+        <p>The project follows a strict 5-phase execution model spanning 4 consecutive weeks (20 working days). Every
+          task, deliverable, and quality gate belongs strictly to one of these 5 phases.</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Phase</th>
+                <th>Phase Name</th>
+                <th>Duration</th>
+                <th>Start Day</th>
+                <th>End Day</th>
+                <th>Primary Lead Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Phase 1</strong></td>
+                <td>PRD Review and Stakeholder Alignment</td>
+                <td>3 Days</td>
+                <td>Day 1</td>
+                <td>Day 3</td>
+                <td>Lead Project Manager</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 2</strong></td>
+                <td>UI Design and Visual Specifications</td>
+                <td>2 Days</td>
+                <td>Day 4</td>
+                <td>Day 5</td>
+                <td>Senior UI/UX Designer</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 3</strong></td>
+                <td>Frontend Development and Interaction Logic</td>
+                <td>7 Days</td>
+                <td>Day 6</td>
+                <td>Day 12</td>
+                <td>Lead Frontend Engineer</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 4</strong></td>
+                <td>Quality Assurance and Usability Testing</td>
+                <td>5 Days</td>
+                <td>Day 13</td>
+                <td>Day 17</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 5</strong></td>
+                <td>Client Acceptance and Launch</td>
+                <td>3 Days</td>
+                <td>Day 18</td>
+                <td>Day 20</td>
+                <td>Solution Architect & Client Bala</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 9.1 Phase 1 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.1 Phase 1: PRD Review and Stakeholder Alignment</h3>
+            <span class="phase-badge">Week 1 (Days 1–3)</span>
+          </div>
+          <p><strong>Goal:</strong> Align client Bala and the technical team on PRD specifications, resolve baseline
+            assumptions, and secure sign-off.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-101:</strong> Conduct PRD walkthrough with client Bala and review requirements FR-01 through
+              FR-20. [Role: Lead PM]</li>
+            <li><strong>TSK-102:</strong> Review Open Questions (OQ-01 through OQ-05) and confirm working assumptions.
+              [Role: Lead PM & Architect]</li>
+            <li><strong>TSK-103:</strong> Establish Git repository, technical standards, and documentation guidelines.
+              [Role: Solution Architect]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> Signed PRD alignment memo, resolved decisions log, project repository.</p>
+          <p><strong>Dependencies:</strong> Availability of client Bala for Day 1 alignment workshop.</p>
+          <p><strong>Exit Criteria:</strong> Formal written confirmation of PRD v1.0.0 and scope boundaries.</p>
+          <p><strong>Phase Risks:</strong> Stakeholder requesting automated features (Mitigation: Reaffirm PRD manual
+            philosophy).</p>
+        </div>
+
+        <!-- 9.2 Phase 2 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.2 Phase 2: UI Design and Visual Specifications</h3>
+            <span class="phase-badge">Week 1 (Days 4–5)</span>
+          </div>
+          <p><strong>Goal:</strong> Produce high-fidelity mockups and CSS design tokens matching the clean executive
+            aesthetic of the PRD.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-201:</strong> Design single-page responsive wireframe covering header, 8 slots, lunch row,
+              and pending section. [Role: UI/UX Designer]</li>
+            <li><strong>TSK-202:</strong> Define visual state tokens for Completed (green ✓), Not Completed (red ✗),
+              hover, and inactive states. [Role: UI/UX Designer]</li>
+            <li><strong>TSK-203:</strong> Review UI design mockups with client Bala and secure design sign-off. [Role:
+              UI/UX Designer & Lead PM]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> High-fidelity responsive design prototype, CSS design tokens stylesheet.</p>
+          <p><strong>Dependencies:</strong> Sign-off from Phase 1.</p>
+          <p><strong>Exit Criteria:</strong> Bala approves visual presentation, lunch row styling, and button contrast.
+          </p>
+          <p><strong>Phase Risks:</strong> Layout overflow on small mobile displays (Mitigation: Mobile-first responsive
+            specifications).</p>
+        </div>
+
+        <!-- 9.3 Phase 3 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.3 Phase 3: Frontend Development and Interaction Logic</h3>
+            <span class="phase-badge">Week 2 (Days 6–12)</span>
+          </div>
+          <p><strong>Goal:</strong> Implement all functional components, mutual exclusivity logic, pending backlog, and
+            strict zero auto-fill boundaries.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-301:</strong> Build single-page HTML5 shell, container, and header. (FR-01, FR-20) [Role:
+              Frontend Engineer]</li>
+            <li><strong>TSK-302:</strong> Render 8 hourly slot rows (9-10, 10-11, 11-12, 12-1, 2-3, 3-4, 4-5, 5-6).
+              (FR-02) [Role: Frontend Engineer]</li>
+            <li><strong>TSK-303:</strong> Implement fixed Lunch Break row between 12-1 and 2-3 with zero inputs. (FR-03,
+              FR-04) [Role: Frontend Engineer]</li>
+            <li><strong>TSK-304:</strong> Integrate text input box in each working slot. (FR-05) [Role: Frontend
+              Engineer]</li>
+            <li><strong>TSK-305:</strong> Add independent checkbox to each working slot. (FR-06) [Role: Frontend
+              Engineer]</li>
+            <li><strong>TSK-306:</strong> Implement Completed (✓) and Not Completed (✗) buttons. (FR-07, FR-10) [Role:
+              Frontend Engineer]</li>
+            <li><strong>TSK-307:</strong> Write mutual exclusivity controller and click-to-deselect toggle logic.
+              (FR-08, FR-09) [Role: Frontend Engineer]</li>
+            <li><strong>TSK-308:</strong> Build Pending Work bottom section with slot, name, and description fields.
+              (FR-11, FR-12) [Role: Frontend Engineer]</li>
+            <li><strong>TSK-309:</strong> Implement "Add Pending Work" button and dynamic card list generator. (FR-13,
+              FR-14) [Role: Frontend Engineer]</li>
+            <li><strong>TSK-310:</strong> Construct Pending Card with corner checkbox and independent state. (FR-15,
+              FR-16) [Role: Frontend Engineer]</li>
+            <li><strong>TSK-311:</strong> Implement delete action button for individual pending cards. (FR-17) [Role:
+              Frontend Engineer]</li>
+            <li><strong>TSK-312:</strong> Enforce zero auto-fill architectural boundaries across all inputs. (FR-18,
+              FR-19) [Role: Frontend Engineer & Architect]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> Fully interactive single-page application codebase ready for QA testing.</p>
+          <p><strong>Dependencies:</strong> Approved UI design tokens from Phase 2.</p>
+          <p><strong>Exit Criteria:</strong> All 20 functional requirements fully coded and passing developer sanity
+            checks.</p>
+          <p><strong>Phase Risks:</strong> Logic bleed causing unintended state changes (Mitigation: Strict modular
+            event handlers).</p>
+        </div>
+
+        <!-- 9.4 Phase 4 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.4 Phase 4: Quality Assurance and Usability Testing</h3>
+            <span class="phase-badge">Week 3 (Days 13–17)</span>
+          </div>
+          <p><strong>Goal:</strong> Rigorously validate functional requirements, mutual exclusivity, no auto-fill
+            compliance, cross-browser support, and accessibility.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-401:</strong> Execute core functional test cases for 8 slots, lunch row, and pending form.
+              [Role: QA Test Lead]</li>
+            <li><strong>TSK-402:</strong> Execute strict zero auto-fill verification test suite. (FR-18, FR-19) [Role:
+              QA Test Lead]</li>
+            <li><strong>TSK-403:</strong> Execute mutual exclusivity and toggle-off state test matrix. (FR-08, FR-09)
+              [Role: QA Test Lead]</li>
+            <li><strong>TSK-404:</strong> Run cross-browser compatibility tests (Chrome, Edge, Firefox, Safari). [Role:
+              QA Test Engineer]</li>
+            <li><strong>TSK-405:</strong> Run responsive viewport tests (360px to 1920px). [Role: QA Test Engineer]</li>
+            <li><strong>TSK-406:</strong> Run WCAG 2.1 AA accessibility and keyboard navigation audit. [Role: QA Test
+              Engineer]</li>
+            <li><strong>TSK-407:</strong> Resolve all identified defect tickets and perform regression validation.
+              [Role: Frontend Engineer & QA Lead]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> Comprehensive QA Test Report, Defect Log (0 critical/high bugs),
+            Accessibility Audit.</p>
+          <p><strong>Dependencies:</strong> Code freeze of Phase 3 build.</p>
+          <p><strong>Exit Criteria:</strong> 100% test pass rate on functional and zero auto-fill rules.</p>
+          <p><strong>Phase Risks:</strong> Cross-browser CSS differences (Mitigation: Standard CSS normalization rules).
+          </p>
+        </div>
+
+        <!-- 9.5 Phase 5 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.5 Phase 5: Client Acceptance and Launch</h3>
+            <span class="phase-badge">Week 4 (Days 18–20)</span>
+          </div>
+          <p><strong>Goal:</strong> Conduct formal User Acceptance Testing (UAT) with Bala, deploy to production
+            hosting, and complete handover.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-501:</strong> Stage release candidate build on staging environment for client review. [Role:
+              Solution Architect]</li>
+            <li><strong>TSK-502:</strong> Conduct guided UAT demonstration walkthrough with Bala. [Role: Lead PM &
+              Architect]</li>
+            <li><strong>TSK-503:</strong> Secure formal written Client Acceptance Sign-off from Bala. [Role: Lead PM]
+            </li>
+            <li><strong>TSK-504:</strong> Deploy production build to live web hosting and verify HTTPS/DNS. [Role:
+              Solution Architect]</li>
+            <li><strong>TSK-505:</strong> Hand over user guide and maintenance documentation to Bala. [Role: Lead PM]
+            </li>
+          </ul>
+          <p><strong>Deliverables:</strong> Production-deployed web application, signed UAT sign-off document, handover
+            package.</p>
+          <p><strong>Dependencies:</strong> Clean QA clearance from Phase 4.</p>
+          <p><strong>Exit Criteria:</strong> Formal acceptance from Bala and 100% live system availability.</p>
+          <p><strong>Phase Risks:</strong> Deployment environment DNS delays (Mitigation: Pre-configure DNS records
+            during Phase 4).</p>
+        </div>
+      </section>
+
+      <!-- Section 10: Task Breakdown -->
+      <section id="task-breakdown">
+        <h2><span class="section-num">10.</span> Task Breakdown</h2>
+        <p>Comprehensive task breakdown across all 5 phases with owner roles, estimated effort, dependencies, and PRD
+          requirement IDs:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Task ID</th>
+                <th>Phase</th>
+                <th>Task Description</th>
+                <th>Owner Role</th>
+                <th>Effort</th>
+                <th>Dependency</th>
+                <th>PRD ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="task-id">TSK-101</td>
+                <td>Phase 1</td>
+                <td>Review PRD requirements with client Bala</td>
+                <td>Lead PM</td>
+                <td>1 Day</td>
+                <td>None</td>
+                <td>All (FR-01 to FR-20)</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-102</td>
+                <td>Phase 1</td>
+                <td>Review Open Questions and confirm baseline decisions</td>
+                <td>Lead PM & Architect</td>
+                <td>1 Day</td>
+                <td>TSK-101</td>
+                <td>OQ-01 to OQ-05</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-103</td>
+                <td>Phase 1</td>
+                <td>Set up Git repo, branching rules, and linting standards</td>
+                <td>Solution Architect</td>
+                <td>1 Day</td>
+                <td>TSK-102</td>
+                <td>Architecture</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-201</td>
+                <td>Phase 2</td>
+                <td>Create responsive layout wireframe (desktop & mobile)</td>
+                <td>UI/UX Designer</td>
+                <td>1 Day</td>
+                <td>TSK-103</td>
+                <td>FR-01, FR-20</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-202</td>
+                <td>Phase 2</td>
+                <td>Design color tokens, button states, and lunch row styles</td>
+                <td>UI/UX Designer</td>
+                <td>1 Day</td>
+                <td>TSK-201</td>
+                <td>FR-04, FR-10</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-203</td>
+                <td>Phase 2</td>
+                <td>Present mockups to Bala and obtain visual design approval</td>
+                <td>Lead PM & Designer</td>
+                <td>0.5 Day</td>
+                <td>TSK-202</td>
+                <td>UI Approval</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-301</td>
+                <td>Phase 3</td>
+                <td>Build single-page HTML5 framework and header structure</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-203</td>
+                <td>FR-01, FR-20</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-302</td>
+                <td>Phase 3</td>
+                <td>Render the 8 hourly working time slot containers</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-301</td>
+                <td>FR-02</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-303</td>
+                <td>Phase 3</td>
+                <td>Implement fixed Lunch Break row (no inputs or buttons)</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-302</td>
+                <td>FR-03, FR-04</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-304</td>
+                <td>Phase 3</td>
+                <td>Integrate task description text input boxes into 8 slots</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-302</td>
+                <td>FR-05</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-305</td>
+                <td>Phase 3</td>
+                <td>Add independent slot checkboxes to each working slot</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-304</td>
+                <td>FR-06</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-306</td>
+                <td>Phase 3</td>
+                <td>Build Completed (✓) and Not Completed (✗) buttons</td>
+                <td>Frontend Engineer</td>
+                <td>1 Day</td>
+                <td>TSK-305</td>
+                <td>FR-07, FR-10</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-307</td>
+                <td>Phase 3</td>
+                <td>Implement mutual exclusivity and click toggle-off logic</td>
+                <td>Frontend Engineer</td>
+                <td>1 Day</td>
+                <td>TSK-306</td>
+                <td>FR-08, FR-09</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-308</td>
+                <td>Phase 3</td>
+                <td>Build Pending Work section and input form fields</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-307</td>
+                <td>FR-11, FR-12</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-309</td>
+                <td>Phase 3</td>
+                <td>Implement Add Pending Work button & dynamic list render</td>
+                <td>Frontend Engineer</td>
+                <td>1 Day</td>
+                <td>TSK-308</td>
+                <td>FR-13, FR-14</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-310</td>
+                <td>Phase 3</td>
+                <td>Construct Pending Entry Card with corner checkbox</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-309</td>
+                <td>FR-15, FR-16</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-311</td>
+                <td>Phase 3</td>
+                <td>Add delete button and removal logic for pending cards</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-310</td>
+                <td>FR-17</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-312</td>
+                <td>Phase 3</td>
+                <td>Enforce zero auto-fill verification checks across inputs</td>
+                <td>Frontend Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-311</td>
+                <td>FR-18, FR-19</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-401</td>
+                <td>Phase 4</td>
+                <td>Execute full functional test suite for 8 slots & lunch row</td>
+                <td>QA Test Lead</td>
+                <td>1 Day</td>
+                <td>TSK-312</td>
+                <td>FR-01 to FR-07</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-402</td>
+                <td>Phase 4</td>
+                <td>Execute strict no auto-fill verification test suite</td>
+                <td>QA Test Lead</td>
+                <td>1 Day</td>
+                <td>TSK-401</td>
+                <td>FR-18, FR-19</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-403</td>
+                <td>Phase 4</td>
+                <td>Test mutual exclusivity and toggle-off states across slots</td>
+                <td>QA Test Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-401</td>
+                <td>FR-08, FR-09</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-404</td>
+                <td>Phase 4</td>
+                <td>Perform cross-browser compatibility testing</td>
+                <td>QA Test Engineer</td>
+                <td>1 Day</td>
+                <td>TSK-403</td>
+                <td>Non-Functional</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-405</td>
+                <td>Phase 4</td>
+                <td>Execute responsive mobile, tablet, and desktop testing</td>
+                <td>QA Test Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-404</td>
+                <td>Non-Functional</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-406</td>
+                <td>Phase 4</td>
+                <td>Conduct accessibility (WCAG AA) & security audit</td>
+                <td>QA Test Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-405</td>
+                <td>Non-Functional</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-407</td>
+                <td>Phase 4</td>
+                <td>Fix identified defects and perform final regression pass</td>
+                <td>Frontend & QA Lead</td>
+                <td>0.5 Day</td>
+                <td>TSK-406</td>
+                <td>Defect Clearance</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-501</td>
+                <td>Phase 5</td>
+                <td>Deploy release candidate to staging environment</td>
+                <td>Solution Architect</td>
+                <td>0.5 Day</td>
+                <td>TSK-407</td>
+                <td>Staging Setup</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-502</td>
+                <td>Phase 5</td>
+                <td>Conduct guided UAT walkthrough with Bala</td>
+                <td>Lead PM & Architect</td>
+                <td>1 Day</td>
+                <td>TSK-501</td>
+                <td>UAT Session</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-503</td>
+                <td>Phase 5</td>
+                <td>Obtain formal written Client Acceptance Sign-off</td>
+                <td>Lead PM</td>
+                <td>0.5 Day</td>
+                <td>TSK-502</td>
+                <td>Sign-off</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-504</td>
+                <td>Phase 5</td>
+                <td>Execute production deployment and configure custom domain</td>
+                <td>Solution Architect</td>
+                <td>0.5 Day</td>
+                <td>TSK-503</td>
+                <td>Live Release</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-505</td>
+                <td>Phase 5</td>
+                <td>Deliver handover package, documentation, and closeout</td>
+                <td>Lead PM</td>
+                <td>0.5 Day</td>
+                <td>TSK-504</td>
+                <td>Handover</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 11: Testing Plan (Phase 4) -->
+      <section id="testing-plan">
+        <h2><span class="section-num">11.</span> Testing Plan (Placed Inside Phase 4)</h2>
+        <p>Testing takes place exclusively within Phase 4 (Days 13 to 17) and is structured into seven specialized
+          quality verification modules:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Test Module</th>
+                <th>Target Scope & Objective</th>
+                <th>Verification Procedure & Expected Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Core Functional Testing</strong></td>
+                <td>Verify all 8 working slots and fixed Lunch row.</td>
+                <td>Type text into all 8 slot textboxes; verify input retains value; confirm fixed Lunch Break row is
+                  strictly non-editable and displays no checkboxes or buttons.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Mutual Exclusivity Testing</strong></td>
+                <td>Verify mutual exclusivity (FR-08) and toggle-off (FR-09).</td>
+                <td>Click "Completed" (turns active); then click "Not Completed" (Completed unsets, Not Completed turns
+                  active); click "Not Completed" again (unsets to clean baseline state).</td>
+              </tr>
+              <tr>
+                <td><strong>3. Strict No Auto-Fill Testing</strong></td>
+                <td>Enforce critical rules FR-18 and FR-19.</td>
+                <td>Type "Deliver report" in slot 9-10; click "Not Completed"; verify Pending Work inputs remain
+                  completely blank; confirm zero entries appear in pending cards list.</td>
+              </tr>
+              <tr>
+                <td><strong>4. Pending Backlog Testing</strong></td>
+                <td>Verify manual entry, card generation, and deletion.</td>
+                <td>Manually type slot "9-10", title "Report", description "Awaiting feedback"; click Add; verify card
+                  renders with corner checkbox; toggle checkbox; click delete to verify removal.</td>
+              </tr>
+              <tr>
+                <td><strong>5. Cross-Browser Testing</strong></td>
+                <td>Verify uniform behavior across browsers.</td>
+                <td>Execute functional test suite across Google Chrome, Mozilla Firefox, Apple Safari, and Microsoft
+                  Edge; verify zero visual styling bugs or script errors.</td>
+              </tr>
+              <tr>
+                <td><strong>6. Responsive Viewport Testing</strong></td>
+                <td>Verify fluid layout on mobile, tablet, and desktop.</td>
+                <td>Test breakpoints at 360px (mobile), 768px (tablet), 1024px (laptop), and 1920px (desktop); confirm
+                  zero horizontal scrolling and preserved button touch targets (&gt;= 44px).</td>
+              </tr>
+              <tr>
+                <td><strong>7. Accessibility & Security Audit</strong></td>
+                <td>Verify WCAG 2.1 AA and input sanitization.</td>
+                <td>Verify <code>aria-pressed</code> attributes on toggle buttons; tab through all inputs via keyboard;
+                  input HTML/script tags into textboxes to confirm sanitization against XSS.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 12: Deployment Plan (Phase 5) -->
+      <section id="deployment-plan">
+        <h2><span class="section-num">12.</span> Deployment and Release Plan (Placed Inside Phase 5)</h2>
+        <p>Deployment and release activities take place strictly within Phase 5 (Days 18 to 20):</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Milestone Step</th>
+                <th>Target Timeline</th>
+                <th>Execution Procedure & Governance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Staging Release</strong></td>
+                <td>Day 18 (Morning)</td>
+                <td>Deploy release candidate build to staging server with HTTPS; perform smoke test covering all 20
+                  requirements.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Client UAT Walkthrough</strong></td>
+                <td>Day 18 (Afternoon)</td>
+                <td>Walk client Bala through each user story; allow Bala to perform independent trial planning; verify
+                  zero auto-fill behavior.</td>
+              </tr>
+              <tr>
+                <td><strong>3. Formal Acceptance Sign-Off</strong></td>
+                <td>Day 19 (Morning)</td>
+                <td>Review Definition of Done checklist with Bala; obtain written sign-off approving production release.
+                </td>
+              </tr>
+              <tr>
+                <td><strong>4. Production Deployment</strong></td>
+                <td>Day 19 (Afternoon)</td>
+                <td>Promote verified staging artifact to live production hosting; configure custom domain/DNS; verify
+                  SSL certificates and CDN caching rules.</td>
+              </tr>
+              <tr>
+                <td><strong>5. Post-Deployment Verification & Handover</strong></td>
+                <td>Day 20</td>
+                <td>Perform live production sanity test; deliver deployment documentation, backup files, and final
+                  project sign-off package to Bala.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 13: Risks and Mitigations -->
+      <section id="risks-mitigations">
+        <h2><span class="section-num">13.</span> Risks and Mitigations</h2>
+        <p>Every identified risk is explicitly linked to one of the 5 project phases:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Risk ID</th>
+                <th>Phase Linked</th>
+                <th>Identified Risk Event</th>
+                <th>Impact</th>
+                <th>Mitigation Strategy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>RSK-01</strong></td>
+                <td>Phase 1</td>
+                <td>Stakeholder suggests adding automatic task migration during alignment.</td>
+                <td><span class="badge badge-high">High</span></td>
+                <td>Reaffirm PRD core philosophy: explain that manual typing reinforces user focus and accountability;
+                  record zero auto-fill as non-negotiable.</td>
+              </tr>
+              <tr>
+                <td><strong>RSK-02</strong></td>
+                <td>Phase 2</td>
+                <td>Button visual contrast for Completed/Not Completed fails accessibility standards.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+                <td>Audit design color tokens with automated contrast checking tools to guarantee a minimum 4.5:1
+                  contrast ratio against the background.</td>
+              </tr>
+              <tr>
+                <td><strong>RSK-03</strong></td>
+                <td>Phase 3</td>
+                <td>Event propagation bug causing Not Completed button click to trigger pending backlog creation.</td>
+                <td><span class="badge badge-high">High</span></td>
+                <td>Architect strict functional decoupling: slot action buttons and pending backlog modules reside in
+                  isolated namespaces with zero shared trigger hooks.</td>
+              </tr>
+              <tr>
+                <td><strong>RSK-04</strong></td>
+                <td>Phase 4</td>
+                <td>Mobile viewport distortion on narrow 360px mobile screens.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+                <td>Use CSS Flexbox with wrapping on slot action buttons so time, input, and buttons stack cleanly on
+                  narrow mobile devices.</td>
+              </tr>
+              <tr>
+                <td><strong>RSK-05</strong></td>
+                <td>Phase 5</td>
+                <td>Production DNS propagation delays postponing go-live availability.</td>
+                <td><span class="badge badge-low">Low</span></td>
+                <td>Pre-configure DNS routing and SSL provisioning during Phase 4 so the domain is fully warmed prior to
+                  Day 19 deployment.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 14: Open Questions and Decisions -->
+      <section id="open-questions">
+        <h2><span class="section-num">14.</span> Open Questions and Decisions Needed</h2>
+        <p>Resolution strategy for the 5 open questions identified in PRD v1.0.0, stating the plan's default
+          implementation assumption until Bala provides explicit direction:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>PRD Question ID</th>
+                <th>Topic Area</th>
+                <th>Question Details for Client (Bala)</th>
+                <th>Implementation Plan Default Assumption</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>OQ-01</strong></td>
+                <td>Data Persistence</td>
+                <td>Should entries persist locally in browser LocalStorage across refreshes, or should reload present an
+                  empty sheet?</td>
+                <td><strong>Default Assumption:</strong> Implement automatic client-side LocalStorage caching so typed
+                  work is not lost on accidental refresh, plus a manual "Reset Day" option.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-02</strong></td>
+                <td>Daily Reset Workflow</td>
+                <td>How should the planner transition from day to day? Manual reset button or automatic midnight reset?
+                </td>
+                <td><strong>Default Assumption:</strong> Provide a clean "Clear / Start New Day" button in the header
+                  with a confirmation prompt to prevent accidental data erasure.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-03</strong></td>
+                <td>Date Indicator / Picker</td>
+                <td>Display a simple current date header, or include an interactive date picker?</td>
+                <td><strong>Default Assumption:</strong> Display a formatted dynamic date badge in the header (e.g.,
+                  "Monday, October 19, 2026") without a complex historical calendar picker.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-04</strong></td>
+                <td>Export / Print Capabilities</td>
+                <td>Is there a requirement for printing or exporting to PDF?</td>
+                <td><strong>Default Assumption:</strong> Include clean CSS <code>@media print</code> styling so standard
+                  browser Ctrl+P prints a clean single-page summary.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-05</strong></td>
+                <td>Pending Slot Input Format</td>
+                <td>Should pending time slot be a free-form text input or a dropdown selector?</td>
+                <td><strong>Default Assumption:</strong> Provide a flexible text input field with a placeholder (e.g.,
+                  "e.g., 10-11 AM") for maximum manual user flexibility.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 15: Acceptance Criteria and DoD -->
+      <section id="acceptance-criteria">
+        <h2><span class="section-num">15.</span> Acceptance Criteria and Definition of Done</h2>
+        <p>The project is formally complete when all criteria below are verified and accepted in writing by Bala:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Governance Category</th>
+                <th>Definition of Done (DoD) Criteria</th>
+                <th>Verification Authority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Scope & Requirements</strong></td>
+                <td>All 20 PRD requirements (FR-01 to FR-20) are fully implemented without missing items or undocumented
+                  additions.</td>
+                <td>Lead Project Manager</td>
+              </tr>
+              <tr>
+                <td><strong>Strict Manual Operation</strong></td>
+                <td>Marking any slot as Not Completed is proven to generate zero automatic text or pending records.</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Mutual Exclusivity</strong></td>
+                <td>Completed and Not Completed buttons behave with 100% mutual exclusivity and toggle-off capability
+                  across all 8 slots.</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Lunch Break Integrity</strong></td>
+                <td>Fixed Lunch Break row between 1:00 PM and 2:00 PM contains zero editable text boxes, checkboxes, or
+                  buttons.</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Pending Work Backlog</strong></td>
+                <td>Users can add, toggle corner checkboxes on, and delete multiple pending work entries manually.</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Quality & Performance</strong></td>
+                <td>Zero critical or high-severity defects; page loads in under 1 second; passes WCAG 2.1 AA
+                  accessibility contrast rules.</td>
+                <td>Solution Architect</td>
+              </tr>
+              <tr>
+                <td><strong>Client Acceptance</strong></td>
+                <td>Client Bala executes UAT walkthrough, confirms satisfaction, and executes written acceptance
+                  sign-off.</td>
+                <td>Client Bala</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">IMPLEMENTATION PLAN GOVERNANCE NOTICE</div>
+          <p>This implementation plan is locked to the 5-phase execution model. Any scope changes requested during
+            execution must be evaluated through Phase 1 change control governance without introducing extra phases.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+</body>
+
+</html>

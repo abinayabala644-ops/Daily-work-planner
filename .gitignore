@@ -7,4 +7,7 @@ Thumbs.db
 .next/
 dist/
 daily-work-planner/
-
+push.bat
+sync-to-github.bat
+auto-sync.ps1
+setup-github-auth.ps1
