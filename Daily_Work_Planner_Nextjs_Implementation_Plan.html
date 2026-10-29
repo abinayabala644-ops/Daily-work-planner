@@ -1,0 +1,1973 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Next.js Implementation Plan - Daily Work Planner</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-light: #3b82f6;
+      --primary-subtle: #eff6ff;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-light: #64748b;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border: #e2e8f0;
+      --border-dark: #cbd5e1;
+      --badge-high-bg: #fee2e2;
+      --badge-high-text: #991b1b;
+      --badge-med-bg: #fef3c7;
+      --badge-med-text: #92400e;
+      --badge-low-bg: #e0f2fe;
+      --badge-low-text: #075985;
+      --badge-status-bg: #dcfce7;
+      --badge-status-text: #2e6877;
+      --callout-bg: #fffbeb;
+      --callout-border: #f59e0b;
+      --alert-bg: #fef2f2;
+      --alert-border: #ef4444;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      padding: 0;
+      margin: 0;
+    }
+
+    .doc-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 32px;
+      padding: 40px 24px;
+    }
+
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+    }
+
+    .toc-card {
+      position: sticky;
+      top: 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 20px;
+      box-shadow: var(--shadow-sm);
+      max-height: calc(100vh - 64px);
+      overflow-y: auto;
+    }
+
+    .toc-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-light);
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .toc-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .toc-list a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      display: block;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .toc-list a:hover {
+      color: var(--primary);
+      background-color: var(--primary-subtle);
+      font-weight: 500;
+    }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 48px;
+      box-shadow: var(--shadow);
+    }
+
+    .doc-header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 28px;
+      margin-bottom: 36px;
+    }
+
+    .doc-category {
+      font-size: 0.825rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary-light);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .doc-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .doc-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+      padding: 16px;
+      background-color: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-light);
+      font-weight: 600;
+    }
+
+    .meta-value {
+      font-size: 0.925rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--badge-status-bg);
+      color: var(--badge-status-text);
+      width: fit-content;
+      margin-top: 4px;
+    }
+
+    section {
+      margin-bottom: 44px;
+      scroll-margin-top: 32px;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text-main);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2 .section-num {
+      color: var(--primary-light);
+      font-size: 1.2rem;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 24px 0 12px 0;
+    }
+
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin: 16px 0 8px 0;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      font-size: 0.95rem;
+    }
+
+    ul,
+    ol {
+      color: var(--text-muted);
+      margin: 0 0 18px 24px;
+      font-size: 0.95rem;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    li strong {
+      color: var(--text-main);
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin: 18px 0 24px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    thead {
+      background-color: var(--bg-page);
+      border-bottom: 2px solid var(--border);
+    }
+
+    th {
+      padding: 12px 14px;
+      font-weight: 700;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: #fcfdfe;
+    }
+
+    .req-id,
+    .task-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-high {
+      background-color: var(--badge-high-bg);
+      color: var(--badge-high-text);
+    }
+
+    .badge-med {
+      background-color: var(--badge-med-bg);
+      color: var(--badge-med-text);
+    }
+
+    .badge-low {
+      background-color: var(--badge-low-bg);
+      color: var(--badge-low-text);
+    }
+
+    .callout {
+      border-left: 4px solid var(--callout-border);
+      background-color: var(--callout-bg);
+      padding: 16px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 18px 0;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 6px;
+      font-size: 0.925rem;
+    }
+
+    .callout p {
+      margin: 0;
+      color: #78350f;
+      font-size: 0.9rem;
+    }
+
+    .alert-box {
+      border-left: 4px solid var(--alert-border);
+      background-color: var(--alert-bg);
+      padding: 16px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 18px 0;
+    }
+
+    .alert-title {
+      font-weight: 700;
+      color: var(--badge-high-text);
+      margin-bottom: 6px;
+      font-size: 0.925rem;
+    }
+
+    .alert-box p {
+      margin: 0;
+      color: #7f1d1d;
+      font-size: 0.9rem;
+    }
+
+    .tree-box {
+      background-color: #0f172a;
+      color: #e2e8f0;
+      padding: 20px 24px;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      margin: 18px 0 24px 0;
+    }
+
+    .tree-folder {
+      color: #38bdf8;
+      font-weight: 700;
+    }
+
+    .tree-file {
+      color: #cbd5e1;
+    }
+
+    .tree-comment {
+      color: #64748b;
+      font-style: italic;
+    }
+
+    .phase-card {
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0 28px 0;
+    }
+
+    .phase-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .phase-badge {
+      background-color: var(--primary);
+      color: #ffffff;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .doc-container {
+        padding: 0;
+        max-width: 100%;
+        display: block;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .content {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      section {
+        page-break-inside: avoid;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .doc-container {
+        flex-direction: column;
+        padding: 20px 16px;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      .toc-card {
+        position: static;
+        max-height: none;
+      }
+
+      .content {
+        padding: 24px 18px;
+      }
+
+      .doc-title {
+        font-size: 1.75rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="doc-container">
+    <aside class="sidebar">
+      <nav class="toc-card">
+        <div class="toc-title">Plan Navigation</div>
+        <ul class="toc-list">
+          <li><a href="#doc-info">1. Document Info</a></li>
+          <li><a href="#plan-summary">2. Plan Summary</a></li>
+          <li><a href="#scope-confirmation">3. Scope Confirmation</a></li>
+          <li><a href="#technical-approach">4. Technical Approach</a></li>
+          <li><a href="#project-structure">5. Next.js Project Structure</a></li>
+          <li><a href="#data-model">6. Data Model</a></li>
+          <li><a href="#behavior-rules">7. Behavior Rules</a></li>
+          <li><a href="#req-mapping">8. Requirement Mapping</a></li>
+          <li><a href="#the-5-phases">9. The 5 Phases</a></li>
+          <li><a href="#task-breakdown">10. Task Breakdown</a></li>
+          <li><a href="#testing-plan">11. Testing Plan (Phase 4)</a></li>
+          <li><a href="#deployment-plan">12. Deployment Plan (Phase 5)</a></li>
+          <li><a href="#risks-mitigations">13. Risks and Mitigations</a></li>
+          <li><a href="#open-questions">14. Open Questions & Decisions</a></li>
+          <li><a href="#acceptance-criteria">15. Acceptance & DoD</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="content">
+
+      <header class="doc-header">
+        <div class="doc-category">Technical Solution Architecture & Project Management</div>
+        <h1 class="doc-title">Next.js Implementation Plan: Daily Work Planner</h1>
+        <p class="doc-subtitle">A dedicated Next.js App Router, React, TypeScript, and Tailwind CSS implementation
+          blueprint and 5-phase execution plan for client Bala based strictly on PRD v1.0.0.</p>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Client / Sponsor</span>
+            <span class="meta-value">Bala</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Plan Version</span>
+            <span class="meta-value">2.0.0 (Next.js Edition)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Tech Stack</span>
+            <span class="meta-value">Next.js, React, TS, Tailwind</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Author & Role</span>
+            <span class="meta-value">Senior TPM & Solution Architect</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Linked PRD Version</span>
+            <span class="meta-value">PRD v1.0.0 (Approved)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Deployment Target</span>
+            <span class="status-badge">Vercel (Static / Node.js)</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Section 1: Document Info -->
+      <section id="doc-info">
+        <h2><span class="section-num">01.</span> Document Info</h2>
+        <p>This document details the engineering specifications, Next.js architecture, component hierarchy, requirement
+          mapping, and milestone delivery plan for the Daily Work Planner. It guides the engineering team through
+          building a clean, modern single-page Next.js web application adhering strictly to PRD v1.0.0 with zero extra
+          routes, zero backend databases, and zero unsolicited automations.</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Document Attribute</th>
+                <th>Specification</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Document Title</strong></td>
+                <td>Next.js Implementation Plan - Daily Work Planner</td>
+              </tr>
+              <tr>
+                <td><strong>Plan Version</strong></td>
+                <td>2.0.0</td>
+              </tr>
+              <tr>
+                <td><strong>Date Published</strong></td>
+                <td>October 20, 2026</td>
+              </tr>
+              <tr>
+                <td><strong>Author Role</strong></td>
+                <td>Senior Technical Project Manager & Solution Architect</td>
+              </tr>
+              <tr>
+                <td><strong>Client Name</strong></td>
+                <td>Bala</td>
+              </tr>
+              <tr>
+                <td><strong>Linked PRD Reference</strong></td>
+                <td>PRD v1.0.0 (Daily Work Planner PRD)</td>
+              </tr>
+              <tr>
+                <td><strong>Route Architecture</strong></td>
+                <td>Single Route Only: <code>/</code> (<code>app/page.tsx</code>)</td>
+              </tr>
+              <tr>
+                <td><strong>Phase Governance</strong></td>
+                <td>Strict 5-Phase Model (Weeks 1 to 4, Days 1 to 20)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 2: Plan Summary -->
+      <section id="plan-summary">
+        <h2><span class="section-num">02.</span> Plan Summary</h2>
+        <p>The Daily Work Planner will be implemented as a modern, single-page Next.js application using the App Router,
+          React, TypeScript, and Tailwind CSS.</p>
+        <p>The application resides on a single route ("/") and structures the 9:00 AM to 6:00 PM workday into 8 editable
+          one-hour working slots alongside a static Lunch Break row from 1:00 PM to 2:00 PM.</p>
+        <p>Interactive elements—such as slot text boxes, checkboxes, mutually exclusive Completed (✓) and Not Completed
+          (✗) buttons, and the Pending Work backlog form—are orchestrated as React client components using in-memory
+          state.</p>
+        <p>The system enforces absolute manual integrity: marking an hourly slot as Not Completed will never pre-fill or
+          auto-migrate tasks into the Pending Work section.</p>
+        <p>Execution is planned across exactly 5 phases over 20 working days, culminating in a production build deployed
+          directly to Vercel.</p>
+      </section>
+
+      <!-- Section 3: Scope Confirmation -->
+      <section id="scope-confirmation">
+        <h2><span class="section-num">03.</span> Scope Confirmation</h2>
+
+        <h3>3.1 In-Scope Deliverables (From PRD)</h3>
+        <ul>
+          <li><strong>Single-Page Architecture:</strong> Dedicated single route (<code>/</code>) in Next.js App Router
+            (<code>app/page.tsx</code>) with zero page reloads (FR-01, FR-20).</li>
+          <li><strong>Recurring Daily Schedule:</strong> 8 working slots: 9-10 AM, 10-11 AM, 11-12 PM, 12-1 PM, 2-3 PM,
+            3-4 PM, 4-5 PM, and 5-6 PM (FR-02).</li>
+          <li><strong>Fixed Lunch Break Row:</strong> Uneditable row at 1:00 PM – 2:00 PM with no text inputs, no
+            checkboxes, and no action buttons (FR-03, FR-04).</li>
+          <li><strong>Working Slot Controls:</strong> Single-line text input, independent checkbox, Completed button
+            (✓), and Not Completed button (✗) per slot (FR-05, FR-06, FR-07).</li>
+          <li><strong>State Exclusivity Logic:</strong> Strict mutual exclusivity between Completed and Not Completed
+            buttons, plus click-to-deselect toggle-off (FR-08, FR-09, FR-10).</li>
+          <li><strong>Pending Work Section:</strong> Bottom manual backlog interface to type pending time slot, work
+            name, and detailed description (FR-11, FR-12, FR-13).</li>
+          <li><strong>Multiple Pending Cards:</strong> Dynamic addition of multiple pending records, each having its own
+            independent corner checkbox and delete action (FR-14, FR-15, FR-16, FR-17).</li>
+          <li><strong>Strict Zero Auto-Fill:</strong> Absolute refusal by the system to automatically populate or
+            transfer data into the Pending Work section (FR-18, FR-19).</li>
+        </ul>
+
+        <h3>3.2 Out-of-Scope Deliverables (Explicitly Excluded)</h3>
+        <ul>
+          <li><strong>No Backend Server or Database:</strong> No PostgreSQL, MongoDB, Prisma, or Supabase. State lives
+            in client React state.</li>
+          <li><strong>No API Routes:</strong> No Next.js route handlers (<code>app/api/*</code>). All operations are
+            purely client-side.</li>
+          <li><strong>No Multi-Page Navigation:</strong> No additional pages, routes, or tabs. Strictly single page.
+          </li>
+          <li><strong>No Automated Task Migration:</strong> Marking an hour as Not Completed will never create or
+            pre-fill a pending item.</li>
+          <li><strong>No Third-Party Calendar Integrations:</strong> No synchronization with Google Calendar, Microsoft
+            Outlook, or Apple Calendar.</li>
+          <li><strong>No Timers, Alarms, or Push Notifications:</strong> No background clocks, countdowns, or browser
+            push notifications.</li>
+          <li><strong>No Multi-User Accounts:</strong> No user sign-in, authentication, or team collaboration features.
+          </li>
+        </ul>
+      </section>
+
+      <!-- Section 4: Technical Approach -->
+      <section id="technical-approach">
+        <h2><span class="section-num">04.</span> Technical Approach</h2>
+        <p>The solution leverages the modern Next.js ecosystem to achieve exceptional performance, type safety, and
+          clean UI maintainability:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Technology Layer</th>
+                <th>Selected Technology</th>
+                <th>Engineering Justification</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Framework & Routing</strong></td>
+                <td>Next.js App Router (Single Route <code>/</code>)</td>
+                <td>Provides an optimized build system, standard project scaffolding, zero-configuration TypeScript
+                  support, and seamless deployment on Vercel.</td>
+              </tr>
+              <tr>
+                <td><strong>UI Library</strong></td>
+                <td>React ("use client")</td>
+                <td>Offers declarative component-driven UI and robust local state management for reactive buttons, input
+                  handling, and dynamic lists.</td>
+              </tr>
+              <tr>
+                <td><strong>Type Safety</strong></td>
+                <td>TypeScript</td>
+                <td>Enforces strict compile-time type definitions for hourly slot records, pending backlog items, and
+                  button state enumerations.</td>
+              </tr>
+              <tr>
+                <td><strong>CSS & Styling</strong></td>
+                <td>Tailwind CSS</td>
+                <td>Enables clean, utility-first styling with responsive modifiers, modern design tokens, flexbox/grid
+                  layouts, and zero CSS runtime bloat.</td>
+              </tr>
+              <tr>
+                <td><strong>State Architecture</strong></td>
+                <td>React Local State (<code>useState</code>)</td>
+                <td>Keeps all state inside client components without external server dependencies, ensuring fast
+                  rendering and clean component encapsulation.</td>
+              </tr>
+              <tr>
+                <td><strong>Hosting Target</strong></td>
+                <td>Vercel</td>
+                <td>Native Next.js deployment platform offering zero-config builds, global edge CDN delivery, and
+                  automatic HTTPS provisioning.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 5: Next.js Project Structure -->
+      <section id="project-structure">
+        <h2><span class="section-num">05.</span> Next.js Project Structure</h2>
+        <p>The planned folder structure is lightweight, clean, and organized into standard Next.js conventions without
+          extra backend or route bloat:</p>
+
+        <div class="tree-box">
+          <span class="tree-folder">daily-work-planner/</span>
+          ├── <span class="tree-folder">app/</span>
+          │ ├── <span class="tree-file">globals.css</span> <span class="tree-comment"># Tailwind CSS directives & global
+            resets</span>
+          │ ├── <span class="tree-file">layout.tsx</span> <span class="tree-comment"># Root HTML layout with SEO
+            metadata</span>
+          │ └── <span class="tree-file">page.tsx</span> <span class="tree-comment"># Single-page route entry ("/")
+            rendering PlannerPage</span>
+          ├── <span class="tree-folder">components/</span>
+          │ ├── <span class="tree-file">PlannerPage.tsx</span> <span class="tree-comment"># ("use client") Main state
+            container & page orchestrator</span>
+          │ ├── <span class="tree-file">Header.tsx</span> <span class="tree-comment"># Header banner with date badge and
+            deliberate planning notice</span>
+          │ ├── <span class="tree-file">HourSlot.tsx</span> <span class="tree-comment"># ("use client") Hourly working
+            slot row (text, check, tick/cross)</span>
+          │ ├── <span class="tree-file">LunchRow.tsx</span> <span class="tree-comment"># Fixed Lunch Break row (1:00 PM
+            - 2:00 PM) with zero inputs</span>
+          │ ├── <span class="tree-file">PendingWorkSection.tsx</span> <span class="tree-comment"># ("use client")
+            Container for pending form and cards list</span>
+          │ ├── <span class="tree-file">PendingForm.tsx</span> <span class="tree-comment"># ("use client") Manual entry
+            form (slot, name, description)</span>
+          │ └── <span class="tree-file">PendingCard.tsx</span> <span class="tree-comment"># ("use client") Backlog entry
+            card with corner checkbox & delete</span>
+          ├── <span class="tree-folder">types/</span>
+          │ └── <span class="tree-file">planner.ts</span> <span class="tree-comment"># TypeScript interfaces: SlotItem,
+            PendingItem, SlotStatus</span>
+          ├── <span class="tree-folder">lib/</span>
+          │ └── <span class="tree-file">constants.ts</span> <span class="tree-comment"># Fixed default list of 8 working
+            slots and lunch interval</span>
+          ├── <span class="tree-file">tailwind.config.ts</span> <span class="tree-comment"># Tailwind styling tokens and
+            theme extensions</span>
+          ├── <span class="tree-file">tsconfig.json</span> <span class="tree-comment"># TypeScript compiler
+            options</span>
+          ├── <span class="tree-file">next.config.mjs</span> <span class="tree-comment"># Next.js build
+            configuration</span>
+          └── <span class="tree-file">package.json</span> <span class="tree-comment"># Dependencies: next, react,
+            react-dom, tailwindcss</span>
+        </div>
+
+        <h3>5.1 Planned Component Directory</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Component Name</th>
+                <th>Client/Server Role</th>
+                <th>Functional Responsibilities</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>PlannerPage</strong></td>
+                <td>Client Component (<code>"use client"</code>)</td>
+                <td>Holds top-level state for the 8 hourly slots and the dynamic array of pending work cards; manages
+                  mutual exclusivity and list mutations.</td>
+              </tr>
+              <tr>
+                <td><strong>Header</strong></td>
+                <td>Presentational Component</td>
+                <td>Renders the document title "Daily Work Planner", subtitle, and current formatted date indicator
+                  badge.</td>
+              </tr>
+              <tr>
+                <td><strong>HourSlot</strong></td>
+                <td>Client Component (<code>"use client"</code>)</td>
+                <td>Renders one of the 8 working slots with its time range label, work description input, checkbox,
+                  Completed (✓) button, and Not Completed (✗) button.</td>
+              </tr>
+              <tr>
+                <td><strong>LunchRow</strong></td>
+                <td>Presentational Component</td>
+                <td>Renders the distinct, static 1:00 PM – 2:00 PM lunch intermission row with amber accenting and no
+                  interactive controls.</td>
+              </tr>
+              <tr>
+                <td><strong>PendingWorkSection</strong></td>
+                <td>Client Component (<code>"use client"</code>)</td>
+                <td>Wraps the manual Pending Work backlog area, displaying the section heading, input form, and the list
+                  of active pending cards.</td>
+              </tr>
+              <tr>
+                <td><strong>PendingForm</strong></td>
+                <td>Client Component (<code>"use client"</code>)</td>
+                <td>Provides manual input fields for pending slot, work title, and detailed multi-line description, plus
+                  the "Add Pending Work" button.</td>
+              </tr>
+              <tr>
+                <td><strong>PendingCard</strong></td>
+                <td>Client Component (<code>"use client"</code>)</td>
+                <td>Displays an individual pending work record with its corner checkbox, slot reference badge, title,
+                  description, and delete button.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 6: Data Model -->
+      <section id="data-model">
+        <h2><span class="section-num">06.</span> Data Model</h2>
+        <p>The TypeScript data contracts define the core schemas used across the Next.js client state:</p>
+
+        <h3>6.1 TypeScript Type: <code>SlotStatus</code></h3>
+        <p>Represents the mutually exclusive operational state of a working slot's action buttons:</p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Type Enumeration Value</th>
+                <th>UI Button Representation</th>
+                <th>Visual State</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>"NONE"</code></td>
+                <td>Neither button active</td>
+                <td>Neutral border and background</td>
+              </tr>
+              <tr>
+                <td><code>"COMPLETED"</code></td>
+                <td>Completed button (✓) active</td>
+                <td>Green background/border; Not Completed button inactive</td>
+              </tr>
+              <tr>
+                <td><code>"NOT_COMPLETED"</code></td>
+                <td>Not Completed button (✗) active</td>
+                <td>Red background/border; Completed button inactive</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>6.2 TypeScript Interface: <code>HourSlotItem</code> (8 Fixed Slots)</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Field Name</th>
+                <th>TypeScript Type</th>
+                <th>Mandatory / Optional</th>
+                <th>Field Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>id</code></td>
+                <td><code>number</code></td>
+                <td>Mandatory</td>
+                <td>Unique sequential identifier (1 to 8).</td>
+              </tr>
+              <tr>
+                <td><code>timeLabel</code></td>
+                <td><code>string</code></td>
+                <td>Mandatory</td>
+                <td>Display interval string (e.g., "9:00 AM - 10:00 AM").</td>
+              </tr>
+              <tr>
+                <td><code>taskText</code></td>
+                <td><code>string</code></td>
+                <td>Mandatory</td>
+                <td>User-typed planned task description.</td>
+              </tr>
+              <tr>
+                <td><code>isChecked</code></td>
+                <td><code>boolean</code></td>
+                <td>Mandatory</td>
+                <td>State of the slot's independent checkbox.</td>
+              </tr>
+              <tr>
+                <td><code>status</code></td>
+                <td><code>SlotStatus</code></td>
+                <td>Mandatory</td>
+                <td>Active action button status (<code>"NONE"</code> | <code>"COMPLETED"</code> |
+                  <code>"NOT_COMPLETED"</code>).
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>6.3 TypeScript Interface: <code>PendingWorkItem</code> (Dynamic Backlog Array)</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Field Name</th>
+                <th>TypeScript Type</th>
+                <th>Mandatory / Optional</th>
+                <th>Field Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>id</code></td>
+                <td><code>string</code></td>
+                <td>Mandatory</td>
+                <td>Unique ID generated upon creation (e.g., timestamp or nanoid).</td>
+              </tr>
+              <tr>
+                <td><code>pendingSlot</code></td>
+                <td><code>string</code></td>
+                <td>Mandatory</td>
+                <td>User-typed time slot reference when work was delayed.</td>
+              </tr>
+              <tr>
+                <td><code>workName</code></td>
+                <td><code>string</code></td>
+                <td>Mandatory</td>
+                <td>User-typed title/name of the unfinished task.</td>
+              </tr>
+              <tr>
+                <td><code>detailedDescription</code></td>
+                <td><code>string</code></td>
+                <td>Mandatory</td>
+                <td>User-typed comprehensive multi-line details of the work.</td>
+              </tr>
+              <tr>
+                <td><code>isResolved</code></td>
+                <td><code>boolean</code></td>
+                <td>Mandatory</td>
+                <td>State of the corner checkbox on the pending card.</td>
+              </tr>
+              <tr>
+                <td><code>createdAt</code></td>
+                <td><code>number</code></td>
+                <td>Mandatory</td>
+                <td>Epoch timestamp for list ordering and key generation.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 7: Behavior Rules -->
+      <section id="behavior-rules">
+        <h2><span class="section-num">07.</span> Behavior Rules</h2>
+        <p>The Next.js state handlers enforce four core operational rules in code:</p>
+
+        <div class="alert-box">
+          <div class="alert-title">RULE 1: STRICT MUTUAL EXCLUSIVITY (FR-08)</div>
+          <p>Within any working slot, the Completed (✓) and Not Completed (✗) buttons cannot be active simultaneously.
+            Selecting Completed sets <code>status = "COMPLETED"</code> and unsets Not Completed. Selecting Not Completed
+            sets <code>status = "NOT_COMPLETED"</code> and unsets Completed.</p>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">RULE 2: CLICK-TO-DESELECT TOGGLE-OFF (FR-09)</div>
+          <p>If a button is currently active, clicking that exact button again unsets it and reverts
+            <code>status = "NONE"</code>, restoring the slot to an unselected neutral state.
+          </p>
+        </div>
+
+        <div class="alert-box">
+          <div class="alert-title">RULE 3: STRICT ZERO AUTOMATIC FILLING (FR-18, FR-19)</div>
+          <p>Marking an hourly slot as Not Completed SHALL NEVER invoke any state handler that adds, copies, or migrates
+            data into the Pending Work section. The Pending Work form inputs (slot, name, description) and the pending
+            items list remain entirely un-filled until the user manually types and submits them.</p>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">RULE 4: INDEPENDENT CHECKBOX FREEDOM (FR-06, FR-16)</div>
+          <p>The hourly slot checkbox toggles independently of the Completed/Not Completed buttons. Similarly, each
+            pending card corner checkbox toggles independently without affecting any hourly slot or neighboring cards.
+          </p>
+        </div>
+      </section>
+
+      <!-- Section 8: Requirement Mapping -->
+      <section id="req-mapping">
+        <h2><span class="section-num">08.</span> Requirement Mapping</h2>
+        <p>Traceability matrix mapping PRD requirements (FR-01 through FR-20) to Next.js components, tasks, and phases:
+        </p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>PRD ID</th>
+                <th>Requirement Summary</th>
+                <th>Phase</th>
+                <th>Task ID</th>
+                <th>Next.js Component</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="req-id">FR-01</td>
+                <td>Single-page daily schedule view (9 AM - 6 PM)</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-301</span></td>
+                <td><code>app/page.tsx</code> & <code>PlannerPage</code></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-02</td>
+                <td>8 hourly working slots configured</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-302</span></td>
+                <td><code>HourSlot</code> (x8)</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-03</td>
+                <td>Fixed Lunch Break row (1:00 PM - 2:00 PM)</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-303</span></td>
+                <td><code>LunchRow</code></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-04</td>
+                <td>Lunch row has no inputs, checkbox, or buttons</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-303</span></td>
+                <td><code>LunchRow</code></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-05</td>
+                <td>Text input box in each working slot</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-304</span></td>
+                <td><code>HourSlot</code> text input</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-06</td>
+                <td>Independent checkbox in each working slot</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-305</span></td>
+                <td><code>HourSlot</code> checkbox</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-07</td>
+                <td>Completed (✓) and Not Completed (✗) buttons</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-306</span></td>
+                <td><code>HourSlot</code> action buttons</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-08</td>
+                <td>Mutual exclusivity between Completed & Not Completed</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-307</span></td>
+                <td><code>HourSlot</code> & <code>PlannerPage</code> state</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-09</td>
+                <td>Click active button second time to toggle off</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-307</span></td>
+                <td><code>HourSlot</code> & <code>PlannerPage</code> state</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-10</td>
+                <td>High-contrast visual styling for active buttons</td>
+                <td>Phase 2 & 3</td>
+                <td><span class="task-id">TSK-202, TSK-306</span></td>
+                <td>Tailwind CSS button classes</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-11</td>
+                <td>Pending Work section positioned at bottom</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-308</span></td>
+                <td><code>PendingWorkSection</code></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-12</td>
+                <td>Pending input fields: slot, work name, description</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-308</span></td>
+                <td><code>PendingForm</code></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-13</td>
+                <td>"Add Pending Work" submission button</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-309</span></td>
+                <td><code>PendingForm</code> submit button</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-14</td>
+                <td>Support multiple pending entries sequentially</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-309</span></td>
+                <td><code>PendingWorkSection</code> list render</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-15</td>
+                <td>Pending card displays slot, name, desc, corner checkbox</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-310</span></td>
+                <td><code>PendingCard</code></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-16</td>
+                <td>Corner checkbox toggles independently</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-310</span></td>
+                <td><code>PendingCard</code> checkbox</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-17</td>
+                <td>Delete/remove action for pending work card</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-311</span></td>
+                <td><code>PendingCard</code> delete button</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-18</td>
+                <td>Zero automatic copying/migration on Not Completed</td>
+                <td>Phase 3 & 4</td>
+                <td><span class="task-id">TSK-312, TSK-402</span></td>
+                <td>Architecture Boundary & QA Suite</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-19</td>
+                <td>No system pre-filling of pending form fields</td>
+                <td>Phase 3 & 4</td>
+                <td><span class="task-id">TSK-312, TSK-402</span></td>
+                <td>Architecture Boundary & QA Suite</td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-20</td>
+                <td>Unified single-page view with zero reloads/redirects</td>
+                <td>Phase 3</td>
+                <td><span class="task-id">TSK-301</span></td>
+                <td><code>app/page.tsx</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 9: The 5 Phases -->
+      <section id="the-5-phases">
+        <h2><span class="section-num">09.</span> The 5 Phases</h2>
+        <p>The project follows a strict 5-phase delivery model across 4 weeks (20 working days). No extra phases exist.
+        </p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Phase</th>
+                <th>Phase Name</th>
+                <th>Duration</th>
+                <th>Start Day</th>
+                <th>End Day</th>
+                <th>Primary Lead Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Phase 1</strong></td>
+                <td>PRD Review and Stakeholder Alignment</td>
+                <td>3 Days</td>
+                <td>Day 1</td>
+                <td>Day 3</td>
+                <td>Lead Project Manager</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 2</strong></td>
+                <td>UI Design and Visual Specifications</td>
+                <td>2 Days</td>
+                <td>Day 4</td>
+                <td>Day 5</td>
+                <td>Senior UI/UX Designer</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 3</strong></td>
+                <td>Next.js Development and Interaction Logic</td>
+                <td>7 Days</td>
+                <td>Day 6</td>
+                <td>Day 12</td>
+                <td>Senior Next.js Engineer</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 4</strong></td>
+                <td>Quality Assurance and Usability Testing</td>
+                <td>5 Days</td>
+                <td>Day 13</td>
+                <td>Day 17</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 5</strong></td>
+                <td>Client Acceptance and Launch</td>
+                <td>3 Days</td>
+                <td>Day 18</td>
+                <td>Day 20</td>
+                <td>Solution Architect & Client Bala</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 9.1 Phase 1 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.1 Phase 1: PRD Review and Stakeholder Alignment</h3>
+            <span class="phase-badge">Week 1 (Days 1–3)</span>
+          </div>
+          <p><strong>Goal:</strong> Align client Bala on PRD v1.0.0, confirm Next.js architectural boundaries (single
+            route, no backend), and agree on default assumptions.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-101:</strong> Conduct PRD & Next.js architecture walkthrough with client Bala. [Role: Lead
+              PM]</li>
+            <li><strong>TSK-102:</strong> Confirm Open Questions OQ-01 through OQ-05 and validate working assumptions.
+              [Role: Lead PM & Architect]</li>
+            <li><strong>TSK-103:</strong> Initialize Next.js Git repository with TypeScript, Tailwind CSS, and ESLint
+              configurations. [Role: Solution Architect]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> Signed PRD alignment memo, resolved decisions log, initialized Next.js
+            project repository.</p>
+          <p><strong>Dependencies:</strong> Availability of client Bala for Day 1 workshop.</p>
+          <p><strong>Exit Criteria:</strong> Formal written confirmation of PRD scope, Next.js architecture, and
+            single-route structure.</p>
+          <p><strong>Phase Risks:</strong> Stakeholder requesting backend databases (Mitigation: Reaffirm PRD
+            client-side state philosophy).</p>
+        </div>
+
+        <!-- 9.2 Phase 2 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.2 Phase 2: UI Design and Visual Specifications</h3>
+            <span class="phase-badge">Week 1 (Days 4–5)</span>
+          </div>
+          <p><strong>Goal:</strong> Create responsive UI wireframes and Tailwind CSS design tokens matching the PRD's
+            clean executive aesthetic.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-201:</strong> Design single-page responsive layout mockups for desktop and mobile viewports.
+              [Role: UI/UX Designer]</li>
+            <li><strong>TSK-202:</strong> Define Tailwind utility tokens for Completed (green ✓), Not Completed (red ✗),
+              and Lunch Break row. [Role: UI/UX Designer]</li>
+            <li><strong>TSK-203:</strong> Review UI designs with Bala and secure visual sign-off. [Role: UI/UX Designer
+              & Lead PM]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> High-fidelity responsive UI mockups, configured
+            <code>tailwind.config.ts</code> theme tokens.
+          </p>
+          <p><strong>Dependencies:</strong> Sign-off from Phase 1.</p>
+          <p><strong>Exit Criteria:</strong> Bala approves visual presentation, lunch row styling, and button contrast.
+          </p>
+          <p><strong>Phase Risks:</strong> Mobile button crowding (Mitigation: Design responsive flex-wrap layouts).</p>
+        </div>
+
+        <!-- 9.3 Phase 3 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.3 Phase 3: Next.js Development and Interaction Logic</h3>
+            <span class="phase-badge">Week 2 (Days 6–12)</span>
+          </div>
+          <p><strong>Goal:</strong> Build all Next.js React client components, TypeScript interfaces, mutual exclusivity
+            state logic, and zero auto-fill boundaries.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-301:</strong> Set up Next.js root layout (<code>app/layout.tsx</code>) and single page route
+              (<code>app/page.tsx</code>). (FR-01, FR-20) [Role: Next.js Engineer]</li>
+            <li><strong>TSK-302:</strong> Create <code>HourSlot</code> component and render 8 working hourly slots from
+              <code>lib/constants.ts</code>. (FR-02) [Role: Next.js Engineer]
+            </li>
+            <li><strong>TSK-303:</strong> Implement static <code>LunchRow</code> component between 12-1 and 2-3 with
+              zero inputs or buttons. (FR-03, FR-04) [Role: Next.js Engineer]</li>
+            <li><strong>TSK-304:</strong> Implement controlled text input box inside <code>HourSlot</code> for task
+              descriptions. (FR-05) [Role: Next.js Engineer]</li>
+            <li><strong>TSK-305:</strong> Add independent checkbox to <code>HourSlot</code> component. (FR-06) [Role:
+              Next.js Engineer]</li>
+            <li><strong>TSK-306:</strong> Build Completed (✓) and Not Completed (✗) buttons with Tailwind visual state
+              classes. (FR-07, FR-10) [Role: Next.js Engineer]</li>
+            <li><strong>TSK-307:</strong> Write mutual exclusivity state handler and click-to-deselect toggle-off logic
+              in <code>PlannerPage</code>. (FR-08, FR-09) [Role: Next.js Engineer]</li>
+            <li><strong>TSK-308:</strong> Build <code>PendingWorkSection</code> and <code>PendingForm</code> components
+              with slot, name, and description fields. (FR-11, FR-12) [Role: Next.js Engineer]</li>
+            <li><strong>TSK-309:</strong> Implement "Add Pending Work" button and dynamic pending cards list state
+              updater. (FR-13, FR-14) [Role: Next.js Engineer]</li>
+            <li><strong>TSK-310:</strong> Construct <code>PendingCard</code> component with independent corner checkbox.
+              (FR-15, FR-16) [Role: Next.js Engineer]</li>
+            <li><strong>TSK-311:</strong> Implement delete action button for individual pending cards. (FR-17) [Role:
+              Next.js Engineer]</li>
+            <li><strong>TSK-312:</strong> Enforce zero auto-fill architectural boundaries across all inputs and state
+              actions. (FR-18, FR-19) [Role: Next.js Engineer & Architect]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> Functional Next.js application codebase passing build
+            (<code>next build</code>) with zero errors.</p>
+          <p><strong>Dependencies:</strong> Approved UI design tokens from Phase 2.</p>
+          <p><strong>Exit Criteria:</strong> All 20 functional requirements fully coded and passing local development
+            checks.</p>
+          <p><strong>Phase Risks:</strong> Next.js hydration mismatch on client state (Mitigation: Explicit "use client"
+            boundaries).</p>
+        </div>
+
+        <!-- 9.4 Phase 4 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.4 Phase 4: Quality Assurance and Usability Testing</h3>
+            <span class="phase-badge">Week 3 (Days 13–17)</span>
+          </div>
+          <p><strong>Goal:</strong> Rigorously validate functional requirements, mutual exclusivity, no auto-fill
+            compliance, cross-browser compatibility, and accessibility.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-401:</strong> Execute core functional test cases for 8 slots, lunch row, and pending form.
+              [Role: QA Test Lead]</li>
+            <li><strong>TSK-402:</strong> Execute strict zero auto-fill verification test suite. (FR-18, FR-19) [Role:
+              QA Test Lead]</li>
+            <li><strong>TSK-403:</strong> Execute mutual exclusivity and toggle-off state test matrix. (FR-08, FR-09)
+              [Role: QA Test Lead]</li>
+            <li><strong>TSK-404:</strong> Run cross-browser compatibility tests (Chrome, Edge, Firefox, Safari). [Role:
+              QA Test Engineer]</li>
+            <li><strong>TSK-405:</strong> Run responsive viewport tests across mobile (360px) to desktop (1920px).
+              [Role: QA Test Engineer]</li>
+            <li><strong>TSK-406:</strong> Run WCAG 2.1 AA accessibility and keyboard navigation audit. [Role: QA Test
+              Engineer]</li>
+            <li><strong>TSK-407:</strong> Fix identified defects and conduct final regression pass. [Role: Next.js
+              Engineer & QA Lead]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> Comprehensive QA Test Report, Defect Log (0 critical/high bugs),
+            Accessibility Audit.</p>
+          <p><strong>Dependencies:</strong> Code freeze of Phase 3 build.</p>
+          <p><strong>Exit Criteria:</strong> 100% test pass rate on functional and zero auto-fill rules.</p>
+          <p><strong>Phase Risks:</strong> Cross-browser CSS differences (Mitigation: Tailwind CSS base normalization).
+          </p>
+        </div>
+
+        <!-- 9.5 Phase 5 -->
+        <div class="phase-card">
+          <div class="phase-card-header">
+            <h3>9.5 Phase 5: Client Acceptance and Launch</h3>
+            <span class="phase-badge">Week 4 (Days 18–20)</span>
+          </div>
+          <p><strong>Goal:</strong> Complete production Next.js build, deploy to Vercel, conduct guided UAT with Bala,
+            and complete client handover.</p>
+          <h4>Step-by-Step Task List:</h4>
+          <ul>
+            <li><strong>TSK-501:</strong> Deploy preview build on Vercel staging URL for stakeholder testing. [Role:
+              Solution Architect]</li>
+            <li><strong>TSK-502:</strong> Conduct guided UAT demonstration walkthrough with Bala. [Role: Lead PM &
+              Architect]</li>
+            <li><strong>TSK-503:</strong> Secure formal written Client Acceptance Sign-off from Bala. [Role: Lead PM]
+            </li>
+            <li><strong>TSK-504:</strong> Execute production Next.js build (<code>next build</code>) and promote to
+              production domain on Vercel. [Role: Solution Architect]</li>
+            <li><strong>TSK-505:</strong> Deliver handover documentation, repository access, and project closeout
+              report. [Role: Lead PM]</li>
+          </ul>
+          <p><strong>Deliverables:</strong> Production-deployed web application on Vercel, signed UAT sign-off document,
+            handover package.</p>
+          <p><strong>Dependencies:</strong> Clean QA clearance from Phase 4.</p>
+          <p><strong>Exit Criteria:</strong> Formal acceptance from Bala and 100% live system availability on Vercel.
+          </p>
+          <p><strong>Phase Risks:</strong> Vercel custom domain DNS propagation delay (Mitigation: Pre-configure DNS
+            records during Phase 4).</p>
+        </div>
+      </section>
+
+      <!-- Section 10: Task Breakdown -->
+      <section id="task-breakdown">
+        <h2><span class="section-num">10.</span> Task Breakdown</h2>
+        <p>Complete task breakdown across all 5 phases with owner roles, estimated effort, dependencies, and PRD
+          requirement IDs:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Task ID</th>
+                <th>Phase</th>
+                <th>Task Description</th>
+                <th>Owner Role</th>
+                <th>Effort</th>
+                <th>Dependency</th>
+                <th>PRD ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="task-id">TSK-101</td>
+                <td>Phase 1</td>
+                <td>Review PRD requirements with client Bala</td>
+                <td>Lead PM</td>
+                <td>1 Day</td>
+                <td>None</td>
+                <td>All (FR-01 to FR-20)</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-102</td>
+                <td>Phase 1</td>
+                <td>Review Open Questions and confirm baseline decisions</td>
+                <td>Lead PM & Architect</td>
+                <td>1 Day</td>
+                <td>TSK-101</td>
+                <td>OQ-01 to OQ-05</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-103</td>
+                <td>Phase 1</td>
+                <td>Initialize Next.js project repository with TS & Tailwind</td>
+                <td>Solution Architect</td>
+                <td>1 Day</td>
+                <td>TSK-102</td>
+                <td>Architecture</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-201</td>
+                <td>Phase 2</td>
+                <td>Design single-page responsive layout (desktop & mobile)</td>
+                <td>UI/UX Designer</td>
+                <td>1 Day</td>
+                <td>TSK-103</td>
+                <td>FR-01, FR-20</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-202</td>
+                <td>Phase 2</td>
+                <td>Configure Tailwind utility classes for buttons and lunch row</td>
+                <td>UI/UX Designer</td>
+                <td>1 Day</td>
+                <td>TSK-201</td>
+                <td>FR-04, FR-10</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-203</td>
+                <td>Phase 2</td>
+                <td>Present UI mockups to Bala and obtain design approval</td>
+                <td>Lead PM & Designer</td>
+                <td>0.5 Day</td>
+                <td>TSK-202</td>
+                <td>UI Approval</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-301</td>
+                <td>Phase 3</td>
+                <td>Build Next.js app shell (<code>app/layout.tsx</code>, <code>app/page.tsx</code>)</td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-203</td>
+                <td>FR-01, FR-20</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-302</td>
+                <td>Phase 3</td>
+                <td>Render the 8 hourly working slot containers in <code>HourSlot</code></td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-301</td>
+                <td>FR-02</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-303</td>
+                <td>Phase 3</td>
+                <td>Build fixed <code>LunchRow</code> component (no inputs or buttons)</td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-302</td>
+                <td>FR-03, FR-04</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-304</td>
+                <td>Phase 3</td>
+                <td>Integrate task description text inputs into <code>HourSlot</code></td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-302</td>
+                <td>FR-05</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-305</td>
+                <td>Phase 3</td>
+                <td>Add independent slot checkboxes to <code>HourSlot</code></td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-304</td>
+                <td>FR-06</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-306</td>
+                <td>Phase 3</td>
+                <td>Build Completed (✓) and Not Completed (✗) buttons</td>
+                <td>Next.js Engineer</td>
+                <td>1 Day</td>
+                <td>TSK-305</td>
+                <td>FR-07, FR-10</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-307</td>
+                <td>Phase 3</td>
+                <td>Implement mutual exclusivity and click toggle-off logic</td>
+                <td>Next.js Engineer</td>
+                <td>1 Day</td>
+                <td>TSK-306</td>
+                <td>FR-08, FR-09</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-308</td>
+                <td>Phase 3</td>
+                <td>Build <code>PendingWorkSection</code> and <code>PendingForm</code> inputs</td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-307</td>
+                <td>FR-11, FR-12</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-309</td>
+                <td>Phase 3</td>
+                <td>Implement Add Pending button & dynamic list render in React</td>
+                <td>Next.js Engineer</td>
+                <td>1 Day</td>
+                <td>TSK-308</td>
+                <td>FR-13, FR-14</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-310</td>
+                <td>Phase 3</td>
+                <td>Construct <code>PendingCard</code> with corner checkbox</td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-309</td>
+                <td>FR-15, FR-16</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-311</td>
+                <td>Phase 3</td>
+                <td>Add delete button and removal state logic for pending cards</td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-310</td>
+                <td>FR-17</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-312</td>
+                <td>Phase 3</td>
+                <td>Verify strict zero auto-fill boundaries across state handlers</td>
+                <td>Next.js Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-311</td>
+                <td>FR-18, FR-19</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-401</td>
+                <td>Phase 4</td>
+                <td>Execute full functional test suite for 8 slots & lunch row</td>
+                <td>QA Test Lead</td>
+                <td>1 Day</td>
+                <td>TSK-312</td>
+                <td>FR-01 to FR-07</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-402</td>
+                <td>Phase 4</td>
+                <td>Execute strict no auto-fill verification test suite</td>
+                <td>QA Test Lead</td>
+                <td>1 Day</td>
+                <td>TSK-401</td>
+                <td>FR-18, FR-19</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-403</td>
+                <td>Phase 4</td>
+                <td>Test mutual exclusivity and toggle-off states in React</td>
+                <td>QA Test Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-401</td>
+                <td>FR-08, FR-09</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-404</td>
+                <td>Phase 4</td>
+                <td>Perform cross-browser compatibility testing</td>
+                <td>QA Test Engineer</td>
+                <td>1 Day</td>
+                <td>TSK-403</td>
+                <td>Non-Functional</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-405</td>
+                <td>Phase 4</td>
+                <td>Execute responsive mobile, tablet, and desktop testing</td>
+                <td>QA Test Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-404</td>
+                <td>Non-Functional</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-406</td>
+                <td>Phase 4</td>
+                <td>Conduct accessibility (WCAG AA) & security audit</td>
+                <td>QA Test Engineer</td>
+                <td>0.5 Day</td>
+                <td>TSK-405</td>
+                <td>Non-Functional</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-407</td>
+                <td>Phase 4</td>
+                <td>Fix identified defects and perform final regression pass</td>
+                <td>Next.js Eng & QA Lead</td>
+                <td>0.5 Day</td>
+                <td>TSK-406</td>
+                <td>Defect Clearance</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-501</td>
+                <td>Phase 5</td>
+                <td>Deploy Next.js release candidate to Vercel preview</td>
+                <td>Solution Architect</td>
+                <td>0.5 Day</td>
+                <td>TSK-407</td>
+                <td>Staging Setup</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-502</td>
+                <td>Phase 5</td>
+                <td>Conduct guided UAT walkthrough with Bala</td>
+                <td>Lead PM & Architect</td>
+                <td>1 Day</td>
+                <td>TSK-501</td>
+                <td>UAT Session</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-503</td>
+                <td>Phase 5</td>
+                <td>Obtain formal written Client Acceptance Sign-off</td>
+                <td>Lead PM</td>
+                <td>0.5 Day</td>
+                <td>TSK-502</td>
+                <td>Sign-off</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-504</td>
+                <td>Phase 5</td>
+                <td>Run production build and promote live domain on Vercel</td>
+                <td>Solution Architect</td>
+                <td>0.5 Day</td>
+                <td>TSK-503</td>
+                <td>Live Release</td>
+              </tr>
+              <tr>
+                <td class="task-id">TSK-505</td>
+                <td>Phase 5</td>
+                <td>Deliver handover package, documentation, and closeout</td>
+                <td>Lead PM</td>
+                <td>0.5 Day</td>
+                <td>TSK-504</td>
+                <td>Handover</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 11: Testing Plan (Phase 4) -->
+      <section id="testing-plan">
+        <h2><span class="section-num">11.</span> Testing Plan (Placed Inside Phase 4)</h2>
+        <p>Testing occurs exclusively inside Phase 4 (Days 13 to 17) across seven specialized test modules:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Test Module</th>
+                <th>Target Scope & Objective</th>
+                <th>Verification Procedure & Expected Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Core Functional Testing</strong></td>
+                <td>Verify all 8 working slots and fixed Lunch row.</td>
+                <td>Type text into all 8 slot textboxes; verify input retains value in React state; confirm LunchRow is
+                  strictly non-editable and displays no checkboxes or buttons.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Mutual Exclusivity Testing</strong></td>
+                <td>Verify mutual exclusivity (FR-08) and toggle-off (FR-09).</td>
+                <td>Click "Completed" (turns active green); click "Not Completed" (Completed unsets, Not Completed turns
+                  active red); click "Not Completed" again (unsets to clean neutral state).</td>
+              </tr>
+              <tr>
+                <td><strong>3. Strict No Auto-Fill Testing</strong></td>
+                <td>Enforce critical rules FR-18 and FR-19.</td>
+                <td>Type "Deliver report" in slot 9-10; click "Not Completed"; verify Pending Work inputs remain
+                  completely blank; confirm zero entries appear in pending cards list.</td>
+              </tr>
+              <tr>
+                <td><strong>4. Pending Backlog Testing</strong></td>
+                <td>Verify manual entry, card generation, and deletion.</td>
+                <td>Manually type slot "9-10", title "Report", description "Awaiting feedback"; click Add; verify card
+                  renders with corner checkbox; toggle checkbox; click delete to verify removal.</td>
+              </tr>
+              <tr>
+                <td><strong>5. Cross-Browser Testing</strong></td>
+                <td>Verify uniform behavior across browsers.</td>
+                <td>Execute functional test suite across Google Chrome, Mozilla Firefox, Apple Safari, and Microsoft
+                  Edge; verify zero visual styling bugs or React script errors.</td>
+              </tr>
+              <tr>
+                <td><strong>6. Responsive Viewport Testing</strong></td>
+                <td>Verify fluid layout on mobile, tablet, and desktop.</td>
+                <td>Test breakpoints at 360px (mobile), 768px (tablet), 1024px (laptop), and 1920px (desktop); confirm
+                  zero horizontal scrolling and preserved button touch targets (&gt;= 44px).</td>
+              </tr>
+              <tr>
+                <td><strong>7. Accessibility & Security Audit</strong></td>
+                <td>Verify WCAG 2.1 AA and input sanitization.</td>
+                <td>Verify <code>aria-pressed</code> attributes on toggle buttons; tab through all inputs via keyboard;
+                  input HTML/script tags into textboxes to confirm sanitization against XSS.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 12: Deployment Plan (Phase 5) -->
+      <section id="deployment-plan">
+        <h2><span class="section-num">12.</span> Deployment and Release Plan (Placed Inside Phase 5)</h2>
+        <p>Deployment and release activities take place strictly within Phase 5 (Days 18 to 20):</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Milestone Step</th>
+                <th>Target Timeline</th>
+                <th>Execution Procedure & Governance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Vercel Staging Deployment</strong></td>
+                <td>Day 18 (Morning)</td>
+                <td>Execute <code>next build</code> and deploy release candidate to Vercel preview deployment URL; run
+                  smoke test covering all 20 requirements.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Client UAT Walkthrough</strong></td>
+                <td>Day 18 (Afternoon)</td>
+                <td>Walk client Bala through each user story on the preview deployment; verify zero auto-fill behavior
+                  and mutual exclusivity.</td>
+              </tr>
+              <tr>
+                <td><strong>3. Formal Acceptance Sign-Off</strong></td>
+                <td>Day 19 (Morning)</td>
+                <td>Review Definition of Done checklist with Bala; obtain written sign-off approving production release.
+                </td>
+              </tr>
+              <tr>
+                <td><strong>4. Vercel Production Deployment</strong></td>
+                <td>Day 19 (Afternoon)</td>
+                <td>Promote verified build to production on Vercel; configure custom domain/DNS; verify SSL certificates
+                  and global edge caching.</td>
+              </tr>
+              <tr>
+                <td><strong>5. Live Verification & Handover</strong></td>
+                <td>Day 20</td>
+                <td>Perform live production sanity test on the live domain; deliver GitHub repository access, deployment
+                  guides, and project closeout package.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 13: Risks and Mitigations -->
+      <section id="risks-mitigations">
+        <h2><span class="section-num">13.</span> Risks and Mitigations</h2>
+        <p>Every identified risk is explicitly linked to one of the 5 project phases:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Risk ID</th>
+                <th>Phase Linked</th>
+                <th>Identified Risk Event</th>
+                <th>Impact</th>
+                <th>Mitigation Strategy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>RSK-01</strong></td>
+                <td>Phase 1</td>
+                <td>Stakeholder suggests adding automatic task migration during alignment.</td>
+                <td><span class="badge badge-high">High</span></td>
+                <td>Reaffirm PRD core philosophy: explain that manual typing reinforces user focus and accountability;
+                  record zero auto-fill as non-negotiable.</td>
+              </tr>
+              <tr>
+                <td><strong>RSK-02</strong></td>
+                <td>Phase 2</td>
+                <td>Tailwind color contrast for Completed/Not Completed fails accessibility standards.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+                <td>Audit Tailwind color tokens with automated contrast checking tools to guarantee a minimum 4.5:1
+                  contrast ratio against the background.</td>
+              </tr>
+              <tr>
+                <td><strong>RSK-03</strong></td>
+                <td>Phase 3</td>
+                <td>Next.js hydration warning between server pre-render and client state.</td>
+                <td><span class="badge badge-high">High</span></td>
+                <td>Mark interactive components with <code>"use client"</code> and ensure initial client state matches
+                  server defaults.</td>
+              </tr>
+              <tr>
+                <td><strong>RSK-04</strong></td>
+                <td>Phase 4</td>
+                <td>Mobile viewport distortion on narrow 360px mobile screens.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+                <td>Use Tailwind flex-wrap utilities on slot action buttons so time, input, and buttons stack cleanly on
+                  narrow mobile devices.</td>
+              </tr>
+              <tr>
+                <td><strong>RSK-05</strong></td>
+                <td>Phase 5</td>
+                <td>Vercel custom domain DNS propagation delay postponing go-live availability.</td>
+                <td><span class="badge badge-low">Low</span></td>
+                <td>Pre-configure DNS routing and SSL provisioning during Phase 4 so the domain is fully warmed prior to
+                  Day 19 deployment.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 14: Open Questions and Decisions -->
+      <section id="open-questions">
+        <h2><span class="section-num">14.</span> Open Questions and Decisions Needed</h2>
+        <p>Resolution strategy for the 5 open questions identified in PRD v1.0.0, stating the plan's default
+          implementation assumption until Bala provides explicit direction:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>PRD Question ID</th>
+                <th>Topic Area</th>
+                <th>Question Details for Client (Bala)</th>
+                <th>Implementation Plan Default Assumption</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>OQ-01</strong></td>
+                <td>Data Persistence</td>
+                <td>Should entries persist locally in browser LocalStorage across refreshes, or should reload present an
+                  empty sheet?</td>
+                <td><strong>Default Assumption:</strong> Keep state in React memory by default per Next.js spec; if Bala
+                  approves, add client-side LocalStorage hook to prevent accidental refresh data loss.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-02</strong></td>
+                <td>Daily Reset Workflow</td>
+                <td>How should the planner transition from day to day? Manual reset button or automatic midnight reset?
+                </td>
+                <td><strong>Default Assumption:</strong> Provide a clean "Clear / Start New Day" button in the header
+                  with a confirmation prompt to prevent accidental data erasure.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-03</strong></td>
+                <td>Date Indicator / Picker</td>
+                <td>Display a simple current date header, or include an interactive date picker?</td>
+                <td><strong>Default Assumption:</strong> Display a formatted dynamic date badge in the header (e.g.,
+                  "Tuesday, October 20, 2026") without a complex historical calendar picker.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-04</strong></td>
+                <td>Export / Print Capabilities</td>
+                <td>Is there a requirement for printing or exporting to PDF?</td>
+                <td><strong>Default Assumption:</strong> Include clean Tailwind <code>print:hidden</code> and print
+                  styles so standard browser Ctrl+P prints a clean single-page summary.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-05</strong></td>
+                <td>Pending Slot Input Format</td>
+                <td>Should pending time slot be a free-form text input or a dropdown selector?</td>
+                <td><strong>Default Assumption:</strong> Provide a flexible text input field with a placeholder (e.g.,
+                  "e.g., 10-11 AM") for maximum manual user flexibility.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 15: Acceptance Criteria and DoD -->
+      <section id="acceptance-criteria">
+        <h2><span class="section-num">15.</span> Acceptance Criteria and Definition of Done</h2>
+        <p>The project is formally complete when all criteria below are verified and accepted in writing by Bala:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Governance Category</th>
+                <th>Definition of Done (DoD) Criteria</th>
+                <th>Verification Authority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Scope & Requirements</strong></td>
+                <td>All 20 PRD requirements (FR-01 to FR-20) are fully implemented in Next.js without missing items or
+                  undocumented additions.</td>
+                <td>Lead Project Manager</td>
+              </tr>
+              <tr>
+                <td><strong>Strict Manual Operation</strong></td>
+                <td>Marking any slot as Not Completed is proven to generate zero automatic text or pending records.</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Mutual Exclusivity</strong></td>
+                <td>Completed and Not Completed buttons behave with 100% mutual exclusivity and toggle-off capability
+                  across all 8 slots.</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Lunch Break Integrity</strong></td>
+                <td>Fixed Lunch Break row between 1:00 PM and 2:00 PM contains zero editable text boxes, checkboxes, or
+                  buttons.</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Pending Work Backlog</strong></td>
+                <td>Users can add, toggle corner checkboxes on, and delete multiple pending work entries manually.</td>
+                <td>QA Test Lead</td>
+              </tr>
+              <tr>
+                <td><strong>Next.js Production Build</strong></td>
+                <td>Production build (<code>next build</code>) executes with 0 TypeScript errors, 0 ESLint warnings, and
+                  successful static optimization.</td>
+                <td>Solution Architect</td>
+              </tr>
+              <tr>
+                <td><strong>Live Vercel Deployment</strong></td>
+                <td>Application is live on Vercel with valid SSL, fast loading (&lt; 1s), and passing WCAG 2.1 AA
+                  accessibility contrast rules.</td>
+                <td>Solution Architect</td>
+              </tr>
+              <tr>
+                <td><strong>Client Acceptance</strong></td>
+                <td>Client Bala executes UAT walkthrough, confirms satisfaction, and executes written acceptance
+                  sign-off.</td>
+                <td>Client Bala</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">IMPLEMENTATION PLAN GOVERNANCE NOTICE</div>
+          <p>This Next.js implementation plan is strictly locked to the 5-phase execution model. Any scope changes
+            requested during execution must be evaluated through Phase 1 change control governance without introducing
+            extra phases.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+</body>
+
+</html>

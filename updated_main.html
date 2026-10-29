@@ -1,0 +1,827 @@
+<main class="content">
+      
+      <!-- Header Banner -->
+      <header class="doc-header">
+        <div class="doc-category">Official Product Requirements Document</div>
+        <h1 class="doc-title">Daily Work Planner</h1>
+        <p class="doc-subtitle">A deliberate, single-page daily schedule and manual pending task tracker designed for maximum clarity and personal productivity.</p>
+        
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Client / Sponsor</span>
+            <span class="meta-value">Bala</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Document Version</span>
+            <span class="meta-value">1.1.0</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Target Platform</span>
+            <span class="meta-value">Web (Single Page App)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Author & Role</span>
+            <span class="meta-value">Senior Product Manager</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Date Published</span>
+            <span class="meta-value">October 17, 2026</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Approval Status</span>
+            <span class="status-badge">Draft for Client Approval</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Section 1: Document Info -->
+      <section id="doc-info">
+        <h2><span class="section-num">01.</span> Document Info</h2>
+        <p>This Product Requirements Document (PRD) defines the comprehensive functional specifications, architectural boundaries, user flows, and quality criteria for the <strong>Daily Work Planner</strong>. It serves as the authoritative blueprint for development, quality assurance, and stakeholder acceptance.</p>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Product Name</strong></td>
+                <td>Daily Work Planner</td>
+              </tr>
+              <tr>
+                <td><strong>Client & Stakeholder</strong></td>
+                <td>Bala</td>
+              </tr>
+              <tr>
+                <td><strong>Document Version</strong></td>
+                <td>1.1.0</td>
+              </tr>
+              <tr>
+                <td><strong>Release Date</strong></td>
+                <td>October 17, 2026</td>
+              </tr>
+              <tr>
+                <td><strong>Document Status</strong></td>
+                <td>Draft for Client Approval</td>
+              </tr>
+              <tr>
+                <td><strong>Distribution Scope</strong></td>
+                <td>Client Review, Engineering Team, QA Lead</td>
+              </tr>
+              <tr>
+                <td><strong>US-09</strong></td>
+                <td>Daily Planner User</td>
+                <td>Start a new day with one button</td>
+                <td>I can plan the next day without deleting every entry by hand.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 2: Overview and Problem Statement -->
+      <section id="overview">
+        <h2><span class="section-num">02.</span> Overview and Problem Statement</h2>
+        <h3>2.1 Product Overview</h3>
+        <p>The <strong>Daily Work Planner</strong> is a clean, single-page web solution engineered for focused professionals who organize their work on an hour-by-hour basis. The application maps the standard 9:00 AM to 6:00 PM workday into distinct one-hour working intervals, includes a dedicated non-editable lunch intermission between 1:00 PM and 2:00 PM, and provides an independent manual backlog section at the bottom for documenting pending or incomplete deliverables.</p>
+
+        <h3>2.2 Problem Statement</h3>
+        <p>Modern productivity suites and digital calendars are frequently overwhelmed with complex automation, noisy notification engines, calendar synchronizations, and nested task hierarchies. In contrast to these bloated systems, many professionals prefer the deliberate discipline of a physical pen-and-paper desk pad.</p>
+        <p>Automated software often attempts to "guess" where unfinished tasks should be re-routed, leading to cluttered backlogs and loss of accountability. Users require a lightweight, zero-distraction digital equivalent of a desk pad where every single status toggle, task description, and backlog entry is intentional, manual, and explicit.</p>
+      </section>
+
+      <!-- Section 3: Goals and Success Metrics -->
+      <section id="goals">
+        <h2><span class="section-num">03.</span> Goals and Success Metrics</h2>
+        <h3>3.1 Product Goals</h3>
+        <ul>
+          <li><strong>Zero-Friction Daily Structure:</strong> Provide an instantly understandable single-page layout that covers 8 working hours and 1 dedicated lunch hour.</li>
+          <li><strong>Intentional Task Accountability:</strong> Deliver distinct task-level status toggles (Checkbox, Completed tick, Not Completed cross) with mutually exclusive states.</li>
+          <li><strong>Deliberate Manual Logging:</strong> Allow users to document unresolved items manually in a dedicated Pending Work section without unsolicited automated task rollovers.</li>
+          <li><strong>Zero Learning Curve:</strong> Ensure any individual can plan their full workday within 60 seconds of opening the webpage.</li>
+        </ul>
+
+        <h3>3.2 Success Metrics (KPIs)</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Metric Category</th>
+                <th>KPI Indicator</th>
+                <th>Target Objective</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Speed to Plan</strong></td>
+                <td>Average duration to input day's 8 time slots</td>
+                <td>&lt; 90 seconds per user session</td>
+              </tr>
+              <tr>
+                <td><strong>Adoption Rate</strong></td>
+                <td>Daily active usage over consecutive workdays</td>
+                <td>&gt; 80% daily retention across target cohort</td>
+              </tr>
+              <tr>
+                <td><strong>Data Integrity</strong></td>
+                <td>Erroneous automated task entries created</td>
+                <td>Exactly 0 (Strict system requirement)</td>
+              </tr>
+              <tr>
+                <td><strong>System Usability</strong></td>
+                <td>User satisfaction score on interface simplicity</td>
+                <td>&gt; 4.8 / 5.0 in acceptance testing</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 4: Target Users and Personas -->
+      <section id="personas">
+        <h2><span class="section-num">04.</span> Target Users and Personas</h2>
+        <p>The Daily Work Planner is designed for self-directed workers who value deliberate timeboxing and disciplined daily execution.</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Persona Profile</th>
+                <th>Attributes & Behaviors</th>
+                <th>Core Pain Points Solved</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>The Disciplined Employee</strong><br><em>(e.g., Software Engineer, Content Writer, Accountant)</em></td>
+                <td>Plans the workday every morning between 8:50 AM and 9:00 AM; requires clear time boundaries for deep work; appreciates checking off hour-by-hour milestones.</td>
+                <td>Frustrated by complicated project management systems that take 10 clicks just to log a completed daily task.</td>
+              </tr>
+              <tr>
+                <td><strong>The Solo Consultant / Freelancer</strong><br><em>(e.g., Independent Designer, Consultant)</em></td>
+                <td>Balances multiple client deliverables throughout the day; needs to record exact hours where delays occurred and carry over detailed pending work notes manually.</td>
+                <td>Needs an honest, unvarnished summary of what was finished versus what remains pending without automated calendar rescheduling.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 5: Scope Breakdown -->
+      <section id="scope">
+        <h2><span class="section-num">05.</span> Scope Breakdown</h2>
+
+        <h3>5.1 In Scope (Version 1.0)</h3>
+        <ul>
+          <li>Single-page, responsive web application accessible via desktop and tablet browsers.</li>
+          <li>"Start New Day" button in the page header with an accessible confirmation dialog to clear all 8 working slots and all pending items for the next day.</li>
+          <li>Daily calendar view representing the 9:00 AM to 6:00 PM workday, reusable every day.</li>
+          <li>8 designated working slots: 9-10 AM, 10-11 AM, 11-12 PM, 12-1 PM, 2-3 PM, 3-4 PM, 4-5 PM, 5-6 PM.</li>
+          <li>Each working slot contains:
+            <ol>
+              <li>A text input box for writing planned work.</li>
+              <li>A status checkbox.</li>
+              <li>A "Completed" button with visual tick mark.</li>
+              <li>A "Not Completed" button with visual cross/wrong mark.</li>
+            </ol>
+          </li>
+          <li>Enforced mutual exclusivity between "Completed" and "Not Completed" buttons per slot.</li>
+          <li>Fixed non-interactive Lunch Break row from 1:00 PM to 2:00 PM (no text field, no checkbox, no action buttons).</li>
+          <li>Pending Work section placed prominently at the bottom of the page.</li>
+          <li>Manual creation of multiple Pending Work records with fields for:
+            <ol>
+              <li>Associated time slot when the work was pending.</li>
+              <li>Work name and detailed multi-line text description.</li>
+              <li>An independent status checkbox in the corner of each record.</li>
+            </ol>
+          </li>
+          <li>Absolute enforcement of zero automated data generation or transfer.</li>
+        </ul>
+
+        <h3>5.2 Out of Scope (Explicitly Excluded)</h3>
+        <ul>
+          <li><strong>No Automatic Task Migration:</strong> Marking an hour as "Not Completed" shall never create or pre-populate an entry in the Pending Work section.</li>
+          <li><strong>No Third-Party Calendar Integrations:</strong> No synchronization with Google Calendar, Microsoft Outlook, or Apple iCal.</li>
+          <li><strong>No Automated Alarms / Push Notifications:</strong> No auditory chimes, browser push alerts, or timer countdown popups.</li>
+          <li><strong>No Multi-User Collaboration:</strong> No team sharing, task delegation, or role-based permission sets.</li>
+          <li><strong>No Stopwatch / Time Tracker:</strong> No background seconds-counter or punch-in/punch-out utility.</li>
+        </ul>
+      </section>
+
+      <!-- Section 6: User Stories -->
+      <section id="user-stories">
+        <h2><span class="section-num">06.</span> User Stories</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Story ID</th>
+                <th>As A...</th>
+                <th>I Want To...</th>
+                <th>So That...</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>US-01</strong></td>
+                <td>Daily Planner User</td>
+                <td>View an organized list of one-hour working intervals from 9:00 AM to 6:00 PM</td>
+                <td>I can map out my entire workday in sequential order.</td>
+              </tr>
+              <tr>
+                <td><strong>US-02</strong></td>
+                <td>Daily Planner User</td>
+                <td>See a fixed, distinct row for Lunch Break from 1:00 PM to 2:00 PM without input fields</td>
+                <td>I can reserve my lunch hour without it being treated as a work commitment.</td>
+              </tr>
+              <tr>
+                <td><strong>US-03</strong></td>
+                <td>Daily Planner User</td>
+                <td>Type my planned activities into a dedicated text box for each working hour</td>
+                <td>I have clarity on what I need to accomplish during that specific 60-minute window.</td>
+              </tr>
+              <tr>
+                <td><strong>US-04</strong></td>
+                <td>Daily Planner User</td>
+                <td>Toggle a checkbox and select either "Completed" (tick) or "Not Completed" (cross)</td>
+                <td>I can track the operational status of that hour's commitment.</td>
+              </tr>
+              <tr>
+                <td><strong>US-05</strong></td>
+                <td>Daily Planner User</td>
+                <td>Ensure that clicking "Completed" automatically deselects "Not Completed" (and vice versa)</td>
+                <td>My status records are never ambiguous or contradictory.</td>
+              </tr>
+              <tr>
+                <td><strong>US-06</strong></td>
+                <td>Daily Planner User</td>
+                <td>Manually type pending work details (time slot, work name, full description) into the bottom section</td>
+                <td>I can maintain an accurate, deliberate backlog of unfinished tasks in my own words.</td>
+              </tr>
+              <tr>
+                <td><strong>US-07</strong></td>
+                <td>Daily Planner User</td>
+                <td>Add multiple pending work entries sequentially, each with its own corner checkbox</td>
+                <td>I can independently review and check off unresolved items as I clear them.</td>
+              </tr>
+              <tr>
+                <td><strong>US-08</strong></td>
+                <td>Daily Planner User</td>
+                <td>Be guaranteed that the system will never auto-fill or auto-migrate tasks between sections</td>
+                <td>I maintain complete personal ownership over what gets written in my planner.</td>
+              </tr>
+              <tr>
+                <td><strong>US-09</strong></td>
+                <td>Daily Planner User</td>
+                <td>Start a new day with one button</td>
+                <td>I can plan the next day without deleting every entry by hand.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 7: Functional Requirements -->
+      <section id="functional-requirements">
+        <h2><span class="section-num">07.</span> Functional Requirements</h2>
+        <p>The requirements below describe the exact system behaviors. Each specification is written as a testable requirement with an associated implementation priority.</p>
+
+        <div class="alert-box">
+          <div class="alert-title">CRITICAL BUSINESS RULE: STRICT MANUAL OPERATION</div>
+          <p><strong>Requirement FR-18 & FR-19:</strong> The system SHALL NEVER automatically transfer, duplicate, or pre-populate any data from the working hour slots into the Pending Work section. Clicking "Not Completed" on any slot SHALL NOT trigger any automated creation or population of pending work records. Every pending record must be initiated and entered manually by the user.</p>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Requirement ID</th>
+                <th>Requirement Specification ("The system shall...")</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Layout & Time Slots -->
+              <tr>
+                <td class="req-id">FR-01</td>
+                <td>The system shall render a single-page web layout displaying a recurring daily schedule view from 9:00 AM to 6:00 PM.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-02</td>
+                <td>The system shall subdivide the daily schedule into exactly eight (8) working one-hour slots: 9:00 AM – 10:00 AM, 10:00 AM – 11:00 AM, 11:00 AM – 12:00 PM, 12:00 PM – 1:00 PM, 2:00 PM – 3:00 PM, 3:00 PM – 4:00 PM, 4:00 PM – 5:00 PM, and 5:00 PM – 6:00 PM.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-03</td>
+                <td>The system shall render a dedicated, fixed Lunch Break row between 1:00 PM and 2:00 PM directly in the schedule sequence.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-04</td>
+                <td>The system shall ensure the Lunch Break row contains no task text box, no checkbox, and no Completed or Not Completed action buttons.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+
+              <!-- Working Slot Controls -->
+              <tr>
+                <td class="req-id">FR-05</td>
+                <td>The system shall provide an editable single-line text input field inside each of the 8 working slots for the user to manually enter work descriptions.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-06</td>
+                <td>The system shall provide an independent checkbox in each working slot allowing the user to mark item activation or completion.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-07</td>
+                <td>The system shall provide two distinct action toggle buttons for each working slot: one "Completed" button labeled with a tick mark (✓) and one "Not Completed" button labeled with a cross/wrong mark (✗).</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-08</td>
+                <td>The system shall enforce mutual exclusivity between the "Completed" and "Not Completed" buttons within any given time slot; selecting one button shall instantly deselect the other button.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-09</td>
+                <td>The system shall allow the user to click an already active Completed or Not Completed button a second time to toggle it off, returning the slot to an unselected baseline state.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-10</td>
+                <td>The system shall provide clear, high-contrast visual styling distinguishing an active Completed button (e.g., green-tinted state) from an active Not Completed button (e.g., red-tinted state).</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+
+              <!-- Pending Work Section -->
+              <tr>
+                <td class="req-id">FR-11</td>
+                <td>The system shall display a dedicated "Pending Work" section positioned at the bottom of the single-page view, below the 5:00 PM – 6:00 PM working slot.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-12</td>
+                <td>The system shall provide a manual input interface within the Pending Work section allowing the user to enter:
+                  <br>(a) The specific time slot when the work was pending.
+                  <br>(b) The work title / name.
+                  <br>(c) A detailed multi-line text description of the unfinished work.
+                </td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-13</td>
+                <td>The system shall provide an "Add Pending Work" action button that registers the user-typed values into the active pending work item list.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-14</td>
+                <td>The system shall support the addition of multiple pending work records sequentially without an arbitrary upper system limit.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-15</td>
+                <td>The system shall display each added pending work entry as an individual card or row containing the specified time slot, work name, full detailed description, and an independent checkbox placed in its corner.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-16</td>
+                <td>The system shall allow the user to toggle the corner checkbox of any pending work item independently without altering any other pending items or hourly slots.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-17</td>
+                <td>The system shall allow the user to delete or remove an individual pending work entry if created by mistake.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+              </tr>
+
+              <!-- Strict Manual Integrity Requirements -->
+              <tr>
+                <td class="req-id">FR-18</td>
+                <td>The system shall strictly refrain from automatically copying, moving, or filling any text from working slots into the Pending Work section when a slot is marked as "Not Completed".</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-19</td>
+                <td>The system shall never pre-fill the pending work time slot, work name, or description fields with automated assumptions; all content must be explicitly typed by the user.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-20</td>
+                <td>The system shall maintain all components within a unified single-page layout requiring no page reloads, external redirects, or navigation to secondary screens.</td>
+                <td><span class="badge badge-high">High</span></td>
+              </tr>
+
+              <!-- Start New Day Requirements -->
+              <tr>
+                <td class="req-id">FR-21</td>
+                <td>The system shall display a "Start New Day" button in the page header.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-22</td>
+                <td>The system shall show a confirmation message when the button is clicked, with a Cancel button and a Start New Day button.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-23</td>
+                <td>The system shall clear nothing if the user clicks Cancel, presses Escape, or clicks outside the message.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-24</td>
+                <td>The system shall, after the user confirms, clear the text, checkbox, and Completed / Not Completed status of all 8 working slots, remove all Pending Work items, and empty the Pending Work form fields.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-25</td>
+                <td>The system shall never create or fill any pending item when a new day starts.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="req-id">FR-26</td>
+                <td>The confirmation message shall be keyboard accessible, and its buttons shall be at least 44px high on mobile.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>7.1 Conceptual Layout Model</h3>
+        <p>The following diagram outlines the functional structural layout required on the single page:</p>
+        
+        <div class="wireframe-box">
+          <div style="font-weight: bold; margin-bottom: 12px; color: var(--text-main);">[ PAGE HEADER: DAILY WORK PLANNER - DATE | [Start New Day Button] ]</div>
+          
+          <div class="wireframe-row">
+            <span class="wf-time">09:00 AM - 10:00 AM</span>
+            <span class="wf-input">[ Task description input field... ]</span>
+            <div class="wf-actions">
+              <span class="wf-btn">[ ] Check</span>
+              <span class="wf-btn">✓ Completed</span>
+              <span class="wf-btn">✗ Not Completed</span>
+            </div>
+          </div>
+
+          <div class="wireframe-row">
+            <span class="wf-time">10:00 AM - 11:00 AM</span>
+            <span class="wf-input">[ Task description input field... ]</span>
+            <div class="wf-actions">
+              <span class="wf-btn">[ ] Check</span>
+              <span class="wf-btn">✓ Completed</span>
+              <span class="wf-btn">✗ Not Completed</span>
+            </div>
+          </div>
+
+          <div class="wireframe-row">
+            <span class="wf-time">11:00 AM - 12:00 PM</span>
+            <span class="wf-input">[ Task description input field... ]</span>
+            <div class="wf-actions">
+              <span class="wf-btn">[ ] Check</span>
+              <span class="wf-btn">✓ Completed</span>
+              <span class="wf-btn">✗ Not Completed</span>
+            </div>
+          </div>
+
+          <div class="wireframe-row">
+            <span class="wf-time">12:00 PM - 01:00 PM</span>
+            <span class="wf-input">[ Task description input field... ]</span>
+            <div class="wf-actions">
+              <span class="wf-btn">[ ] Check</span>
+              <span class="wf-btn">✓ Completed</span>
+              <span class="wf-btn">✗ Not Completed</span>
+            </div>
+          </div>
+
+          <div class="wireframe-row wf-lunch">
+            ☕ 01:00 PM - 02:00 PM: FIXED LUNCH BREAK (NO INPUTS / NO BUTTONS)
+          </div>
+
+          <div class="wireframe-row">
+            <span class="wf-time">02:00 PM - 03:00 PM</span>
+            <span class="wf-input">[ Task description input field... ]</span>
+            <div class="wf-actions">
+              <span class="wf-btn">[ ] Check</span>
+              <span class="wf-btn">✓ Completed</span>
+              <span class="wf-btn">✗ Not Completed</span>
+            </div>
+          </div>
+
+          <div class="wireframe-row">
+            <span class="wf-time">03:00 PM - 04:00 PM</span>
+            <span class="wf-input">[ Task description input field... ]</span>
+            <div class="wf-actions">
+              <span class="wf-btn">[ ] Check</span>
+              <span class="wf-btn">✓ Completed</span>
+              <span class="wf-btn">✗ Not Completed</span>
+            </div>
+          </div>
+
+          <div class="wireframe-row">
+            <span class="wf-time">04:00 PM - 05:00 PM</span>
+            <span class="wf-input">[ Task description input field... ]</span>
+            <div class="wf-actions">
+              <span class="wf-btn">[ ] Check</span>
+              <span class="wf-btn">✓ Completed</span>
+              <span class="wf-btn">✗ Not Completed</span>
+            </div>
+          </div>
+
+          <div class="wireframe-row">
+            <span class="wf-time">05:00 PM - 06:00 PM</span>
+            <span class="wf-input">[ Task description input field... ]</span>
+            <div class="wf-actions">
+              <span class="wf-btn">[ ] Check</span>
+              <span class="wf-btn">✓ Completed</span>
+              <span class="wf-btn">✗ Not Completed</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; padding: 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <div style="font-weight: bold; color: var(--text-main); margin-bottom: 8px;">📋 PENDING WORK (MANUAL ENTRY ONLY - ZERO AUTO-FILL)</div>
+            <div style="font-size: 0.8rem; margin-bottom: 8px; color: #64748b;">Manual Inputs: [Slot Input (e.g. 11-12)] [Work Name] [Detailed Description Area] [+ Add Entry Button]</div>
+            <div style="padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
+              [☑ Corner Checkbox] <strong>Slot: 11-12 AM</strong> | <strong>Client Review Meeting</strong>: Need to re-confirm quarterly targets with team lead.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 8: Non-Functional Requirements -->
+      <section id="non-functional-requirements">
+        <h2><span class="section-num">08.</span> Non-Functional Requirements</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Requirement Specification ("The system shall...")</th>
+                <th>Validation Metric</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Performance</strong></td>
+                <td>The system shall initialize and render the complete single-page planner within 1.0 second on standard broadband connections.</td>
+                <td>Google Lighthouse Performance score &gt;= 95; First Contentful Paint &lt; 0.8s.</td>
+              </tr>
+              <tr>
+                <td><strong>Responsiveness</strong></td>
+                <td>The system shall register button toggles, checkbox clicks, and input changes with less than 50 milliseconds of input latency.</td>
+                <td>Zero perceptible UI lag during high-speed typing and toggle interactions.</td>
+              </tr>
+              <tr>
+                <td><strong>Data Sanitization</strong></td>
+                <td>The system shall sanitize all user text inputs across working slots and pending work descriptions to eliminate Cross-Site Scripting (XSS) risks.</td>
+                <td>Passing automated OWASP security test cases for HTML entity injection.</td>
+              </tr>
+              <tr>
+                <td><strong>Accessibility (a11y)</strong></td>
+                <td>The system shall provide accessible ARIA attributes (`aria-pressed`, `aria-label`) for all toggle buttons, provide keyboard accessibility and a minimum 44px touch target on mobile for confirmation dialog buttons, and maintain a minimum contrast ratio of 4.5:1 for all text including the confirmation message.</td>
+                <td>WCAG 2.1 Level AA compliance across desktop and mobile screens.</td>
+              </tr>
+              <tr>
+                <td><strong>Cross-Browser Support</strong></td>
+                <td>The system shall operate identically without layout breakage across Google Chrome, Mozilla Firefox, Apple Safari, and Microsoft Edge (current and previous 2 releases).</td>
+                <td>Cross-browser automated visual regression validation.</td>
+              </tr>
+              <tr>
+                <td><strong>Device Form Factors</strong></td>
+                <td>The system shall adapt fluidly across viewport widths from 360px (mobile) to 1920px (full HD desktop) without horizontal scrollbar overflow.</td>
+                <td>Viewport layout stability across breakpoints (360px, 768px, 1024px, 1440px).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 9: User Flow -->
+      <section id="user-flow">
+        <h2><span class="section-num">09.</span> Detailed User Flow</h2>
+        <p>The daily operational lifecycle of the planner follows seven structured chronological steps:</p>
+
+        <div class="flow-steps">
+          <div class="flow-card">
+            <div class="flow-index">1</div>
+            <div class="flow-details">
+              <h4>Morning Initialization</h4>
+              <p>The user opens the Daily Work Planner web page at the beginning of the workday. The screen renders 8 sequential working time slots and the fixed 1:00 PM – 2:00 PM Lunch Break row in pristine ready state.</p>
+            </div>
+          </div>
+
+          <div class="flow-card">
+            <div class="flow-index">2</div>
+            <div class="flow-details">
+              <h4>Planning Hour-by-Hour Commitments</h4>
+              <p>The user clicks directly into the text boxes for slots (e.g., 9:00 AM – 10:00 AM) and types specific goals (e.g., "Draft Q4 Roadmap"). The user repeats this for desired hours across the 9 AM to 6 PM day.</p>
+            </div>
+          </div>
+
+          <div class="flow-card">
+            <div class="flow-index">3</div>
+            <div class="flow-details">
+              <h4>Midday Execution & Status Marking</h4>
+              <p>As each working hour completes, the user returns to the page. If the task succeeded, the user marks the slot's checkbox and clicks the "Completed" (tick ✓) button, which illuminates in its active state.</p>
+            </div>
+          </div>
+
+          <div class="flow-card">
+            <div class="flow-index">4</div>
+            <div class="flow-details">
+              <h4>Handling Unfinished Tasks (Mutual Exclusivity)</h4>
+              <p>If an urgent meeting prevented work during 2:00 PM – 3:00 PM, the user clicks "Not Completed" (cross ✗). If "Completed" was previously selected, the system immediately unsets it. No automatic entries are created anywhere.</p>
+            </div>
+          </div>
+
+          <div class="flow-card">
+            <div class="flow-index">5</div>
+            <div class="flow-details">
+              <h4>Manual Logging into Pending Work</h4>
+              <p>The user scrolls down to the Pending Work section. The user manually types the pending slot ("2:00 PM - 3:00 PM"), the work name ("Client Review"), and types a detailed note ("Review halted awaiting client assets"). The user clicks "Add Pending Work".</p>
+            </div>
+          </div>
+
+          <div class="flow-card">
+            <div class="flow-index">6</div>
+            <div class="flow-details">
+              <h4>Managing Backlog Records</h4>
+              <p>The new pending entry appears in the list with its own dedicated corner checkbox. The user can add additional pending entries sequentially. When an item is eventually addressed later, its corner checkbox is checked off.</p>
+            </div>
+          </div>
+
+          <div class="flow-card">
+            <div class="flow-index">7</div>
+            <div class="flow-details">
+              <h4>Start New Day</h4>
+              <p>The user presses "Start New Day" in the page header, confirms via the confirmation message, and sees a clean planner with all 8 working slots and pending items reset for the next day.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 10: Assumptions, Risks, and Dependencies -->
+      <section id="assumptions-risks">
+        <h2><span class="section-num">10.</span> Assumptions, Risks, and Dependencies</h2>
+
+        <h3>10.1 Assumptions</h3>
+        <ul>
+          <li><strong>Deliberate Intentionality:</strong> Users actively prefer typing pending notes manually to reinforce awareness of uncompleted work, rather than relying on automated syncing.</li>
+          <li><strong>Standard Workday Hours:</strong> The default 9:00 AM to 6:00 PM hours with lunch from 1:00 PM to 2:00 PM sufficiently match the daily schedule of the target user base.</li>
+          <li><strong>Modern Browser Environment:</strong> Users will access the application through standard HTML5-compliant web browsers with JavaScript enabled.</li>
+        </ul>
+
+        <h3>10.2 Risks & Mitigations</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Identified Risk</th>
+                <th>Impact Level</th>
+                <th>Mitigation Strategy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Accidental Tab Closure / Refresh:</strong> User refreshes the browser page and loses all typed tasks for the current day.</td>
+                <td><span class="badge badge-high">High</span></td>
+                <td>Evaluate optional client-side local caching (LocalStorage) in Open Questions to persist typed data across browser sessions.</td>
+              </tr>
+              <tr>
+                <td><strong>Accidental Confirmation:</strong> The user may confirm Start New Day by mistake and lose entries.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+                <td>The confirmation message explicitly explains what will be cleared before executing the reset. No undo is included.</td>
+              </tr>
+              <tr>
+                <td><strong>User Confusion on No Auto-Fill:</strong> A new user might expect clicking "Not Completed" to automatically populate the Pending Work section.</td>
+                <td><span class="badge badge-med">Medium</span></td>
+                <td>Display a subtle, clean instructional note in the Pending Work header clarifying: <em>"Manual Backlog: Type details below for any unfinished work."</em></td>
+              </tr>
+              <tr>
+                <td><strong>Lengthy Pending Descriptions:</strong> A user types very long multi-paragraph descriptions causing layout distortion.</td>
+                <td><span class="badge badge-low">Low</span></td>
+                <td>Implement responsive wrapping, clean card borders, and auto-expanding textarea elements with appropriate max-heights.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>10.3 Technical Dependencies</h3>
+        <ul>
+          <li>Frontend framework / runtime (Standard HTML5, CSS3, ES6 JavaScript).</li>
+          <li>Standard browser local runtime environment without mandatory external database dependencies for Version 1.0.</li>
+        </ul>
+      </section>
+
+      <!-- Section 11: Timeline and Milestones -->
+      <section id="timeline">
+        <h2><span class="section-num">11.</span> Timeline and Milestones</h2>
+        <p>The recommended execution plan spans a 4-week delivery cycle from PRD sign-off to production deployment.</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Phase</th>
+                <th>Target Milestone</th>
+                <th>Duration</th>
+                <th>Key Deliverables</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Phase 1</strong></td>
+                <td>PRD Review & Stakeholder Alignment</td>
+                <td>Week 1 (Days 1–3)</td>
+                <td>Client sign-off on PRD, functional specifications, and open questions resolution.</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 2</strong></td>
+                <td>UI Design & Visual Specifications</td>
+                <td>Week 1 (Days 4–5)</td>
+                <td>High-fidelity responsive mockups of single-page layout, button states, and lunch row.</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 3</strong></td>
+                <td>Frontend Development & Interaction Logic</td>
+                <td>Week 2 (Days 6–12)</td>
+                <td>Implementation of 8 working slots, lunch break row, mutual exclusivity logic, and pending work module.</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 4</strong></td>
+                <td>Quality Assurance & Usability Testing</td>
+                <td>Week 3 (Days 13–17)</td>
+                <td>Cross-browser testing, verification of strict zero auto-fill rule, responsive validation.</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 5</strong></td>
+                <td>Client Acceptance & Launch</td>
+                <td>Week 4 (Days 18–20)</td>
+                <td>Client review with Bala, final deployment to production web server, release notes.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 12: Open Questions -->
+      <section id="open-questions">
+        <h2><span class="section-num">12.</span> Open Questions</h2>
+        <p>The following questions require stakeholder clarification from the client (Bala) prior to final technical implementation:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Question ID</th>
+                <th>Area</th>
+                <th>Question Details for Client (Bala)</th>
+                <th>Impact on Implementation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>OQ-01</strong></td>
+                <td>Data Persistence & Reset</td>
+                <td>If data is saved in the browser after a refresh (OQ-01), the new day must also clear the saved data; Bala must confirm OQ-01.</td>
+                <td>Requires aligning browser storage persistence with the Start New Day reset handler.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-02</strong></td>
+                <td>Pending Items on Reset</td>
+                <td>Should unresolved Pending Work items be kept when a new day starts, or cleared? (Default: cleared).</td>
+                <td>Determines whether pending items are preserved across day boundaries or purged.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-03</strong></td>
+                <td>Automated Midnight Reset</td>
+                <td>Should the planner start a new day automatically at midnight? (Default: no, manual only).</td>
+                <td>Determines whether a background midnight timer or listener is necessary.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-04</strong></td>
+                <td>Undo Option</td>
+                <td>Is an undo option needed? (Default: no).</td>
+                <td>Determines whether state history buffer and undo toast UI must be built.</td>
+              </tr>
+              <tr>
+                <td><strong>OQ-05</strong></td>
+                <td>Timeline Impact</td>
+                <td>Timeline impact: Bala must confirm the extra work for the Start New Day button and modal workflow.</td>
+                <td>May adjust development schedule or sprint allocation.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">NEXT STEPS FOR STAKEHOLDER REVIEW</div>
+          <p>Please review the functional requirements table (Section 07) and open questions (Section 12). Upon receiving feedback from Bala, Version 1.1 will be baselined for UI engineering and development sprints.</p>
+        </div>
+      </section>
+
+    </main>
