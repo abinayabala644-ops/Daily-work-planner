@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in | Daily Work Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --blue-700: #1d4ed8;
+      --blue-800: #1e40af;
+      --rose-600: #e11d48;
+      --rose-700: #be123c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--slate-50);
+      color: var(--slate-900);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      line-height: 1.5;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    @media (min-width: 480px) {
+      .card {
+        padding: 32px;
+      }
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .login-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--slate-900);
+    }
+
+    .login-subtitle {
+      font-size: 0.9rem;
+      color: var(--slate-500);
+      margin-top: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--slate-800);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 14px;
+      font-size: 16px;
+      border: 1px solid var(--slate-300);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--slate-900);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-input:focus-visible {
+      border-color: var(--slate-900);
+      outline: 2px solid var(--slate-900);
+      outline-offset: 1px;
+    }
+
+    .show-password-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      cursor: pointer;
+      user-select: none;
+      min-height: 44px;
+    }
+
+    .show-password-checkbox {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: var(--slate-900);
+    }
+
+    .show-password-checkbox:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
+    .show-password-label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--slate-700);
+      cursor: pointer;
+    }
+
+    .btn-submit {
+      width: 100%;
+      min-height: 44px;
+      padding: 11px 18px;
+      background: var(--slate-900);
+      color: #ffffff;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease-in-out;
+      margin-top: 6px;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--slate-800);
+    }
+
+    .btn-submit:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
+    .btn-submit:disabled {
+      background: var(--slate-300);
+      color: var(--slate-500);
+      cursor: not-allowed;
+    }
+
+    .toggle-mode-container {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .toggle-mode-btn {
+      background: none;
+      border: none;
+      color: var(--blue-700);
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 12px;
+      min-height: 44px;
+      text-decoration: underline;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toggle-mode-btn:hover {
+      color: var(--blue-800);
+    }
+
+    .toggle-mode-btn:focus-visible {
+      outline: 2px solid var(--blue-700);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    .message-area {
+      margin-top: 18px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      line-height: 1.4;
+      display: none;
+    }
+
+    .message-area.error {
+      display: block;
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      color: var(--rose-700);
+    }
+
+    .message-area.success {
+      display: block;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #047857;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+</head>
+<body>
+  <div class="login-container">
+    <div class="card">
+      <div class="login-header">
+        <h1 id="auth-title" class="login-title">Daily Work Planner</h1>
+        <p id="auth-subtitle" class="login-subtitle">Sign in to continue</p>
+      </div>
+
+      <form id="auth-form" novalidate>
+        <div class="form-group">
+          <label for="auth-email" class="form-label">Email</label>
+          <input
+            type="email"
+            id="auth-email"
+            class="form-input"
+            autocomplete="username"
+            placeholder="name@example.com"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="auth-password" class="form-label">Password</label>
+          <input
+            type="password"
+            id="auth-password"
+            class="form-input"
+            autocomplete="current-password"
+            placeholder="••••••••"
+            required
+          />
+          <label class="show-password-row">
+            <input type="checkbox" id="toggle-password" class="show-password-checkbox" />
+            <span class="show-password-label">Show password</span>
+          </label>
+        </div>
+
+        <button type="submit" id="auth-submit-btn" class="btn-submit">
+          Sign in
+        </button>
+      </form>
+
+      <div class="toggle-mode-container">
+        <button type="button" id="toggle-mode-btn" class="toggle-mode-btn">
+          Create account
+        </button>
+      </div>
+
+      <div id="auth-message" class="message-area" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script src="login.js"></script>
+</body>
+</html>

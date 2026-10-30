@@ -981,8 +981,73 @@
     });
   });
 
-  // INITIALIZE APP
-  loadStorage();
-  initSettingsView();
-  switchView('settings');
+  // Log out button element
+  const btnLogout = document.getElementById('btn-logout');
+
+  // Helper to check Supabase config and auth session
+  function areKeysPlaceholder() {
+    return (
+      typeof SUPABASE_URL === 'undefined' ||
+      typeof SUPABASE_ANON_KEY === 'undefined' ||
+      !SUPABASE_URL ||
+      !SUPABASE_ANON_KEY ||
+      SUPABASE_URL === 'PASTE_PROJECT_URL_HERE' ||
+      SUPABASE_ANON_KEY === 'PASTE_ANON_KEY_HERE'
+    );
+  }
+
+  function getSupabaseClient() {
+    if (areKeysPlaceholder()) return null;
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        console.error('Supabase init error in app.js:', e);
+        return null;
+      }
+    }
+    return null;
+  }
+
+  const supabaseClient = getSupabaseClient();
+
+  if (btnLogout) {
+    btnLogout.addEventListener('click', async () => {
+      if (supabaseClient) {
+        try {
+          await supabaseClient.auth.signOut();
+        } catch (e) {
+          console.warn('SignOut error:', e);
+        }
+      }
+      window.location.replace('login.html');
+    });
+  }
+
+  // --- INITIALIZE PLANNER CODE ONLY IF SESSION EXISTS ---
+  async function checkAuthAndStart() {
+    if (areKeysPlaceholder() || !supabaseClient) {
+      // No active session configured; redirect immediately without showing planner
+      window.location.replace('login.html');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data || !data.session) {
+        window.location.replace('login.html');
+        return;
+      }
+
+      // Valid session exists: reveal planner and start
+      document.documentElement.classList.add('auth-ready');
+      loadStorage();
+      initSettingsView();
+      switchView('settings');
+    } catch (e) {
+      window.location.replace('login.html');
+    }
+  }
+
+  checkAuthAndStart();
 })();
