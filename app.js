@@ -2,40 +2,80 @@
  * Daily Work Planner - Pure Vanilla JavaScript Implementation
  *
  * Rules:
- * - One unified state object saved in localStorage under "dailyPlanner:v3".
- * - Always opens on Settings page on every visit.
+ * - One unified state object saved in localStorage under "dailyPlanner:v4".
+ * - Always opens on Settings page on every visit with TODAY selected.
  * - Times stored as minutes since midnight; single 12-hour AM/PM formatting helper.
- * - Slot start time is never stored (derived sequentially from settings.startMinutes).
+ * - Slot start time is never stored (derived sequentially from day.startMinutes).
  * - Slots 1 to N: NO checkbox and NO Completed / Not Completed buttons on ANY slot page.
- * - The LAST slot (ending at settings.endMinutes) has its primary button read "Finish" which opens the Summary page.
+ * - The LAST slot (ending at day.endMinutes) has its primary button read "Finish" which opens the Summary page.
  * - DAILY WORK SUMMARY PAGE:
- *     1. Title "Daily Work Summary" with day range and slot count.
- *     2. Organized list of ALL slots in time order (each card has ✓ Completed and ✗ Not Completed buttons; no checkbox).
- *     3. Result card at the very end when all slots completed; otherwise small hint line.
- *     4. Existing buttons: Back, Edit times, Start New Day.
- * - Both slot card buttons are always enabled (do not require typed work).
- * - Only one active at a time; clicking active one turns it off. aria-pressed on both.
- * - Stored slot.status ("NONE" | "COMPLETED" | "NOT_COMPLETED").
+ *     1. Title "Daily Work Summary" with formatted date, day range, and slot count.
+ *     2. Organized list of ALL slots in time order (each card has ✓ Completed and ✗ Not Completed buttons).
+ *     3. Result card at the very end when all slots completed / any not completed / hint when neutral.
+ *     4. Existing buttons: Back, Edit times, Start New Day (clears only the selected date).
+ * - Multi-day support:
+ *     - Yesterday, Today, Tomorrow quick buttons on first page.
+ *     - Monthly calendar native dialog with full completion status indicators:
+ *       Fully completed (green ✓), Partly completed (amber –), Not completed (red ✗), Planned unmarked (outline circle).
+ *     - Per-date schedules stored under state.days["YYYY-MM-DD"].
  */
 
 (function () {
   'use strict';
 
-  const MIN_WORK_TIME = 9 * 60;  // 540
-  const MAX_WORK_TIME = 18 * 60; // 1080
+  const MIN_WORK_TIME = 9 * 60;  // 540 (9:00 AM)
+  const MAX_WORK_TIME = 18 * 60; // 1080 (6:00 PM)
   const MIN_SLOT_DURATION = 5;
 
-  const STORAGE_KEY = "dailyPlanner:v3";
+  const STORAGE_KEY = "dailyPlanner:v4";
 
-  // Unified State
+  // --- LOCAL DATE HELPERS (Never use toISOString to avoid UTC shift bugs) ---
+  function getLocalDateKey(dateObj) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function parseLocalDateKey(dateKey) {
+    const parts = dateKey.split('-');
+    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  }
+
+  function addDays(dateObj, days) {
+    const res = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    res.setDate(res.getDate() + days);
+    return res;
+  }
+
+  function formatFullDisplayDate(dateObj) {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    return `${days[dateObj.getDay()]}, ${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+  }
+
+  function formatMonthTitle(year, monthIndex) {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    return `${months[monthIndex]} ${year}`;
+  }
+
+  // --- STATE ---
+  // Unified state stored under "dailyPlanner:v4"
   let state = {
-    settings: {
+    lastTimes: {
       startMinutes: MIN_WORK_TIME,
       endMinutes: MAX_WORK_TIME,
-      intervalMinutes: null,
     },
-    slots: [], // Array of { id, durationMinutes, taskText, status }
+    days: {}, // keyed by "YYYY-MM-DD"
   };
+
+  // Runtime date selection (always starts at TODAY on every load)
+  const todayDate = new Date();
+  let selectedDateKey = getLocalDateKey(todayDate);
+
+  // Calendar modal viewing month/year
+  let calendarViewYear = todayDate.getFullYear();
+  let calendarViewMonth = todayDate.getMonth();
 
   let currentSlotIndex = 0;
   let unconfirmedSettingsChange = null;
@@ -48,15 +88,19 @@
     summary: document.getElementById('view-summary'),
   };
 
+  // First Page Navigation Elements
+  const btnYesterday = document.getElementById('btn-yesterday');
+  const btnToday = document.getElementById('btn-today');
+  const btnTomorrow = document.getElementById('btn-tomorrow');
+  const selectedDateText = document.getElementById('selected-date-text');
+  const calendarToggleBtn = document.getElementById('calendar-toggle-btn');
+
   // Settings Elements
   const startInput = document.getElementById('starting-time-input');
   const endInput = document.getElementById('ending-time-input');
-  const customIntervalInput = document.getElementById('settings-custom-interval');
-  const settingsPills = document.querySelectorAll('#view-settings .quick-pill');
   const settingsNextBtn = document.getElementById('settings-next-btn');
   const errorStartTime = document.getElementById('error-start-time');
   const errorEndTime = document.getElementById('error-end-time');
-  const errorInterval = document.getElementById('error-interval');
 
   // Slot Elements
   const slotBackBtn = document.getElementById('slot-back-btn');
@@ -64,8 +108,8 @@
   const slotBadge = document.getElementById('slot-badge');
   const slotEndLabel = document.getElementById('slot-end-label');
   const slotTimeRange = document.getElementById('slot-time-range');
-  const slotPills = document.querySelectorAll('.slot-quick');
-  const slotCustomDuration = document.getElementById('slot-custom-duration');
+  const slotDateDisplay = document.getElementById('slot-date-display');
+  const slotWorkDurationInput = document.getElementById('slot-work-duration');
   const slotDurationError = document.getElementById('slot-duration-error');
   const slotTaskInput = document.getElementById('slot-task-input');
   const slotNextBtn = document.getElementById('slot-next-btn');
@@ -78,7 +122,15 @@
   const summarySlotsList = document.getElementById('summary-slots-list');
   const summaryResultArea = document.getElementById('summary-result-area');
 
-  // Dialogs
+  // Calendar Dialog Elements
+  const calendarDialog = document.getElementById('calendar-dialog');
+  const calendarMonthTitle = document.getElementById('calendar-month-title');
+  const calendarPrevMonthBtn = document.getElementById('calendar-prev-month-btn');
+  const calendarNextMonthBtn = document.getElementById('calendar-next-month-btn');
+  const calendarCloseBtn = document.getElementById('calendar-close-btn');
+  const calendarDaysGrid = document.getElementById('calendar-days-grid');
+
+  // Other Dialogs
   const newDayDialog = document.getElementById('new-day-dialog');
   const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
   const dialogConfirmBtn = document.getElementById('dialog-confirm-btn');
@@ -102,58 +154,66 @@
   }
 
   function timeStringToMinutes(timeStr) {
-    if (!timeStr) return 0;
+    if (!timeStr || typeof timeStr !== 'string') return 0;
     const parts = timeStr.split(':');
-    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    const h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    return h * 60 + m;
   }
 
   function formatMinutesTo12Hour(minutes) {
     const norm = ((minutes % 1440) + 1440) % 1440;
-    const h24 = Math.floor(norm / 60);
+    let h = Math.floor(norm / 60);
     const m = norm % 60;
-    const period = h24 >= 12 ? "PM" : "AM";
-    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
     const mStr = m < 10 ? '0' + m : String(m);
-    return `${h12}:${mStr} ${period}`;
+    return `${h}:${mStr} ${ampm}`;
   }
 
   function formatRemainingTime(minutes) {
     if (minutes <= 0) return "0 min";
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    if (h === 0) return `${m} min`;
-    if (m === 0) return `${h} h`;
-    return `${h} h ${m} min`;
+    if (h > 0 && m > 0) return `${h} hr ${m} min`;
+    if (h > 0 && m === 0) return `${h} hr`;
+    return `${m} min`;
   }
 
   // --- STORAGE ---
-  function saveStorage() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.warn("Storage save error:", e);
-    }
-  }
-
   function loadStorage() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object") {
-          state.settings = {
-            startMinutes: typeof parsed.settings?.startMinutes === "number" ? parsed.settings.startMinutes : MIN_WORK_TIME,
-            endMinutes: typeof parsed.settings?.endMinutes === "number" ? parsed.settings.endMinutes : MAX_WORK_TIME,
-            intervalMinutes: typeof parsed.settings?.intervalMinutes === "number" ? parsed.settings.intervalMinutes : null,
-          };
-          state.slots = Array.isArray(parsed.slots)
-            ? parsed.slots.map((s, idx) => ({
-                id: typeof s.id === "string" ? s.id : `slot-${idx + 1}`,
-                durationMinutes: typeof s.durationMinutes === "number" ? s.durationMinutes : null,
-                taskText: typeof s.taskText === "string" ? s.taskText : "",
-                status: (s.status === "COMPLETED" || s.status === "NOT_COMPLETED") ? s.status : "NONE",
-              }))
-            : [];
+          if (parsed.lastTimes && typeof parsed.lastTimes === "object") {
+            state.lastTimes = {
+              startMinutes: typeof parsed.lastTimes.startMinutes === "number" ? parsed.lastTimes.startMinutes : MIN_WORK_TIME,
+              endMinutes: typeof parsed.lastTimes.endMinutes === "number" ? parsed.lastTimes.endMinutes : MAX_WORK_TIME,
+            };
+          }
+          if (parsed.days && typeof parsed.days === "object") {
+            state.days = {};
+            Object.keys(parsed.days).forEach((dateKey) => {
+              const d = parsed.days[dateKey];
+              if (d && typeof d === "object") {
+                state.days[dateKey] = {
+                  startMinutes: typeof d.startMinutes === "number" ? d.startMinutes : state.lastTimes.startMinutes,
+                  endMinutes: typeof d.endMinutes === "number" ? d.endMinutes : state.lastTimes.endMinutes,
+                  slots: Array.isArray(d.slots)
+                    ? d.slots.map((s, idx) => ({
+                        id: typeof s.id === "string" ? s.id : `slot-${idx + 1}`,
+                        durationMinutes: typeof s.durationMinutes === "number" ? s.durationMinutes : null,
+                        taskText: typeof s.taskText === "string" ? s.taskText : "",
+                        status: (s.status === "COMPLETED" || s.status === "NOT_COMPLETED") ? s.status : "NONE",
+                      }))
+                    : [],
+                };
+              }
+            });
+          }
         }
       }
     } catch (e) {
@@ -161,10 +221,38 @@
     }
   }
 
-  // --- DERIVED SLOTS WITH TIMES ---
+  function saveStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn("Storage write error:", e);
+    }
+  }
+
+  // --- DAY DATA GETTER & HELPERS ---
+  function getCurrentDayData() {
+    if (!state.days[selectedDateKey]) {
+      return null;
+    }
+    return state.days[selectedDateKey];
+  }
+
+  function isScheduleFinished(dayData) {
+    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) return false;
+    let currentStart = dayData.startMinutes;
+    for (let i = 0; i < dayData.slots.length; i++) {
+      const slot = dayData.slots[i];
+      if (slot.durationMinutes === null) return false;
+      currentStart += slot.durationMinutes;
+    }
+    return currentStart === dayData.endMinutes;
+  }
+
   function getSlotsWithTimes() {
-    let currentStart = state.settings.startMinutes;
-    return state.slots.map((slot, index) => {
+    const dayData = getCurrentDayData();
+    if (!dayData) return [];
+    let currentStart = dayData.startMinutes;
+    return dayData.slots.map((slot, index) => {
       const start = currentStart;
       const duration = slot.durationMinutes;
       const end = duration !== null ? start + duration : start;
@@ -178,6 +266,25 @@
     });
   }
 
+  function getDayCompletionStatus(dateKey) {
+    const day = state.days[dateKey];
+    if (!day || !day.slots || day.slots.length === 0) return "NONE";
+    if (!isScheduleFinished(day)) return "NONE";
+
+    const total = day.slots.length;
+    const completedCount = day.slots.filter(s => s.status === "COMPLETED").length;
+    const notCompletedCount = day.slots.filter(s => s.status === "NOT_COMPLETED").length;
+
+    if (completedCount === total) return "FULLY_COMPLETED";
+    if (notCompletedCount === total) return "NOT_COMPLETED";
+    if (completedCount > 0 && notCompletedCount > 0) return "PARTLY_COMPLETED";
+    if (completedCount > 0 && completedCount < total) return "PARTLY_COMPLETED";
+    if (notCompletedCount > 0 && notCompletedCount < total) return "PARTLY_COMPLETED";
+
+    // All slots are still unmarked ("NONE")
+    return "PLANNED_UNMARKED";
+  }
+
   // --- VIEW SWITCHING ---
   function switchView(viewName) {
     Object.keys(views).forEach((name) => {
@@ -186,24 +293,56 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // --- DATE NAVIGATION & SELECTION ---
+  function updateDateButtonsState() {
+    const todayStr = getLocalDateKey(todayDate);
+    const yesterdayStr = getLocalDateKey(addDays(todayDate, -1));
+    const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
+
+    btnYesterday.setAttribute('aria-pressed', String(selectedDateKey === yesterdayStr));
+    btnToday.setAttribute('aria-pressed', String(selectedDateKey === todayStr));
+    btnTomorrow.setAttribute('aria-pressed', String(selectedDateKey === tomorrowStr));
+
+    const selectedObj = parseLocalDateKey(selectedDateKey);
+    selectedDateText.textContent = formatFullDisplayDate(selectedObj);
+  }
+
+  function handleSelectDate(dateKey) {
+    selectedDateKey = dateKey;
+    updateDateButtonsState();
+
+    const dayData = getCurrentDayData();
+    if (isScheduleFinished(dayData)) {
+      renderSummaryView();
+      switchView('summary');
+    } else {
+      initSettingsView();
+      switchView('settings');
+    }
+  }
+
+  btnYesterday.addEventListener('click', () => {
+    handleSelectDate(getLocalDateKey(addDays(todayDate, -1)));
+  });
+
+  btnToday.addEventListener('click', () => {
+    handleSelectDate(getLocalDateKey(todayDate));
+  });
+
+  btnTomorrow.addEventListener('click', () => {
+    handleSelectDate(getLocalDateKey(addDays(todayDate, 1)));
+  });
+
   // --- SETTINGS VIEW LOGIC ---
   function initSettingsView() {
-    startInput.value = minutesToTimeString(state.settings.startMinutes || MIN_WORK_TIME);
-    endInput.value = minutesToTimeString(state.settings.endMinutes || MAX_WORK_TIME);
+    updateDateButtonsState();
 
-    settingsPills.forEach((p) => {
-      const val = parseInt(p.getAttribute('data-minutes'), 10);
-      p.classList.toggle('selected', state.settings.intervalMinutes === val);
-    });
+    const dayData = getCurrentDayData();
+    const startMins = dayData ? dayData.startMinutes : state.lastTimes.startMinutes;
+    const endMins = dayData ? dayData.endMinutes : state.lastTimes.endMinutes;
 
-    const isQuick = [15, 30, 45, 60, 90].includes(state.settings.intervalMinutes);
-    if (!isQuick && state.settings.intervalMinutes !== null) {
-      customIntervalInput.value = state.settings.intervalMinutes;
-      customIntervalInput.classList.add('active');
-    } else {
-      customIntervalInput.value = "";
-      customIntervalInput.classList.remove('active');
-    }
+    startInput.value = minutesToTimeString(startMins || MIN_WORK_TIME);
+    endInput.value = minutesToTimeString(endMins || MAX_WORK_TIME);
 
     clearSettingsErrors();
   }
@@ -211,33 +350,7 @@
   function clearSettingsErrors() {
     errorStartTime.style.display = "none";
     errorEndTime.style.display = "none";
-    errorInterval.style.display = "none";
   }
-
-  settingsPills.forEach((p) => {
-    p.addEventListener('click', () => {
-      const mins = parseInt(p.getAttribute('data-minutes'), 10);
-      state.settings.intervalMinutes = mins;
-      customIntervalInput.value = "";
-      customIntervalInput.classList.remove('active');
-      settingsPills.forEach((pill) => pill.classList.toggle('selected', pill === p));
-      errorInterval.style.display = "none";
-    });
-  });
-
-  customIntervalInput.addEventListener('input', () => {
-    const val = customIntervalInput.value.trim();
-    if (!val) {
-      state.settings.intervalMinutes = null;
-      customIntervalInput.classList.remove('active');
-    } else {
-      const num = parseInt(val, 10);
-      state.settings.intervalMinutes = !isNaN(num) && num > 0 ? num : null;
-      customIntervalInput.classList.add('active');
-    }
-    settingsPills.forEach((p) => p.classList.remove('selected'));
-    errorInterval.style.display = "none";
-  });
 
   settingsNextBtn.addEventListener('click', () => {
     clearSettingsErrors();
@@ -245,7 +358,6 @@
 
     const startVal = startInput.value;
     const endVal = endInput.value;
-    const interval = state.settings.intervalMinutes;
 
     if (!startVal) {
       errorStartTime.textContent = "Please select a Starting Time.";
@@ -280,51 +392,46 @@
       hasError = true;
     }
 
-    if (interval === null) {
-      errorInterval.textContent = "Please choose an interval duration or type custom minutes.";
-      errorInterval.style.display = "block";
-      hasError = true;
-    } else {
-      if (interval < MIN_SLOT_DURATION) {
-        errorInterval.textContent = `Interval must be a whole number of at least ${MIN_SLOT_DURATION} minutes.`;
-        errorInterval.style.display = "block";
-        hasError = true;
-      } else if (endMins > startMins && interval > endMins - startMins) {
-        errorInterval.textContent = `Interval cannot be longer than the total time between start and end (${endMins - startMins} minutes).`;
-        errorInterval.style.display = "block";
-        hasError = true;
-      }
-    }
-
     if (hasError) return;
 
-    const settingsChanged =
-      state.settings.startMinutes !== startMins ||
-      state.settings.endMinutes !== endMins ||
-      state.settings.intervalMinutes !== interval;
+    // Check if settings changed for this date
+    const dayData = getCurrentDayData();
+    const settingsChanged = dayData && (dayData.startMinutes !== startMins || dayData.endMinutes !== endMins);
 
-    if (state.slots.length > 0 && settingsChanged) {
+    if (dayData && dayData.slots.length > 0 && settingsChanged) {
       unconfirmedSettingsChange = {
         startMinutes: startMins,
         endMinutes: endMins,
-        intervalMinutes: interval,
       };
       settingsConfirmDialog.showModal();
     } else {
-      state.settings = {
-        startMinutes: startMins,
-        endMinutes: endMins,
-        intervalMinutes: interval,
-      };
-      if (state.slots.length === 0) {
-        state.slots = [
-          {
-            id: "slot-1",
-            durationMinutes: interval,
-            taskText: "",
-            status: "NONE",
-          },
-        ];
+      state.lastTimes = { startMinutes: startMins, endMinutes: endMins };
+      if (!state.days[selectedDateKey]) {
+        state.days[selectedDateKey] = {
+          startMinutes: startMins,
+          endMinutes: endMins,
+          slots: [
+            {
+              id: "slot-1",
+              durationMinutes: null,
+              taskText: "",
+              status: "NONE",
+            },
+          ],
+        };
+      } else {
+        state.days[selectedDateKey].startMinutes = startMins;
+        state.days[selectedDateKey].endMinutes = endMins;
+        if (state.days[selectedDateKey].slots.length === 0) {
+          state.days[selectedDateKey].slots = [
+            {
+              id: "slot-1",
+              durationMinutes: null,
+              taskText: "",
+              status: "NONE",
+            },
+          ];
+        }
       }
       saveStorage();
       currentSlotIndex = 0;
@@ -340,15 +447,19 @@
 
   settingsDialogContinue.addEventListener('click', () => {
     if (!unconfirmedSettingsChange) return;
-    state.settings = unconfirmedSettingsChange;
-    state.slots = [
-      {
-        id: "slot-1",
-        durationMinutes: unconfirmedSettingsChange.intervalMinutes,
-        taskText: "",
-        status: "NONE",
-      },
-    ];
+    state.lastTimes = { ...unconfirmedSettingsChange };
+    state.days[selectedDateKey] = {
+      startMinutes: unconfirmedSettingsChange.startMinutes,
+      endMinutes: unconfirmedSettingsChange.endMinutes,
+      slots: [
+        {
+          id: "slot-1",
+          durationMinutes: null,
+          taskText: "",
+          status: "NONE",
+        },
+      ],
+    };
     saveStorage();
     settingsConfirmDialog.close();
     unconfirmedSettingsChange = null;
@@ -359,15 +470,21 @@
 
   // --- SLOT VIEW LOGIC ---
   function renderSlotPage() {
+    const dayData = getCurrentDayData();
+    if (!dayData) return;
+
     const slotsWithTimes = getSlotsWithTimes();
     const current = slotsWithTimes[currentSlotIndex];
     if (!current) return;
 
     const slot = current.slot;
-    const dayEndMins = state.settings.endMinutes;
+    const dayEndMins = dayData.endMinutes;
     const availableMins = dayEndMins - current.startMinutes;
 
     slotBadge.textContent = `Slot ${current.slotNumber}`;
+
+    const selectedObj = parseLocalDateKey(selectedDateKey);
+    slotDateDisplay.textContent = formatFullDisplayDate(selectedObj);
 
     const currentEnd = slot.durationMinutes !== null ? current.startMinutes + slot.durationMinutes : null;
     const isLastSlot = currentEnd !== null && currentEnd === dayEndMins;
@@ -384,20 +501,8 @@
     const effectiveEnd = currentEnd !== null && currentEnd <= dayEndMins ? currentEnd : current.startMinutes;
     slotTimeLeft.textContent = formatRemainingTime(Math.max(0, dayEndMins - effectiveEnd));
 
-    // Duration quick pills
-    slotPills.forEach((p) => {
-      const val = parseInt(p.getAttribute('data-minutes'), 10);
-      p.classList.toggle('selected', slot.durationMinutes === val);
-    });
-
-    const isQuick = [15, 30, 45, 60, 90].includes(slot.durationMinutes);
-    if (!isQuick && slot.durationMinutes !== null) {
-      slotCustomDuration.value = slot.durationMinutes;
-      slotCustomDuration.classList.add('active');
-    } else {
-      slotCustomDuration.value = "";
-      slotCustomDuration.classList.remove('active');
-    }
+    // Number input value
+    slotWorkDurationInput.value = slot.durationMinutes !== null ? slot.durationMinutes : "";
 
     // Duration validation
     let durationError = "";
@@ -428,7 +533,6 @@
     slotTaskInput.value = slot.taskText || "";
 
     // Finish / Next Button
-    // Slot pages show NO checkbox, NO Completed button, and NO Not Completed button (even the last slot).
     if (isLastSlot) {
       slotNextBtn.textContent = "Finish ✓";
       slotNextBtn.className = "btn btn-finish";
@@ -441,8 +545,11 @@
   }
 
   function handleSlotDurationChangeRequest(newDuration) {
+    const dayData = getCurrentDayData();
+    if (!dayData) return;
+
     const idx = currentSlotIndex;
-    const laterSlotsExist = state.slots.length > idx + 1;
+    const laterSlotsExist = dayData.slots.length > idx + 1;
 
     if (laterSlotsExist) {
       durationChangeConfirm = {
@@ -451,7 +558,7 @@
       };
       durationConfirmDialog.showModal();
     } else {
-      state.slots[idx].durationMinutes = newDuration;
+      dayData.slots[idx].durationMinutes = newDuration;
       saveStorage();
       renderSlotPage();
     }
@@ -460,34 +567,32 @@
   durationDialogCancel.addEventListener('click', () => {
     durationConfirmDialog.close();
     durationChangeConfirm = null;
+    renderSlotPage();
   });
 
   durationDialogContinue.addEventListener('click', () => {
     if (!durationChangeConfirm) return;
-    const { slotIndex, newDuration } = durationChangeConfirm;
-    // On Continue remove only the later slots and their statuses
-    state.slots = state.slots.slice(0, slotIndex + 1);
-    state.slots[slotIndex].durationMinutes = newDuration;
-
-    saveStorage();
+    const dayData = getCurrentDayData();
+    if (dayData) {
+      const { slotIndex, newDuration } = durationChangeConfirm;
+      dayData.slots = dayData.slots.slice(0, slotIndex + 1);
+      dayData.slots[slotIndex].durationMinutes = newDuration;
+      saveStorage();
+    }
     durationConfirmDialog.close();
     durationChangeConfirm = null;
     renderSlotPage();
   });
 
-  slotPills.forEach((p) => {
-    p.addEventListener('click', () => {
-      const mins = parseInt(p.getAttribute('data-minutes'), 10);
-      handleSlotDurationChangeRequest(mins);
-    });
-  });
-
-  slotCustomDuration.addEventListener('input', () => {
-    const val = slotCustomDuration.value.trim();
+  slotWorkDurationInput.addEventListener('input', () => {
+    const val = slotWorkDurationInput.value.trim();
     if (!val) {
-      state.slots[currentSlotIndex].durationMinutes = null;
-      saveStorage();
-      renderSlotPage();
+      const dayData = getCurrentDayData();
+      if (dayData && dayData.slots[currentSlotIndex]) {
+        dayData.slots[currentSlotIndex].durationMinutes = null;
+        saveStorage();
+        renderSlotPage();
+      }
     } else {
       const num = parseInt(val, 10);
       if (!isNaN(num) && num > 0) {
@@ -497,9 +602,9 @@
   });
 
   slotTaskInput.addEventListener('input', () => {
-    const slot = state.slots[currentSlotIndex];
-    if (slot) {
-      slot.taskText = slotTaskInput.value;
+    const dayData = getCurrentDayData();
+    if (dayData && dayData.slots[currentSlotIndex]) {
+      dayData.slots[currentSlotIndex].taskText = slotTaskInput.value;
       saveStorage();
     }
   });
@@ -515,12 +620,14 @@
   });
 
   slotNextBtn.addEventListener('click', () => {
+    const dayData = getCurrentDayData();
+    if (!dayData) return;
+
     const slotsWithTimes = getSlotsWithTimes();
     const current = slotsWithTimes[currentSlotIndex];
     if (!current || current.slot.durationMinutes === null) return;
 
-    const dayEndMins = state.settings.endMinutes;
-    // When a slot ends exactly at the Ending Time its button reads "Finish" and opens the Summary page
+    const dayEndMins = dayData.endMinutes;
     if (current.endMinutes === dayEndMins) {
       renderSummaryView();
       switchView('summary');
@@ -528,18 +635,17 @@
     }
 
     const nextIndex = currentSlotIndex + 1;
-    if (state.slots[nextIndex]) {
+    if (dayData.slots[nextIndex]) {
       currentSlotIndex = nextIndex;
       renderSlotPage();
     } else {
-      // Every later slot starts EMPTY
       const newSlot = {
         id: `slot-${nextIndex + 1}`,
         durationMinutes: null,
         taskText: "",
         status: "NONE",
       };
-      state.slots.push(newSlot);
+      dayData.slots.push(newSlot);
       currentSlotIndex = nextIndex;
       saveStorage();
       renderSlotPage();
@@ -548,15 +654,21 @@
 
   // --- SUMMARY VIEW LOGIC ---
   function renderSummaryView() {
+    const dayData = getCurrentDayData();
+    if (!dayData) return;
+
     const slotsWithTimes = getSlotsWithTimes();
     const totalSlots = slotsWithTimes.length;
-    const startStr = formatMinutesTo12Hour(state.settings.startMinutes);
-    const endStr = formatMinutesTo12Hour(state.settings.endMinutes);
+    const startStr = formatMinutesTo12Hour(dayData.startMinutes);
+    const endStr = formatMinutesTo12Hour(dayData.endMinutes);
 
-    // 1. Title "Daily Work Summary" and a short line with day range and slot count
-    summaryHeaderSubtitle.textContent = `${startStr} - ${endStr}, ${totalSlots} ${totalSlots === 1 ? "slot" : "slots"}`;
+    const selectedObj = parseLocalDateKey(selectedDateKey);
+    const dateStr = formatFullDisplayDate(selectedObj);
 
-    // 2. Organized list of ALL slots in time order
+    // Header Subtitle: Date + Day range + slot count
+    summaryHeaderSubtitle.textContent = `${dateStr} • ${startStr} - ${endStr}, ${totalSlots} ${totalSlots === 1 ? "slot" : "slots"}`;
+
+    // Render cards
     summarySlotsList.innerHTML = "";
     slotsWithTimes.forEach(({ slot, slotNumber, startMinutes, endMinutes }) => {
       const card = document.createElement('div');
@@ -641,7 +753,6 @@
       summarySlotsList.appendChild(card);
     });
 
-    // 3. Render result area at the very end
     updateSummaryResult();
   }
 
@@ -649,30 +760,30 @@
     if (!summaryResultArea) return;
     summaryResultArea.innerHTML = "";
 
-    const total = state.slots.length;
-    const anyNotCompleted = state.slots.some((s) => s.status === "NOT_COMPLETED");
-    const allCompleted = total > 0 && state.slots.every((s) => s.status === "COMPLETED");
+    const dayData = getCurrentDayData();
+    if (!dayData || !dayData.slots) return;
+
+    const total = dayData.slots.length;
+    const anyNotCompleted = dayData.slots.some((s) => s.status === "NOT_COMPLETED");
+    const allCompleted = total > 0 && dayData.slots.every((s) => s.status === "COMPLETED");
 
     if (allCompleted) {
       const card = document.createElement('div');
       card.className = "result-card";
 
-      // Result message
       const msg = document.createElement('h2');
       msg.className = "result-message";
       msg.textContent = "Work complete";
 
-      // Attempt to load happy.* image if present
       const img = document.createElement('img');
       img.className = "result-image";
       img.alt = "Happy smiley with two thumbs up: Work Completed";
       img.width = 440;
       img.height = 293;
-      img.src = "images/happy.png"; // Primary candidate
+      img.src = "images/happy.png";
 
       let fileMissingNotified = false;
       img.onerror = () => {
-        // Fallback checks for .jpg, .jpeg, .webp, .gif or file missing
         if (img.src.endsWith(".png")) {
           img.src = "images/happy.jpg";
         } else if (img.src.endsWith(".jpg")) {
@@ -682,7 +793,6 @@
         } else if (img.src.endsWith(".webp")) {
           img.src = "images/happy.gif";
         } else {
-          // File is missing: show only the message "Work complete" and tell in console/UI
           if (imgWrapper && imgWrapper.parentNode) {
             imgWrapper.parentNode.removeChild(imgWrapper);
           }
@@ -701,7 +811,6 @@
       card.appendChild(msg);
       summaryResultArea.appendChild(card);
     } else if (anyNotCompleted) {
-      // If ANY slot is marked Not Completed, show the "Work not complete" card
       const card = document.createElement('div');
       card.className = "result-card result-card-not-completed";
 
@@ -712,7 +821,6 @@
       card.appendChild(msg);
       summaryResultArea.appendChild(card);
     } else {
-      // In every other case, show only one small muted line
       const hint = document.createElement('p');
       hint.className = "result-hint";
       hint.textContent = "Mark every slot Completed to see your result.";
@@ -721,9 +829,15 @@
   }
 
   summaryBackBtn.addEventListener('click', () => {
-    currentSlotIndex = state.slots.length - 1;
-    renderSlotPage();
-    switchView('slot');
+    const dayData = getCurrentDayData();
+    if (dayData && dayData.slots.length > 0) {
+      currentSlotIndex = dayData.slots.length - 1;
+      renderSlotPage();
+      switchView('slot');
+    } else {
+      initSettingsView();
+      switchView('settings');
+    }
   });
 
   summaryEditTimesBtn.addEventListener('click', () => {
@@ -743,23 +857,117 @@
 
   dialogConfirmBtn.addEventListener('click', () => {
     newDayDialog.close();
-    // Clear all slots and their statuses; go to settings page
-    state.slots = [];
+    // Clear only this date's slots
+    if (state.days[selectedDateKey]) {
+      state.days[selectedDateKey].slots = [];
+    }
     currentSlotIndex = 0;
     saveStorage();
     initSettingsView();
     switchView('settings');
   });
 
-  function escapeHtml(text) {
-    if (!text) return "";
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  // --- MONTHLY CALENDAR DIALOG ---
+  function renderCalendarGrid() {
+    calendarMonthTitle.textContent = formatMonthTitle(calendarViewYear, calendarViewMonth);
+    calendarDaysGrid.innerHTML = "";
+
+    const firstDayIndex = new Date(calendarViewYear, calendarViewMonth, 1).getDay();
+    const daysInMonth = new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate();
+
+    // Leading empty cells
+    for (let i = 0; i < firstDayIndex; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = "calendar-day-cell empty-slot";
+      calendarDaysGrid.appendChild(emptyCell);
+    }
+
+    const todayStr = getLocalDateKey(todayDate);
+
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const dateObj = new Date(calendarViewYear, calendarViewMonth, dayNum);
+      const dateKey = getLocalDateKey(dateObj);
+
+      const dayCell = document.createElement('button');
+      dayCell.type = "button";
+      dayCell.className = "calendar-day-cell";
+      dayCell.setAttribute('data-date-key', dateKey);
+
+      if (dateKey === selectedDateKey) {
+        dayCell.classList.add('is-selected');
+      }
+      if (dateKey === todayStr) {
+        dayCell.classList.add('is-today');
+      }
+
+      const numSpan = document.createElement('span');
+      numSpan.className = "calendar-day-num";
+      numSpan.textContent = String(dayNum);
+      dayCell.appendChild(numSpan);
+
+      const statusSpan = document.createElement('span');
+      statusSpan.className = "calendar-status-indicator";
+
+      const completion = getDayCompletionStatus(dateKey);
+      if (completion === "FULLY_COMPLETED") {
+        statusSpan.classList.add('cal-status-fully');
+        statusSpan.textContent = "✓";
+      } else if (completion === "PARTLY_COMPLETED") {
+        statusSpan.classList.add('cal-status-partly');
+        statusSpan.textContent = "–";
+      } else if (completion === "NOT_COMPLETED") {
+        statusSpan.classList.add('cal-status-not');
+        statusSpan.textContent = "✗";
+      } else if (completion === "PLANNED_UNMARKED") {
+        const ring = document.createElement('span');
+        ring.className = "cal-status-unmarked";
+        statusSpan.appendChild(ring);
+      }
+
+      dayCell.appendChild(statusSpan);
+
+      dayCell.addEventListener('click', () => {
+        calendarDialog.close();
+        handleSelectDate(dateKey);
+      });
+
+      calendarDaysGrid.appendChild(dayCell);
+    }
   }
 
+  calendarToggleBtn.addEventListener('click', () => {
+    // Center calendar view on selected date
+    const selectedObj = parseLocalDateKey(selectedDateKey);
+    calendarViewYear = selectedObj.getFullYear();
+    calendarViewMonth = selectedObj.getMonth();
+    renderCalendarGrid();
+    calendarDialog.showModal();
+  });
+
+  calendarCloseBtn.addEventListener('click', () => {
+    calendarDialog.close();
+  });
+
+  calendarPrevMonthBtn.addEventListener('click', () => {
+    calendarViewMonth--;
+    if (calendarViewMonth < 0) {
+      calendarViewMonth = 11;
+      calendarViewYear--;
+    }
+    renderCalendarGrid();
+  });
+
+  calendarNextMonthBtn.addEventListener('click', () => {
+    calendarViewMonth++;
+    if (calendarViewMonth > 11) {
+      calendarViewMonth = 0;
+      calendarViewYear++;
+    }
+    renderCalendarGrid();
+  });
+
   // Close native dialogs on outside click
-  [newDayDialog, settingsConfirmDialog, durationConfirmDialog].forEach((diag) => {
+  [newDayDialog, settingsConfirmDialog, durationConfirmDialog, calendarDialog].forEach((diag) => {
     diag.addEventListener('click', (e) => {
       const rect = diag.getBoundingClientRect();
       const isInDialog =
@@ -773,7 +981,7 @@
     });
   });
 
-  // APP ALWAYS OPENS ON THE FIRST PAGE ("settings") ON EVERY VISIT.
+  // INITIALIZE APP
   loadStorage();
   initSettingsView();
   switchView('settings');
