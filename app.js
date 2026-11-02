@@ -2,8 +2,9 @@
  * Daily Work Planner - Pure Vanilla JavaScript Implementation
  *
  * Rules:
- * - One unified state object saved in localStorage under "dailyPlanner:v4".
- * - Always opens on Settings page on every visit with TODAY selected.
+ * - Plans are saved in the Supabase table "planner_days" (user_id, day, start_min, end_min, slots).
+ * - Fallback to localStorage under "dailyPlanner:<userId>" when offline or unconfigured.
+ * - Always opens on Settings page on every visit with TODAY selected, or Summary if today has saved slots.
  * - Times stored as minutes since midnight; single 12-hour AM/PM formatting helper.
  * - Slot start time is never stored (derived sequentially from day.startMinutes).
  * - Slots 1 to N: NO checkbox and NO Completed / Not Completed buttons on ANY slot page.
@@ -11,8 +12,9 @@
  * - DAILY WORK SUMMARY PAGE:
  *     1. Title "Daily Work Summary" with formatted date, day range, and slot count.
  *     2. Organized list of ALL slots in time order (each card has ✓ Completed and ✗ Not Completed buttons).
- *     3. Result card at the very end when all slots completed / any not completed / hint when neutral.
- *     4. Existing buttons: Back, Edit times, Start New Day (clears only the selected date).
+ *     3. Unfinished plan banner ("This plan is not finished." + "Continue planning" button) if incomplete.
+ *     4. Result card at the very end when all slots completed AND plan is finished; otherwise small hint line.
+ *     5. Existing buttons: Back, Edit times, Start New Day (clears only the selected date).
  * - Multi-day support:
  *     - Yesterday, Today, Tomorrow quick buttons on first page.
  *     - Monthly calendar native dialog with full completion status indicators:
@@ -27,7 +29,8 @@
   const MAX_WORK_TIME = 18 * 60; // 1080 (6:00 PM)
   const MIN_SLOT_DURATION = 5;
 
-  const STORAGE_KEY = "dailyPlanner:v4";
+  let currentUserId = "anonymous";
+  let storageKey = "dailyPlanner:anonymous";
 
   // --- LOCAL DATE HELPERS (Never use toISOString to avoid UTC shift bugs) ---
   function getLocalDateKey(dateObj) {
@@ -54,13 +57,18 @@
     return `${days[dateObj.getDay()]}, ${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
   }
 
+  function formatShortDisplayDate(dateObj) {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${days[dateObj.getDay()]}, ${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+  }
+
   function formatMonthTitle(year, monthIndex) {
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     return `${months[monthIndex]} ${year}`;
   }
 
   // --- STATE ---
-  // Unified state stored under "dailyPlanner:v4"
   let state = {
     lastTimes: {
       startMinutes: MIN_WORK_TIME,
@@ -69,7 +77,7 @@
     days: {}, // keyed by "YYYY-MM-DD"
   };
 
-  // Runtime date selection (always starts at TODAY on every load)
+  // Runtime date selection (always starts at TODAY on load)
   const todayDate = new Date();
   let selectedDateKey = getLocalDateKey(todayDate);
 
@@ -80,6 +88,7 @@
   let currentSlotIndex = 0;
   let unconfirmedSettingsChange = null;
   let durationChangeConfirm = null;
+  let textSaveDebounceTimer = null;
 
   // DOM Views
   const views = {
@@ -116,6 +125,8 @@
 
   // Summary Elements
   const summaryHeaderSubtitle = document.getElementById('summary-header-subtitle');
+  const summaryUnfinishedBanner = document.getElementById('summary-unfinished-banner');
+  const summaryContinuePlanningBtn = document.getElementById('summary-continue-planning-btn');
   const summaryBackBtn = document.getElementById('summary-back-btn');
   const summaryEditTimesBtn = document.getElementById('summary-edit-times-btn');
   const summaryStartNewDayBtn = document.getElementById('summary-start-new-day-btn');
@@ -142,6 +153,9 @@
   const durationConfirmDialog = document.getElementById('duration-confirm-dialog');
   const durationDialogCancel = document.getElementById('duration-dialog-cancel');
   const durationDialogContinue = document.getElementById('duration-dialog-continue');
+
+  // Log out button
+  const btnLogout = document.getElementById('btn-logout');
 
   // --- TIME HELPERS ---
   function minutesToTimeString(minutes) {
@@ -181,10 +195,47 @@
     return `${m} min`;
   }
 
-  // --- STORAGE ---
-  function loadStorage() {
+  // --- SUPABASE CLIENT HELPERS ---
+  function areKeysPlaceholder() {
+    return (
+      typeof SUPABASE_URL === 'undefined' ||
+      typeof SUPABASE_ANON_KEY === 'undefined' ||
+      !SUPABASE_URL ||
+      !SUPABASE_ANON_KEY ||
+      SUPABASE_URL === 'PASTE_PROJECT_URL_HERE' ||
+      SUPABASE_ANON_KEY === 'PASTE_ANON_KEY_HERE'
+    );
+  }
+
+  function getSupabaseClient() {
+    if (areKeysPlaceholder()) return null;
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        console.error('Supabase init error:', e);
+        return null;
+      }
+    }
+    return null;
+  }
+
+  const supabaseClient = getSupabaseClient();
+
+  // --- STORAGE & PERSISTENCE ---
+  function sanitizeSlots(slotsArray) {
+    if (!Array.isArray(slotsArray)) return [];
+    return slotsArray.map((s, idx) => ({
+      id: typeof s?.id === "string" ? s.id : `slot-${idx + 1}`,
+      durationMinutes: typeof s?.durationMinutes === "number" && !isNaN(s.durationMinutes) ? s.durationMinutes : null,
+      taskText: typeof s?.taskText === "string" ? s.taskText : "",
+      status: (s?.status === "COMPLETED" || s?.status === "NOT_COMPLETED") ? s.status : "NONE",
+    }));
+  }
+
+  function loadFromLocalStorage() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object") {
@@ -195,21 +246,13 @@
             };
           }
           if (parsed.days && typeof parsed.days === "object") {
-            state.days = {};
             Object.keys(parsed.days).forEach((dateKey) => {
               const d = parsed.days[dateKey];
               if (d && typeof d === "object") {
                 state.days[dateKey] = {
                   startMinutes: typeof d.startMinutes === "number" ? d.startMinutes : state.lastTimes.startMinutes,
                   endMinutes: typeof d.endMinutes === "number" ? d.endMinutes : state.lastTimes.endMinutes,
-                  slots: Array.isArray(d.slots)
-                    ? d.slots.map((s, idx) => ({
-                        id: typeof s.id === "string" ? s.id : `slot-${idx + 1}`,
-                        durationMinutes: typeof s.durationMinutes === "number" ? s.durationMinutes : null,
-                        taskText: typeof s.taskText === "string" ? s.taskText : "",
-                        status: (s.status === "COMPLETED" || s.status === "NOT_COMPLETED") ? s.status : "NONE",
-                      }))
-                    : [],
+                  slots: sanitizeSlots(d.slots),
                 };
               }
             });
@@ -217,24 +260,101 @@
         }
       }
     } catch (e) {
-      console.warn("Storage read error:", e);
+      console.warn("Local storage read error:", e);
     }
   }
 
-  function saveStorage() {
+  function saveToLocalStorage() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(storageKey, JSON.stringify(state));
     } catch (e) {
-      console.warn("Storage write error:", e);
+      console.warn("Local storage write error:", e);
     }
   }
 
-  // --- DAY DATA GETTER & HELPERS ---
-  function getCurrentDayData() {
-    if (!state.days[selectedDateKey]) {
-      return null;
+  async function syncDayToSupabase(dateKey) {
+    if (!supabaseClient || !currentUserId || currentUserId === "anonymous") return;
+    const dayData = state.days[dateKey];
+    try {
+      if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) {
+        // Deleted or empty: delete row in database
+        await supabaseClient
+          .from('planner_days')
+          .delete()
+          .eq('user_id', currentUserId)
+          .eq('day', dateKey);
+      } else {
+        // Upsert row
+        await supabaseClient
+          .from('planner_days')
+          .upsert({
+            user_id: currentUserId,
+            day: dateKey,
+            start_min: dayData.startMinutes,
+            end_min: dayData.endMinutes,
+            slots: dayData.slots,
+          }, { onConflict: 'user_id,day' });
+      }
+    } catch (err) {
+      console.warn("Supabase syncDay error:", err);
     }
-    return state.days[selectedDateKey];
+  }
+
+  async function loadPlans() {
+    // 1. Load from user-scoped localStorage first
+    loadFromLocalStorage();
+
+    // 2. Fetch from Supabase planner_days if signed in
+    if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+      try {
+        const { data, error } = await supabaseClient
+          .from('planner_days')
+          .select('day, start_min, end_min, slots')
+          .eq('user_id', currentUserId);
+
+        if (!error && Array.isArray(data)) {
+          data.forEach((row) => {
+            if (row && typeof row.day === "string") {
+              state.days[row.day] = {
+                startMinutes: typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME,
+                endMinutes: typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME,
+                slots: sanitizeSlots(row.slots),
+              };
+            }
+          });
+          // Update local cache
+          saveToLocalStorage();
+        }
+      } catch (err) {
+        console.warn("Supabase loadPlans error:", err);
+      }
+    }
+  }
+
+  function saveStorage(syncDateKey) {
+    saveToLocalStorage();
+    const dateToSync = syncDateKey || selectedDateKey;
+    if (dateToSync) {
+      syncDayToSupabase(dateToSync);
+    }
+  }
+
+  function flushPendingDebouncedSave() {
+    if (textSaveDebounceTimer) {
+      clearTimeout(textSaveDebounceTimer);
+      textSaveDebounceTimer = null;
+      saveStorage(selectedDateKey);
+    }
+  }
+
+  // --- DAY DATA GETTER & STATUS HELPERS ---
+  function getCurrentDayData() {
+    return state.days[selectedDateKey] || null;
+  }
+
+  function hasSavedSlotsWithDuration(dayData) {
+    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) return false;
+    return dayData.slots.some((s) => typeof s.durationMinutes === "number" && s.durationMinutes > 0);
   }
 
   function isScheduleFinished(dayData) {
@@ -242,10 +362,21 @@
     let currentStart = dayData.startMinutes;
     for (let i = 0; i < dayData.slots.length; i++) {
       const slot = dayData.slots[i];
-      if (slot.durationMinutes === null) return false;
+      if (typeof slot.durationMinutes !== "number" || slot.durationMinutes === null) return false;
       currentStart += slot.durationMinutes;
     }
     return currentStart === dayData.endMinutes;
+  }
+
+  function getFirstUnfinishedSlotIndex(dayData) {
+    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) return 0;
+    for (let i = 0; i < dayData.slots.length; i++) {
+      if (typeof dayData.slots[i].durationMinutes !== "number" || dayData.slots[i].durationMinutes === null) {
+        return i;
+      }
+    }
+    // All existing slots have durations, but total does not reach endMinutes
+    return dayData.slots.length - 1;
   }
 
   function getSlotsWithTimes() {
@@ -254,7 +385,7 @@
     let currentStart = dayData.startMinutes;
     return dayData.slots.map((slot, index) => {
       const start = currentStart;
-      const duration = slot.durationMinutes;
+      const duration = typeof slot.durationMinutes === "number" ? slot.durationMinutes : null;
       const end = duration !== null ? start + duration : start;
       currentStart = end;
       return {
@@ -281,7 +412,6 @@
     if (completedCount > 0 && completedCount < total) return "PARTLY_COMPLETED";
     if (notCompletedCount > 0 && notCompletedCount < total) return "PARTLY_COMPLETED";
 
-    // All slots are still unmarked ("NONE")
     return "PLANNED_UNMARKED";
   }
 
@@ -308,11 +438,13 @@
   }
 
   function handleSelectDate(dateKey) {
+    flushPendingDebouncedSave();
     selectedDateKey = dateKey;
     updateDateButtonsState();
 
     const dayData = getCurrentDayData();
-    if (isScheduleFinished(dayData)) {
+    // Rule: If that date has at least one saved slot with a duration, open the SUMMARY page
+    if (hasSavedSlotsWithDuration(dayData)) {
       renderSummaryView();
       switchView('summary');
     } else {
@@ -394,7 +526,6 @@
 
     if (hasError) return;
 
-    // Check if settings changed for this date
     const dayData = getCurrentDayData();
     const settingsChanged = dayData && (dayData.startMinutes !== startMins || dayData.endMinutes !== endMins);
 
@@ -433,7 +564,7 @@
           ];
         }
       }
-      saveStorage();
+      saveStorage(selectedDateKey);
       currentSlotIndex = 0;
       renderSlotPage();
       switchView('slot');
@@ -460,7 +591,7 @@
         },
       ],
     };
-    saveStorage();
+    saveStorage(selectedDateKey);
     settingsConfirmDialog.close();
     unconfirmedSettingsChange = null;
     currentSlotIndex = 0;
@@ -486,7 +617,7 @@
     const selectedObj = parseLocalDateKey(selectedDateKey);
     slotDateDisplay.textContent = formatFullDisplayDate(selectedObj);
 
-    const currentEnd = slot.durationMinutes !== null ? current.startMinutes + slot.durationMinutes : null;
+    const currentEnd = typeof slot.durationMinutes === "number" && slot.durationMinutes !== null ? current.startMinutes + slot.durationMinutes : null;
     const isLastSlot = currentEnd !== null && currentEnd === dayEndMins;
 
     if (currentEnd !== null) {
@@ -497,16 +628,13 @@
       slotEndLabel.textContent = "";
     }
 
-    // Time left in day
     const effectiveEnd = currentEnd !== null && currentEnd <= dayEndMins ? currentEnd : current.startMinutes;
     slotTimeLeft.textContent = formatRemainingTime(Math.max(0, dayEndMins - effectiveEnd));
 
-    // Number input value
-    slotWorkDurationInput.value = slot.durationMinutes !== null ? slot.durationMinutes : "";
+    slotWorkDurationInput.value = typeof slot.durationMinutes === "number" && slot.durationMinutes !== null ? slot.durationMinutes : "";
 
-    // Duration validation
     let durationError = "";
-    if (slot.durationMinutes !== null) {
+    if (typeof slot.durationMinutes === "number" && slot.durationMinutes !== null) {
       if (slot.durationMinutes < MIN_SLOT_DURATION) {
         durationError = `Duration must be a whole number of at least ${MIN_SLOT_DURATION} minutes.`;
       } else if (slot.durationMinutes > availableMins) {
@@ -527,12 +655,10 @@
       slotDurationError.textContent = "";
     }
 
-    const isDurationValid = slot.durationMinutes !== null && durationError === "";
+    const isDurationValid = typeof slot.durationMinutes === "number" && slot.durationMinutes !== null && durationError === "";
 
-    // Text box
     slotTaskInput.value = slot.taskText || "";
 
-    // Finish / Next Button
     if (isLastSlot) {
       slotNextBtn.textContent = "Finish ✓";
       slotNextBtn.className = "btn btn-finish";
@@ -559,7 +685,7 @@
       durationConfirmDialog.showModal();
     } else {
       dayData.slots[idx].durationMinutes = newDuration;
-      saveStorage();
+      saveStorage(selectedDateKey);
       renderSlotPage();
     }
   }
@@ -577,7 +703,7 @@
       const { slotIndex, newDuration } = durationChangeConfirm;
       dayData.slots = dayData.slots.slice(0, slotIndex + 1);
       dayData.slots[slotIndex].durationMinutes = newDuration;
-      saveStorage();
+      saveStorage(selectedDateKey);
     }
     durationConfirmDialog.close();
     durationChangeConfirm = null;
@@ -590,7 +716,7 @@
       const dayData = getCurrentDayData();
       if (dayData && dayData.slots[currentSlotIndex]) {
         dayData.slots[currentSlotIndex].durationMinutes = null;
-        saveStorage();
+        saveStorage(selectedDateKey);
         renderSlotPage();
       }
     } else {
@@ -605,11 +731,19 @@
     const dayData = getCurrentDayData();
     if (dayData && dayData.slots[currentSlotIndex]) {
       dayData.slots[currentSlotIndex].taskText = slotTaskInput.value;
-      saveStorage();
+      // Save debounced after at most 600ms
+      if (textSaveDebounceTimer) {
+        clearTimeout(textSaveDebounceTimer);
+      }
+      textSaveDebounceTimer = setTimeout(() => {
+        textSaveDebounceTimer = null;
+        saveStorage(selectedDateKey);
+      }, 500);
     }
   });
 
   slotBackBtn.addEventListener('click', () => {
+    flushPendingDebouncedSave();
     if (currentSlotIndex === 0) {
       initSettingsView();
       switchView('settings');
@@ -620,12 +754,13 @@
   });
 
   slotNextBtn.addEventListener('click', () => {
+    flushPendingDebouncedSave();
     const dayData = getCurrentDayData();
     if (!dayData) return;
 
     const slotsWithTimes = getSlotsWithTimes();
     const current = slotsWithTimes[currentSlotIndex];
-    if (!current || current.slot.durationMinutes === null) return;
+    if (!current || typeof current.slot.durationMinutes !== "number" || current.slot.durationMinutes === null) return;
 
     const dayEndMins = dayData.endMinutes;
     if (current.endMinutes === dayEndMins) {
@@ -647,7 +782,7 @@
       };
       dayData.slots.push(newSlot);
       currentSlotIndex = nextIndex;
-      saveStorage();
+      saveStorage(selectedDateKey);
       renderSlotPage();
     }
   });
@@ -663,12 +798,20 @@
     const endStr = formatMinutesTo12Hour(dayData.endMinutes);
 
     const selectedObj = parseLocalDateKey(selectedDateKey);
-    const dateStr = formatFullDisplayDate(selectedObj);
+    const shortDateStr = formatShortDisplayDate(selectedObj);
 
-    // Header Subtitle: Date + Day range + slot count
-    summaryHeaderSubtitle.textContent = `${dateStr} • ${startStr} - ${endStr}, ${totalSlots} ${totalSlots === 1 ? "slot" : "slots"}`;
+    // Required Format: "Wed, 4 Mar 2026 - 9:00 AM - 6:00 PM, 7 slots"
+    summaryHeaderSubtitle.textContent = `${shortDateStr} - ${startStr} - ${endStr}, ${totalSlots} ${totalSlots === 1 ? "slot" : "slots"}`;
 
-    // Render cards
+    // Handle Unfinished Plan Banner
+    const isFinished = isScheduleFinished(dayData);
+    if (!isFinished) {
+      summaryUnfinishedBanner.style.display = "flex";
+    } else {
+      summaryUnfinishedBanner.style.display = "none";
+    }
+
+    // Render cards using textContent exclusively for user text
     summarySlotsList.innerHTML = "";
     slotsWithTimes.forEach(({ slot, slotNumber, startMinutes, endMinutes }) => {
       const card = document.createElement('div');
@@ -690,19 +833,31 @@
       }
 
       const cardBody = document.createElement('div');
-      cardBody.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <span style="font-size: 0.75rem; font-weight: 700; background: var(--slate-200); color: var(--slate-800); padding: 2px 8px; border-radius: 9999px;">Slot ${slotNumber}</span>
-          <span style="font-size: 0.75rem; color: var(--slate-500); font-weight: 600;">${slot.durationMinutes ? slot.durationMinutes + " min" : ""}</span>
-        </div>
-        <div style="font-family: monospace; font-weight: 700; color: var(--slate-900); font-size: 1rem; margin-bottom: 8px;">
-          ${slotStartStr} – ${slotEndStr}
-        </div>
-      `;
+
+      const metaRow = document.createElement('div');
+      metaRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;";
+
+      const badgeSpan = document.createElement('span');
+      badgeSpan.style.cssText = "font-size: 0.75rem; font-weight: 700; background: var(--slate-200); color: var(--slate-800); padding: 2px 8px; border-radius: 9999px;";
+      badgeSpan.textContent = `Slot ${slotNumber}`;
+
+      const durSpan = document.createElement('span');
+      durSpan.style.cssText = "font-size: 0.75rem; color: var(--slate-500); font-weight: 600;";
+      durSpan.textContent = typeof slot.durationMinutes === "number" && slot.durationMinutes ? `${slot.durationMinutes} min` : "No duration set";
+
+      metaRow.appendChild(badgeSpan);
+      metaRow.appendChild(durSpan);
+
+      const timeRangeDiv = document.createElement('div');
+      timeRangeDiv.style.cssText = "font-family: monospace; font-weight: 700; color: var(--slate-900); font-size: 1rem; margin-bottom: 8px;";
+      timeRangeDiv.textContent = `${slotStartStr} – ${slotEndStr}`;
+
+      cardBody.appendChild(metaRow);
+      cardBody.appendChild(timeRangeDiv);
       cardBody.appendChild(taskContainer);
       card.appendChild(cardBody);
 
-      // Slot Card Status Buttons: ✓ Completed and ✗ Not Completed
+      // Status Buttons: ✓ Completed and ✗ Not Completed
       const btnGroup = document.createElement('div');
       btnGroup.className = "slot-status-btn-group";
 
@@ -732,14 +887,14 @@
 
       btnCompleted.addEventListener('click', () => {
         slot.status = slot.status === "COMPLETED" ? "NONE" : "COMPLETED";
-        saveStorage();
+        saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
         updateSummaryResult();
       });
 
       btnNotCompleted.addEventListener('click', () => {
         slot.status = slot.status === "NOT_COMPLETED" ? "NONE" : "NOT_COMPLETED";
-        saveStorage();
+        saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
         updateSummaryResult();
       });
@@ -756,6 +911,14 @@
     updateSummaryResult();
   }
 
+  summaryContinuePlanningBtn.addEventListener('click', () => {
+    const dayData = getCurrentDayData();
+    if (!dayData) return;
+    currentSlotIndex = getFirstUnfinishedSlotIndex(dayData);
+    renderSlotPage();
+    switchView('slot');
+  });
+
   function updateSummaryResult() {
     if (!summaryResultArea) return;
     summaryResultArea.innerHTML = "";
@@ -764,10 +927,12 @@
     if (!dayData || !dayData.slots) return;
 
     const total = dayData.slots.length;
+    const isFinished = isScheduleFinished(dayData);
     const anyNotCompleted = dayData.slots.some((s) => s.status === "NOT_COMPLETED");
     const allCompleted = total > 0 && dayData.slots.every((s) => s.status === "COMPLETED");
 
-    if (allCompleted) {
+    // Result card with happy image appears ONLY when every slot is Completed AND plan is finished
+    if (allCompleted && isFinished) {
       const card = document.createElement('div');
       card.className = "result-card";
 
@@ -857,12 +1022,11 @@
 
   dialogConfirmBtn.addEventListener('click', () => {
     newDayDialog.close();
-    // Clear only this date's slots
     if (state.days[selectedDateKey]) {
       state.days[selectedDateKey].slots = [];
     }
     currentSlotIndex = 0;
-    saveStorage();
+    saveStorage(selectedDateKey);
     initSettingsView();
     switchView('settings');
   });
@@ -875,7 +1039,6 @@
     const firstDayIndex = new Date(calendarViewYear, calendarViewMonth, 1).getDay();
     const daysInMonth = new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate();
 
-    // Leading empty cells
     for (let i = 0; i < firstDayIndex; i++) {
       const emptyCell = document.createElement('div');
       emptyCell.className = "calendar-day-cell empty-slot";
@@ -936,7 +1099,6 @@
   }
 
   calendarToggleBtn.addEventListener('click', () => {
-    // Center calendar view on selected date
     const selectedObj = parseLocalDateKey(selectedDateKey);
     calendarViewYear = selectedObj.getFullYear();
     calendarViewMonth = selectedObj.getMonth();
@@ -966,7 +1128,7 @@
     renderCalendarGrid();
   });
 
-  // Close native dialogs on outside click
+  // Dialog backdrop close listeners
   [newDayDialog, settingsConfirmDialog, durationConfirmDialog, calendarDialog].forEach((diag) => {
     diag.addEventListener('click', (e) => {
       const rect = diag.getBoundingClientRect();
@@ -981,38 +1143,10 @@
     });
   });
 
-  // Log out button element
-  const btnLogout = document.getElementById('btn-logout');
-
-  // Helper to check Supabase config and auth session
-  function areKeysPlaceholder() {
-    return (
-      typeof SUPABASE_URL === 'undefined' ||
-      typeof SUPABASE_ANON_KEY === 'undefined' ||
-      !SUPABASE_URL ||
-      !SUPABASE_ANON_KEY ||
-      SUPABASE_URL === 'PASTE_PROJECT_URL_HERE' ||
-      SUPABASE_ANON_KEY === 'PASTE_ANON_KEY_HERE'
-    );
-  }
-
-  function getSupabaseClient() {
-    if (areKeysPlaceholder()) return null;
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-      try {
-        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      } catch (e) {
-        console.error('Supabase init error in app.js:', e);
-        return null;
-      }
-    }
-    return null;
-  }
-
-  const supabaseClient = getSupabaseClient();
-
+  // Log out button: signs out and clears in-memory state; NEVER deletes stored plans
   if (btnLogout) {
     btnLogout.addEventListener('click', async () => {
+      flushPendingDebouncedSave();
       if (supabaseClient) {
         try {
           await supabaseClient.auth.signOut();
@@ -1020,31 +1154,54 @@
           console.warn('SignOut error:', e);
         }
       }
+      // Reset in-memory copy only
+      state = { lastTimes: { startMinutes: MIN_WORK_TIME, endMinutes: MAX_WORK_TIME }, days: {} };
       window.location.replace('login.html');
     });
   }
 
+  // Save when page is hidden or closed
+  window.addEventListener('pagehide', flushPendingDebouncedSave);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushPendingDebouncedSave();
+    }
+  });
+
   // --- INITIALIZE PLANNER CODE ONLY IF SESSION EXISTS ---
   async function checkAuthAndStart() {
     if (areKeysPlaceholder() || !supabaseClient) {
-      // No active session configured; redirect immediately without showing planner
       window.location.replace('login.html');
       return;
     }
 
     try {
       const { data, error } = await supabaseClient.auth.getSession();
-      if (error || !data || !data.session) {
+      if (error || !data || !data.session || !data.session.user) {
         window.location.replace('login.html');
         return;
       }
 
-      // Valid session exists: reveal planner and start
+      currentUserId = data.session.user.id;
+      storageKey = `dailyPlanner:${currentUserId}`;
+
+      // Load user's saved plans BEFORE revealing view
+      await loadPlans();
+
       document.documentElement.classList.add('auth-ready');
-      loadStorage();
-      initSettingsView();
-      switchView('settings');
+
+      // Check if Today has saved slots with duration
+      const todayData = getCurrentDayData();
+      if (hasSavedSlotsWithDuration(todayData)) {
+        updateDateButtonsState();
+        renderSummaryView();
+        switchView('summary');
+      } else {
+        initSettingsView();
+        switchView('settings');
+      }
     } catch (e) {
+      console.error('Auth verification error:', e);
       window.location.replace('login.html');
     }
   }
