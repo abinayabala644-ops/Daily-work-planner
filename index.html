@@ -68,6 +68,49 @@
       outline-offset: 2px;
     }
 
+    .empty-summary-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 14px;
+      padding: 32px 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .empty-summary-message {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--slate-800);
+      margin-bottom: 16px;
+    }
+
+    .btn-plan-this-day {
+      min-height: 44px;
+      padding: 10px 24px;
+      background: var(--slate-900);
+      color: #ffffff;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-plan-this-day:hover {
+      background: var(--slate-800);
+    }
+
+    .btn-plan-this-day:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
     .btn-logout {
       min-height: 44px;
       padding: 8px 16px;
@@ -987,10 +1030,18 @@
     <div id="view-summary" class="card views">
       <div class="header-row">
         <div>
-          <h1 class="header-title">Daily Work Summary</h1>
+          <h1 id="summary-header-title" class="header-title" tabindex="-1">Daily Work Summary</h1>
           <p id="summary-header-subtitle" class="header-subtitle">9:00 AM - 6:00 PM, 0 slots</p>
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+          <button type="button" id="summary-calendar-toggle-btn" class="btn-icon" aria-label="Open calendar" title="Open calendar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </button>
           <button type="button" id="summary-back-btn" class="btn btn-secondary">
             &larr; Back
           </button>
@@ -1008,6 +1059,14 @@
         <p class="unfinished-notice-text">This plan is not finished.</p>
         <button type="button" id="summary-continue-planning-btn" class="btn-continue-planning">
           Continue planning
+        </button>
+      </div>
+
+      <!-- Empty Day State on Summary -->
+      <div id="summary-empty-state" class="empty-summary-card" style="display: none;">
+        <p class="empty-summary-message">No plan saved for this date</p>
+        <button type="button" id="summary-plan-this-day-btn" class="btn-plan-this-day">
+          Plan this day
         </button>
       </div>
 

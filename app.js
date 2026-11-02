@@ -124,9 +124,13 @@
   const slotNextBtn = document.getElementById('slot-next-btn');
 
   // Summary Elements
+  const summaryHeaderTitle = document.getElementById('summary-header-title');
   const summaryHeaderSubtitle = document.getElementById('summary-header-subtitle');
   const summaryUnfinishedBanner = document.getElementById('summary-unfinished-banner');
   const summaryContinuePlanningBtn = document.getElementById('summary-continue-planning-btn');
+  const summaryEmptyState = document.getElementById('summary-empty-state');
+  const summaryPlanThisDayBtn = document.getElementById('summary-plan-this-day-btn');
+  const summaryCalendarToggleBtn = document.getElementById('summary-calendar-toggle-btn');
   const summaryBackBtn = document.getElementById('summary-back-btn');
   const summaryEditTimesBtn = document.getElementById('summary-edit-times-btn');
   const summaryStartNewDayBtn = document.getElementById('summary-start-new-day-btn');
@@ -442,14 +446,13 @@
     selectedDateKey = dateKey;
     updateDateButtonsState();
 
-    const dayData = getCurrentDayData();
-    // Rule: If that date has at least one saved slot with a duration, open the SUMMARY page
-    if (hasSavedSlotsWithDuration(dayData)) {
-      renderSummaryView();
-      switchView('summary');
-    } else {
-      initSettingsView();
-      switchView('settings');
+    // Opening a date (via Yesterday/Today/Tomorrow or calendar) always opens the Summary page
+    renderSummaryView();
+    switchView('summary');
+
+    // Move focus to Summary page title for accessibility
+    if (summaryHeaderTitle) {
+      summaryHeaderTitle.focus();
     }
   }
 
@@ -790,15 +793,25 @@
   // --- SUMMARY VIEW LOGIC ---
   function renderSummaryView() {
     const dayData = getCurrentDayData();
-    if (!dayData) return;
+    const selectedObj = parseLocalDateKey(selectedDateKey);
+    const shortDateStr = formatShortDisplayDate(selectedObj);
+
+    // If there is no saved plan for this date (or slots array is empty)
+    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) {
+      summaryHeaderSubtitle.textContent = `${shortDateStr} - No slots planned`;
+      if (summaryUnfinishedBanner) summaryUnfinishedBanner.style.display = "none";
+      if (summaryEmptyState) summaryEmptyState.style.display = "block";
+      summarySlotsList.innerHTML = "";
+      if (summaryResultArea) summaryResultArea.innerHTML = "";
+      return;
+    }
+
+    if (summaryEmptyState) summaryEmptyState.style.display = "none";
 
     const slotsWithTimes = getSlotsWithTimes();
     const totalSlots = slotsWithTimes.length;
     const startStr = formatMinutesTo12Hour(dayData.startMinutes);
     const endStr = formatMinutesTo12Hour(dayData.endMinutes);
-
-    const selectedObj = parseLocalDateKey(selectedDateKey);
-    const shortDateStr = formatShortDisplayDate(selectedObj);
 
     // Required Format: "Wed, 4 Mar 2026 - 9:00 AM - 6:00 PM, 7 slots"
     summaryHeaderSubtitle.textContent = `${shortDateStr} - ${startStr} - ${endStr}, ${totalSlots} ${totalSlots === 1 ? "slot" : "slots"}`;
@@ -806,9 +819,9 @@
     // Handle Unfinished Plan Banner
     const isFinished = isScheduleFinished(dayData);
     if (!isFinished) {
-      summaryUnfinishedBanner.style.display = "flex";
+      if (summaryUnfinishedBanner) summaryUnfinishedBanner.style.display = "flex";
     } else {
-      summaryUnfinishedBanner.style.display = "none";
+      if (summaryUnfinishedBanner) summaryUnfinishedBanner.style.display = "none";
     }
 
     // Render cards using textContent exclusively for user text
@@ -918,6 +931,13 @@
     renderSlotPage();
     switchView('slot');
   });
+
+  if (summaryPlanThisDayBtn) {
+    summaryPlanThisDayBtn.addEventListener('click', () => {
+      initSettingsView();
+      switchView('settings');
+    });
+  }
 
   function updateSummaryResult() {
     if (!summaryResultArea) return;
@@ -1112,13 +1132,19 @@
     }
   }
 
-  calendarToggleBtn.addEventListener('click', () => {
+  function openCalendarDialog() {
     const selectedObj = parseLocalDateKey(selectedDateKey);
     calendarViewYear = selectedObj.getFullYear();
     calendarViewMonth = selectedObj.getMonth();
     renderCalendarGrid();
     calendarDialog.showModal();
-  });
+  }
+
+  calendarToggleBtn.addEventListener('click', openCalendarDialog);
+
+  if (summaryCalendarToggleBtn) {
+    summaryCalendarToggleBtn.addEventListener('click', openCalendarDialog);
+  }
 
   calendarCloseBtn.addEventListener('click', () => {
     calendarDialog.close();
