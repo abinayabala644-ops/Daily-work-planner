@@ -1,53 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 293" width="440" height="293">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 320" width="500" height="320">
   <defs>
-    <linearGradient id="bgEncourage" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Background Amber / Sunset Glow Gradient -->
+    <linearGradient id="bgEncourageGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#fffbeb"/>
       <stop offset="100%" stop-color="#fef3c7"/>
     </linearGradient>
-    <linearGradient id="faceEncourage" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fde047"/>
-      <stop offset="100%" stop-color="#f59e0b"/>
+
+    <!-- 3D Sphere Sphere Gradients -->
+    <radialGradient id="sphereGradEncourage" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#fffbeb"/>
+      <stop offset="25%" stop-color="#fde047"/>
+      <stop offset="70%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </radialGradient>
+
+    <!-- Specular Highlight -->
+    <linearGradient id="specularGrad2" x1="0%" y1="0%" x2="50%" y2="80%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <filter id="shadowEncourage" x="-10%" y="-10%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#d97706" flood-opacity="0.18"/>
+
+    <!-- Soft Drop Shadows -->
+    <filter id="softShadowEncourage" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#d97706" flood-opacity="0.22"/>
     </filter>
+    <filter id="badgeShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#b45309" flood-opacity="0.25"/>
+    </filter>
+
+    <linearGradient id="muscleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fed7aa"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
   </defs>
 
-  <!-- Card Background -->
-  <rect width="440" height="293" rx="16" fill="url(#bgEncourage)"/>
+  <!-- Container Rounded Plaque -->
+  <rect width="500" height="320" rx="20" fill="url(#bgEncourageGrad)"/>
+  <rect x="2" y="2" width="496" height="316" rx="18" fill="none" stroke="#fde68a" stroke-width="2"/>
 
-  <!-- Centered Emoji Avatar -->
-  <g transform="translate(220, 146)">
-    <!-- Face Background -->
-    <circle r="72" fill="url(#faceEncourage)" filter="url(#shadowEncourage)" stroke="#b45309" stroke-width="2.5"/>
+  <!-- Energy Wave Lines / Sparkles in background -->
+  <path d="M70 90 Q100 80 130 90" stroke="#f59e0b" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+  <path d="M370 90 Q400 80 430 90" stroke="#f59e0b" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+  <circle cx="90" cy="220" r="4" fill="#f59e0b" opacity="0.5"/>
+  <circle cx="410" cy="220" r="5" fill="#f59e0b" opacity="0.5"/>
 
-    <!-- Wink Left Eye (confident wink) -->
-    <path d="M-40 -12 Q-26 -2 0 -12" fill="none" stroke="#78350f" stroke-width="5" stroke-linecap="round"/>
+  <!-- Central Emoji Character -->
+  <g transform="translate(250, 155)">
+    <!-- Main 3D Sphere -->
+    <circle r="82" fill="url(#sphereGradEncourage)" filter="url(#softShadowEncourage)"/>
 
-    <!-- Open Right Eye with highlight -->
-    <circle cx="28" cy="-12" r="9" fill="#78350f"/>
-    <circle cx="26" cy="-15" r="3" fill="#ffffff"/>
+    <!-- Specular 3D Reflection overlay -->
+    <ellipse cx="-24" cy="-34" rx="46" ry="28" fill="url(#specularGrad2)" transform="rotate(-25, -24, -34)"/>
 
-    <!-- Confident Eyebrows -->
-    <path d="M-42 -26 Q-28 -34 -14 -28" fill="none" stroke="#78350f" stroke-width="3.5" stroke-linecap="round"/>
-    <path d="M14 -32 Q28 -36 42 -28" fill="none" stroke="#78350f" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Left Eye: Confident / Encouraging Wink -->
+    <path d="M-48 -8 C-36 6 -14 6 -2 -8" fill="none" stroke="#451a03" stroke-width="6" stroke-linecap="round"/>
 
-    <!-- Rosy Cheek on wink side -->
-    <circle cx="-42" cy="8" r="9" fill="#f87171" opacity="0.45"/>
-    <circle cx="42" cy="8" r="9" fill="#f87171" opacity="0.45"/>
-
-    <!-- Encouraging Warm Smile -->
-    <path d="M-28 14 Q0 42 28 14" fill="none" stroke="#78350f" stroke-width="5" stroke-linecap="round"/>
-
-    <!-- Flexed Bicep / Muscle Icon on side -->
-    <g transform="translate(74, 20)">
-      <circle cx="0" cy="0" r="18" fill="#fde047" stroke="#b45309" stroke-width="2"/>
-      <text x="-8" y="6" font-family="system-ui, sans-serif" font-size="15">💪</text>
+    <!-- Right Eye: Wide Open & Determined -->
+    <g transform="translate(30, -8)">
+      <circle cx="0" cy="0" r="14" fill="#451a03"/>
+      <circle cx="-3" cy="-4" r="5" fill="#ffffff"/>
+      <circle cx="3" cy="3" r="2.5" fill="#ffffff"/>
     </g>
 
-    <g transform="translate(-74, 20)">
-      <circle cx="0" cy="0" r="18" fill="#fde047" stroke="#b45309" stroke-width="2"/>
-      <text x="-8" y="6" font-family="system-ui, sans-serif" font-size="15">✨</text>
+    <!-- Eyebrows (Dynamic & Inspiring) -->
+    <path d="M-48 -24 Q-30 -34 -10 -26" fill="none" stroke="#451a03" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M12 -32 Q32 -38 48 -28" fill="none" stroke="#451a03" stroke-width="4.5" stroke-linecap="round"/>
+
+    <!-- Cheerful Cheeks -->
+    <ellipse cx="-48" cy="16" rx="13" ry="8" fill="#f97316" opacity="0.35"/>
+    <ellipse cx="48" cy="16" rx="13" ry="8" fill="#f97316" opacity="0.35"/>
+
+    <!-- Confident Warm Smile -->
+    <path d="M-30 16 Q0 48 30 16" fill="none" stroke="#451a03" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Left Power / Sparkle Orb -->
+    <g transform="translate(-94, 18)" filter="url(#badgeShadow)">
+      <circle cx="0" cy="0" r="22" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+      <text x="-9" y="8" font-size="18" font-family="system-ui, sans-serif">🔥</text>
+    </g>
+
+    <!-- Right Flexed Bicep Orb -->
+    <g transform="translate(94, 18)" filter="url(#badgeShadow)">
+      <circle cx="0" cy="0" r="22" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+      <text x="-9" y="8" font-size="18" font-family="system-ui, sans-serif">💪</text>
     </g>
   </g>
 </svg>

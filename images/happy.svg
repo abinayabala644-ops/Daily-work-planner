@@ -1,54 +1,108 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 293" width="440" height="293">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 320" width="500" height="320">
   <defs>
+    <!-- Background Card Gradient -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ecfdf5"/>
-      <stop offset="100%" stop-color="#d1fae5"/>
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
     </linearGradient>
-    <linearGradient id="faceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fde047"/>
-      <stop offset="100%" stop-color="#eab308"/>
+
+    <!-- 3D Sphere Sphere Gradients -->
+    <radialGradient id="sphereGrad" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#fffbeb"/>
+      <stop offset="25%" stop-color="#fde047"/>
+      <stop offset="70%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </radialGradient>
+
+    <!-- Realistic Specular Highlight -->
+    <linearGradient id="specularGrad" x1="0%" y1="0%" x2="50%" y2="80%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#047857" flood-opacity="0.15"/>
+
+    <!-- Soft Drop Shadows -->
+    <filter id="softShadow" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#059669" flood-opacity="0.22"/>
     </filter>
+    <filter id="thumbShadow" x="-30%" y="-30%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+
+    <!-- Metallic Trophy / Star Gold Gradient -->
+    <linearGradient id="goldStar" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
   </defs>
 
-  <!-- Card Background -->
-  <rect width="440" height="293" rx="16" fill="url(#bgGrad)"/>
+  <!-- Container Rounded Plaque -->
+  <rect width="500" height="320" rx="20" fill="url(#bgGrad)"/>
+  <rect x="2" y="2" width="496" height="316" rx="18" fill="none" stroke="#bbf7d0" stroke-width="2"/>
 
-  <!-- Centered Emoji Avatar -->
-  <g transform="translate(220, 146)">
-    <!-- Face Background with shadow -->
-    <circle r="72" fill="url(#faceGrad)" filter="url(#shadow)" stroke="#ca8a04" stroke-width="2.5"/>
+  <!-- Celebratory Background Glow Particles -->
+  <circle cx="100" cy="70" r="4" fill="#10b981" opacity="0.4"/>
+  <circle cx="410" cy="80" r="5" fill="#10b981" opacity="0.4"/>
+  <circle cx="70" cy="240" r="6" fill="#10b981" opacity="0.3"/>
+  <circle cx="430" cy="230" r="4.5" fill="#10b981" opacity="0.3"/>
 
-    <!-- Happy Eyes (curved arc) -->
-    <path d="M-38 -12 Q-26 -28 -14 -12" fill="none" stroke="#713f12" stroke-width="5" stroke-linecap="round"/>
-    <path d="M14 -12 Q26 -28 38 -12" fill="none" stroke="#713f12" stroke-width="5" stroke-linecap="round"/>
+  <!-- Left Laurel / Stars decoration -->
+  <g transform="translate(85, 140)">
+    <polygon points="0,-16 4,-4 16,-4 7,3 10,15 0,8 -10,15 -7,3 -16,-4 -4,-4" fill="url(#goldStar)"/>
+  </g>
+  <g transform="translate(415, 140)">
+    <polygon points="0,-16 4,-4 16,-4 7,3 10,15 0,8 -10,15 -7,3 -16,-4 -4,-4" fill="url(#goldStar)"/>
+  </g>
 
-    <!-- Rosy Cheeks -->
-    <circle cx="-42" cy="14" r="9" fill="#f87171" opacity="0.45"/>
-    <circle cx="42" cy="14" r="9" fill="#f87171" opacity="0.45"/>
+  <!-- Central Emoji Character -->
+  <g transform="translate(250, 155)">
+    <!-- Main 3D Sphere -->
+    <circle r="82" fill="url(#sphereGrad)" filter="url(#softShadow)"/>
 
-    <!-- Big Happy Smile with white teeth & tongue -->
-    <path d="M-36 10 Q0 60 36 10 Z" fill="#713f12"/>
-    <path d="M-28 12 Q0 24 28 12 Q20 20 0 20 Q-20 20 -28 12 Z" fill="#ffffff"/>
-    <path d="M-18 25 Q0 26 18 25 Q12 48 0 48 Q-12 48 -18 25 Z" fill="#f43f5e"/>
+    <!-- Specular 3D Reflection overlay -->
+    <ellipse cx="-24" cy="-34" rx="46" ry="28" fill="url(#specularGrad)" transform="rotate(-25, -24, -34)"/>
 
-    <!-- Thumbs Up Left -->
-    <g transform="translate(-76, 26) rotate(-15)">
-      <circle cx="0" cy="0" r="18" fill="#fde047" stroke="#ca8a04" stroke-width="2"/>
-      <path d="M-4 -4 L0 -14 Q3 -18 7 -14 L6 -4" fill="#fde047" stroke="#ca8a04" stroke-width="2" stroke-linecap="round"/>
-      <text x="-6" y="5" font-family="system-ui, sans-serif" font-size="14" font-weight="800" fill="#713f12">👍</text>
+    <!-- Smiling Eyes (Delighted Curved Arcs) -->
+    <path d="M-46 -10 Q-32 -30 -18 -10" fill="none" stroke="#451a03" stroke-width="6" stroke-linecap="round"/>
+    <path d="M18 -10 Q32 -30 46 -10" fill="none" stroke="#451a03" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Soft Rosy Cheeks -->
+    <ellipse cx="-50" cy="18" rx="14" ry="9" fill="#f43f5e" opacity="0.35"/>
+    <ellipse cx="50" cy="18" rx="14" ry="9" fill="#f43f5e" opacity="0.35"/>
+
+    <!-- Broad Happy Smile with Teeth & Tongue -->
+    <g>
+      <path d="M-42 12 C-42 12 -30 64 0 64 C30 64 42 12 42 12 Z" fill="#451a03"/>
+      <!-- Top Teeth -->
+      <path d="M-34 13 C-20 28 20 28 34 13 C30 18 20 24 0 24 C-20 24 -30 18 -34 13 Z" fill="#ffffff"/>
+      <!-- Tongue -->
+      <path d="M-22 36 C-12 58 12 58 22 36 C14 44 -14 44 -22 36 Z" fill="#f43f5e"/>
     </g>
 
-    <!-- Thumbs Up Right -->
-    <g transform="translate(76, 26) rotate(15)">
-      <circle cx="0" cy="0" r="18" fill="#fde047" stroke="#ca8a04" stroke-width="2"/>
-      <text x="-8" y="5" font-family="system-ui, sans-serif" font-size="14" font-weight="800" fill="#713f12">👍</text>
+    <!-- Thumbs Up Left (3D Apple-style hand) -->
+    <g transform="translate(-86, 32) rotate(-16)" filter="url(#thumbShadow)">
+      <circle cx="0" cy="0" r="20" fill="url(#sphereGrad)"/>
+      <!-- Thumb digit -->
+      <path d="M-5 -2 L-2 -18 C0 -22 8 -22 10 -16 L6 0" fill="#fde047" stroke="#ca8a04" stroke-width="1.5" stroke-linecap="round"/>
+      <!-- Fingers curled -->
+      <rect x="-14" y="-8" width="18" height="24" rx="8" fill="#eab308"/>
+      <ellipse cx="-5" cy="4" rx="10" ry="12" fill="#fde047"/>
     </g>
 
-    <!-- Sparkles -->
-    <path d="M-58 -55 L-54 -45 L-44 -41 L-54 -37 L-58 -27 L-62 -37 L-72 -41 L-62 -45 Z" fill="#059669"/>
-    <path d="M58 -55 L62 -45 L72 -41 L62 -37 L58 -27 L54 -37 L44 -41 L54 -45 Z" fill="#059669"/>
+    <!-- Thumbs Up Right (3D Apple-style hand) -->
+    <g transform="translate(86, 32) rotate(16)" filter="url(#thumbShadow)">
+      <circle cx="0" cy="0" r="20" fill="url(#sphereGrad)"/>
+      <!-- Thumb digit -->
+      <path d="M5 -2 L2 -18 C0 -22 -8 -22 -10 -16 L-6 0" fill="#fde047" stroke="#ca8a04" stroke-width="1.5" stroke-linecap="round"/>
+      <!-- Fingers curled -->
+      <rect x="-4" y="-8" width="18" height="24" rx="8" fill="#eab308"/>
+      <ellipse cx="5" cy="4" rx="10" ry="12" fill="#fde047"/>
+    </g>
+
+    <!-- Top Badge / Party Sparkles -->
+    <g transform="translate(0, -96)">
+      <circle cx="0" cy="0" r="14" fill="#10b981"/>
+      <path d="M-5 -1 L-2 3 L5 -4" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
   </g>
 </svg>
