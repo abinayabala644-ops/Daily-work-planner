@@ -928,45 +928,26 @@
 
     const total = dayData.slots.length;
     const isFinished = isScheduleFinished(dayData);
-    const anyNotCompleted = dayData.slots.some((s) => s.status === "NOT_COMPLETED");
-    const allCompleted = total > 0 && dayData.slots.every((s) => s.status === "COMPLETED");
+    const completedCount = dayData.slots.filter((s) => s.status === "COMPLETED").length;
+    const notCompletedCount = dayData.slots.filter((s) => s.status === "NOT_COMPLETED").length;
+    const allCompleted = total > 0 && completedCount === total;
+    const allNotCompleted = total > 0 && notCompletedCount === total;
+    const isHalfOrPartlyCompleted = total > 0 && ((completedCount > 0 && completedCount < total) || (notCompletedCount > 0 && notCompletedCount < total));
 
-    // Result card with happy image appears ONLY when every slot is Completed AND plan is finished
-    if (allCompleted && isFinished) {
+    function createResultCard(modifierClass, messageText, imgSrc, imgAlt) {
       const card = document.createElement('div');
-      card.className = "result-card";
+      card.className = `result-card ${modifierClass}`.trim();
 
       const msg = document.createElement('h2');
       msg.className = "result-message";
-      msg.textContent = "Work complete";
+      msg.textContent = messageText;
 
       const img = document.createElement('img');
       img.className = "result-image";
-      img.alt = "Happy smiley with two thumbs up: Work Completed";
+      img.alt = imgAlt;
       img.width = 440;
       img.height = 293;
-      img.src = "images/happy.png";
-
-      let fileMissingNotified = false;
-      img.onerror = () => {
-        if (img.src.endsWith(".png")) {
-          img.src = "images/happy.jpg";
-        } else if (img.src.endsWith(".jpg")) {
-          img.src = "images/happy.jpeg";
-        } else if (img.src.endsWith(".jpeg")) {
-          img.src = "images/happy.webp";
-        } else if (img.src.endsWith(".webp")) {
-          img.src = "images/happy.gif";
-        } else {
-          if (imgWrapper && imgWrapper.parentNode) {
-            imgWrapper.parentNode.removeChild(imgWrapper);
-          }
-          if (!fileMissingNotified) {
-            console.warn("The file images/happy.* is missing.");
-            fileMissingNotified = true;
-          }
-        }
-      };
+      img.src = imgSrc;
 
       const imgWrapper = document.createElement('div');
       imgWrapper.className = "result-image-wrapper";
@@ -974,21 +955,54 @@
 
       card.appendChild(imgWrapper);
       card.appendChild(msg);
-      summaryResultArea.appendChild(card);
-    } else if (anyNotCompleted) {
-      const card = document.createElement('div');
-      card.className = "result-card result-card-not-completed";
+      return card;
+    }
 
-      const msg = document.createElement('h2');
-      msg.className = "result-message";
-      msg.textContent = "Work not complete";
-
-      card.appendChild(msg);
+    // 1. Fully Completed: Smiley Emoji + "Work complete"
+    if (allCompleted && isFinished) {
+      const card = createResultCard(
+        "",
+        "Work complete! Excellent job!",
+        "images/happy.svg",
+        "Happy smiley emoji: Work fully completed"
+      );
       summaryResultArea.appendChild(card);
-    } else {
+    }
+    // 2. Half / Partly Completed: Encouraging Emoji + Encouraging Message
+    else if (isHalfOrPartlyCompleted) {
+      const card = createResultCard(
+        "result-card-half-completed",
+        `Great effort! ${completedCount} of ${total} slots completed. Keep going!`,
+        "images/encouraging.svg",
+        "Encouraging emoji: Great progress made"
+      );
+      summaryResultArea.appendChild(card);
+    }
+    // 3. Not Full Completed / None Completed: Sad Emoji + Message
+    else if (allNotCompleted) {
+      const card = createResultCard(
+        "result-card-not-completed",
+        "Work not completed. Don't worry, tomorrow is a new day!",
+        "images/sad.svg",
+        "Reflective sad emoji: Work not completed"
+      );
+      summaryResultArea.appendChild(card);
+    }
+    // 4. Any not completed (unmarked mix): Show Sad Emoji with supportive message
+    else if (notCompletedCount > 0) {
+      const card = createResultCard(
+        "result-card-not-completed",
+        "Some tasks were not completed. Stay positive and keep pushing!",
+        "images/sad.svg",
+        "Reflective sad emoji: Work not fully completed"
+      );
+      summaryResultArea.appendChild(card);
+    }
+    // Neutral unmarked case: Prompt hint
+    else {
       const hint = document.createElement('p');
       hint.className = "result-hint";
-      hint.textContent = "Mark every slot Completed to see your result.";
+      hint.textContent = "Mark slots Completed or Not Completed to view your result.";
       summaryResultArea.appendChild(hint);
     }
   }
