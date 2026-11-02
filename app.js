@@ -963,7 +963,7 @@
       const card = createResultCard(
         "",
         "Work complete! Excellent job!",
-        "images/happy.svg",
+        "images/happy.png",
         "Happy smiley emoji: Work fully completed"
       );
       summaryResultArea.appendChild(card);
@@ -973,7 +973,7 @@
       const card = createResultCard(
         "result-card-half-completed",
         `Great effort! ${completedCount} of ${total} slots completed. Keep going!`,
-        "images/encouraging.svg",
+        "images/encouraging.png",
         "Encouraging emoji: Great progress made"
       );
       summaryResultArea.appendChild(card);
@@ -983,7 +983,7 @@
       const card = createResultCard(
         "result-card-not-completed",
         "Work not completed. Don't worry, tomorrow is a new day!",
-        "images/sad.svg",
+        "images/sad.png",
         "Reflective sad emoji: Work not completed"
       );
       summaryResultArea.appendChild(card);
@@ -993,7 +993,7 @@
       const card = createResultCard(
         "result-card-not-completed",
         "Some tasks were not completed. Stay positive and keep pushing!",
-        "images/sad.svg",
+        "images/sad.png",
         "Reflective sad emoji: Work not fully completed"
       );
       summaryResultArea.appendChild(card);
