@@ -813,7 +813,7 @@
     updateSlotValidationUI();
   }
 
-  function updateSlotValidationUI() {
+  function updateSlotValidationUI(showErrorAlways = false) {
     const dayData = getCurrentDayData();
     if (!dayData) return;
 
@@ -828,16 +828,18 @@
       dayData.endMinutes
     );
 
-    if (error) {
+    // Keep buttons clickable at all times
+    slotNextBtn.disabled = false;
+    slotFinishBtn.disabled = false;
+
+    // Show error message if explicitly requested or if user has typed something that has an error
+    const hasTypedSomething = Boolean(slotStartTimeInput.value || slotEndTimeInput.value);
+    if (error && (showErrorAlways || hasTypedSomething)) {
       slotRulesMessage.textContent = error;
       slotRulesMessage.style.display = "block";
-      slotNextBtn.disabled = true;
-      slotFinishBtn.disabled = true;
     } else {
       slotRulesMessage.textContent = "";
       slotRulesMessage.style.display = "none";
-      slotNextBtn.disabled = false;
-      slotFinishBtn.disabled = false;
     }
   }
 
@@ -929,7 +931,15 @@
     if (!dayData) return;
 
     const slot = dayData.slots[currentSlotIndex];
-    if (!isSlotValid(slot, currentSlotIndex, dayData.slots, dayData.startMinutes, dayData.endMinutes)) {
+    const validationError = getSlotValidationError(slot, currentSlotIndex, dayData.slots, dayData.startMinutes, dayData.endMinutes);
+    if (validationError) {
+      slotRulesMessage.textContent = validationError;
+      slotRulesMessage.style.display = "block";
+      if (!slotStartTimeInput.value) {
+        slotStartTimeInput.focus();
+      } else if (!slotEndTimeInput.value) {
+        slotEndTimeInput.focus();
+      }
       return;
     }
 
@@ -966,13 +976,22 @@
     if (!dayData) return;
 
     const slot = dayData.slots[currentSlotIndex];
-    if (!isSlotValid(slot, currentSlotIndex, dayData.slots, dayData.startMinutes, dayData.endMinutes)) {
+    const validationError = getSlotValidationError(slot, currentSlotIndex, dayData.slots, dayData.startMinutes, dayData.endMinutes);
+    if (validationError) {
+      slotRulesMessage.textContent = validationError;
+      slotRulesMessage.style.display = "block";
+      if (!slotStartTimeInput.value) {
+        slotStartTimeInput.focus();
+      } else if (!slotEndTimeInput.value) {
+        slotEndTimeInput.focus();
+      }
       return;
     }
 
     cleanupTrailingEmptySlots(dayData);
     saveStorage(selectedDateKey);
     renderSummaryView();
+    showSaveSuccessMessage();
     switchView('summary');
   });
 
