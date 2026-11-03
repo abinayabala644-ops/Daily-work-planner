@@ -68,6 +68,49 @@
       outline-offset: 2px;
     }
 
+    .empty-summary-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 14px;
+      padding: 32px 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .empty-summary-message {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--slate-800);
+      margin-bottom: 16px;
+    }
+
+    .btn-plan-this-day {
+      min-height: 44px;
+      padding: 10px 24px;
+      background: var(--slate-900);
+      color: #ffffff;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-plan-this-day:hover {
+      background: var(--slate-800);
+    }
+
+    .btn-plan-this-day:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
     .btn-logout {
       min-height: 44px;
       padding: 8px 16px;
@@ -460,6 +503,101 @@
       border-color: var(--slate-900);
       outline: 2px solid var(--slate-900);
       outline-offset: 1px;
+    }
+
+    
+    /* Save Section at bottom of Summary */
+    .summary-save-section {
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .save-message-box {
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .save-message-success {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+
+    .save-message-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    .btn-save-retry {
+      min-height: 44px;
+      padding: 8px 18px;
+      background: #991b1b;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-save-retry:focus-visible {
+      outline: 2px solid #7f1d1d;
+      outline-offset: 2px;
+    }
+
+    .summary-save-hint {
+      font-size: 0.88rem;
+      color: var(--slate-600);
+      margin: 0;
+      text-align: center;
+    }
+
+    .btn-summary-save {
+      width: 100%;
+      min-height: 44px;
+      padding: 12px 20px;
+      background: var(--slate-900);
+      color: #ffffff;
+      border: 1px solid var(--slate-900);
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+
+    .btn-summary-save:hover:not(:disabled) {
+      background: var(--slate-800);
+    }
+
+    .btn-summary-save:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
+    .btn-summary-save:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      background: var(--slate-400);
+      border-color: var(--slate-400);
     }
 
     /* Result Card Styles (at the very end of Summary page) */
@@ -949,48 +1087,56 @@
         <button type="button" id="slot-back-btn" class="btn btn-secondary">
           &larr; Back
         </button>
-        <div style="text-align: right;">
-          <span style="font-size: 0.75rem; color: var(--slate-500); font-weight: 600; text-transform: uppercase;">Time left in your day</span>
-          <p id="slot-time-left" style="font-size: 1.15rem; font-weight: 800; color: var(--slate-900); font-family: 'JetBrains Mono', monospace;">0 min</p>
+      </div>
+
+      <div class="slot-header-section" style="margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+          <span id="slot-badge" class="slot-badge" style="font-size: 0.88rem; padding: 4px 12px;">Slot 1</span>
+        </div>
+        <div id="slot-date-display" class="selected-date-slot-display" style="font-size: 1rem; color: var(--slate-600); font-weight: 600;"></div>
+      </div>
+
+      <div class="slot-times-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="slot-start-time" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Start time</label>
+          <input type="time" id="slot-start-time" class="time-input" style="min-height: 44px; font-size: 16px; width: 100%;" />
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="slot-end-time" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">End time</label>
+          <input type="time" id="slot-end-time" class="time-input" style="min-height: 44px; font-size: 16px; width: 100%;" />
         </div>
       </div>
 
-      <div class="slot-banner">
-        <div class="slot-badge-row">
-          <span id="slot-badge" class="slot-badge">Slot 1</span>
-          <span id="slot-end-label" style="font-size: 0.8rem; font-weight: 600; color: var(--slate-600);"></span>
-        </div>
-        <div id="slot-time-range" class="slot-time-range">9:00 AM - 9:45 AM</div>
-        <div id="slot-date-display" class="selected-date-slot-display"></div>
-      </div>
+      <div id="slot-rules-message" class="field-error-text" style="display: none; margin-bottom: 16px; font-size: 0.88rem; font-weight: 600;"></div>
 
-      <div class="form-group">
-        <label for="slot-work-duration" class="form-label">Set Your Work Duration</label>
-        <div class="duration-input-wrapper">
-          <input type="number" id="slot-work-duration" inputmode="numeric" min="5" placeholder="e.g. 45" class="duration-number-input" />
-          <span class="duration-unit-hint">minutes</span>
-        </div>
-        <p id="slot-duration-error" class="field-error-text" style="display: none;"></p>
-      </div>
-
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom: 20px;">
         <label for="slot-task-input" class="form-label">Work for this slot</label>
         <textarea id="slot-task-input" class="textarea-box" placeholder="Type what you plan to do in this slot…"></textarea>
       </div>
 
-      <button type="button" id="slot-next-btn" class="btn btn-primary" disabled>
-        Next &rarr;
-      </button>
+      <div class="slot-actions-row">
+        <button type="button" id="slot-next-btn" class="btn btn-primary" style="width: 100%; min-height: 44px;">
+          Next &rarr;
+        </button>
+      </div>
     </div>
 
     <!-- PAGE 3: DAILY WORK SUMMARY PAGE -->
     <div id="view-summary" class="card views">
       <div class="header-row">
         <div>
-          <h1 class="header-title">Daily Work Summary</h1>
+          <h1 id="summary-header-title" class="header-title" tabindex="-1">Daily Work Summary</h1>
           <p id="summary-header-subtitle" class="header-subtitle">9:00 AM - 6:00 PM, 0 slots</p>
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+          <button type="button" id="summary-calendar-toggle-btn" class="btn-icon" aria-label="Open calendar" title="Open calendar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </button>
           <button type="button" id="summary-back-btn" class="btn btn-secondary">
             &larr; Back
           </button>
@@ -1011,9 +1157,27 @@
         </button>
       </div>
 
+      <!-- Empty Day State on Summary -->
+      <div id="summary-empty-state" class="empty-summary-card" style="display: none;">
+        <p class="empty-summary-message">No plan saved for this date</p>
+        <button type="button" id="summary-plan-this-day-btn" class="btn-plan-this-day">
+          Plan this day
+        </button>
+      </div>
+
+      <!-- Finish/Saved Success Message at Top of Summary -->
+      <div id="summary-finish-message" class="save-message-box save-message-success" role="status" aria-live="polite" style="display: none; margin-bottom: 16px;"></div>
+
       <div id="summary-slots-list" class="summary-slots-grid"></div>
 
-      <div id="summary-result-area" class="summary-result-area" aria-live="polite"></div>
+            <div id="summary-result-area" class="summary-result-area" aria-live="polite"></div>
+
+      <!-- Save Section at very end of Summary page -->
+      <div id="summary-save-section" class="summary-save-section">
+        <div id="summary-save-message" role="status" aria-live="polite" style="display: none;"></div>
+        <p id="summary-save-hint" class="summary-save-hint">Press Save to store this day.</p>
+        <button type="button" id="summary-save-btn" class="btn-summary-save">Save</button>
+      </div>
     </div>
   </div>
 
@@ -1075,7 +1239,7 @@
   <dialog id="settings-confirm-dialog">
     <div class="modal-box">
       <h3 class="modal-title">Clear Current Slots?</h3>
-      <p class="modal-desc">Changing the times clears all your slots and their statuses for this date.</p>
+      <p class="modal-desc">Some slots are outside the new times and will be removed.</p>
       <div class="modal-actions">
         <button type="button" id="settings-dialog-cancel" class="btn btn-secondary">Cancel</button>
         <button type="button" id="settings-dialog-continue" class="btn" style="background: var(--rose-600); color: #fff;">Continue</button>

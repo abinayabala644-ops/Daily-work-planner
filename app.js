@@ -113,25 +113,32 @@
 
   // Slot Elements
   const slotBackBtn = document.getElementById('slot-back-btn');
-  const slotTimeLeft = document.getElementById('slot-time-left');
   const slotBadge = document.getElementById('slot-badge');
-  const slotEndLabel = document.getElementById('slot-end-label');
-  const slotTimeRange = document.getElementById('slot-time-range');
   const slotDateDisplay = document.getElementById('slot-date-display');
-  const slotWorkDurationInput = document.getElementById('slot-work-duration');
-  const slotDurationError = document.getElementById('slot-duration-error');
+  const slotStartTimeInput = document.getElementById('slot-start-time');
+  const slotEndTimeInput = document.getElementById('slot-end-time');
+  const slotRulesMessage = document.getElementById('slot-rules-message');
   const slotTaskInput = document.getElementById('slot-task-input');
   const slotNextBtn = document.getElementById('slot-next-btn');
 
   // Summary Elements
+  const summaryHeaderTitle = document.getElementById('summary-header-title');
   const summaryHeaderSubtitle = document.getElementById('summary-header-subtitle');
   const summaryUnfinishedBanner = document.getElementById('summary-unfinished-banner');
   const summaryContinuePlanningBtn = document.getElementById('summary-continue-planning-btn');
+  const summaryEmptyState = document.getElementById('summary-empty-state');
+  const summaryPlanThisDayBtn = document.getElementById('summary-plan-this-day-btn');
+  const summaryCalendarToggleBtn = document.getElementById('summary-calendar-toggle-btn');
   const summaryBackBtn = document.getElementById('summary-back-btn');
   const summaryEditTimesBtn = document.getElementById('summary-edit-times-btn');
   const summaryStartNewDayBtn = document.getElementById('summary-start-new-day-btn');
   const summarySlotsList = document.getElementById('summary-slots-list');
   const summaryResultArea = document.getElementById('summary-result-area');
+  const summaryFinishMessage = document.getElementById('summary-finish-message');
+  const summarySaveSection = document.getElementById('summary-save-section');
+  const summarySaveMessage = document.getElementById('summary-save-message');
+  const summarySaveHint = document.getElementById('summary-save-hint');
+  const summarySaveBtn = document.getElementById('summary-save-btn');
 
   // Calendar Dialog Elements
   const calendarDialog = document.getElementById('calendar-dialog');
@@ -223,14 +230,35 @@
   const supabaseClient = getSupabaseClient();
 
   // --- STORAGE & PERSISTENCE ---
-  function sanitizeSlots(slotsArray) {
+  function sanitizeSlots(slotsArray, dayStartMinutes = MIN_WORK_TIME) {
     if (!Array.isArray(slotsArray)) return [];
-    return slotsArray.map((s, idx) => ({
-      id: typeof s?.id === "string" ? s.id : `slot-${idx + 1}`,
-      durationMinutes: typeof s?.durationMinutes === "number" && !isNaN(s.durationMinutes) ? s.durationMinutes : null,
-      taskText: typeof s?.taskText === "string" ? s.taskText : "",
-      status: (s?.status === "COMPLETED" || s?.status === "NOT_COMPLETED") ? s.status : "NONE",
-    }));
+    let currentAccumulatedStart = typeof dayStartMinutes === "number" ? dayStartMinutes : MIN_WORK_TIME;
+
+    return slotsArray.map((s, idx) => {
+      let start = (typeof s?.start === "number" && !isNaN(s.start)) ? s.start : null;
+      let end = (typeof s?.end === "number" && !isNaN(s.end)) ? s.end : null;
+
+      // Backward compatibility: old saved slots with durationMinutes instead of start and end
+      if (start === null && end === null && typeof s?.durationMinutes === "number" && !isNaN(s.durationMinutes) && s.durationMinutes > 0) {
+        start = currentAccumulatedStart;
+        end = start + s.durationMinutes;
+        currentAccumulatedStart = end;
+      }
+
+      const taskText = typeof s?.taskText === "string" ? s.taskText : (typeof s?.text === "string" ? s.text : "");
+      const status = (s?.status === "COMPLETED" || s?.status === "NOT_COMPLETED") ? s.status : "NONE";
+      const markedAt = (status !== "NONE" && (typeof s?.markedAt === "string" || typeof s?.markedAt === "number")) ? s.markedAt : null;
+
+      return {
+        id: typeof s?.id === "string" ? s.id : `slot-${idx + 1}`,
+        start,
+        end,
+        text: taskText,
+        taskText,
+        status,
+        markedAt,
+      };
+    });
   }
 
   function loadFromLocalStorage() {
@@ -253,6 +281,7 @@
                   startMinutes: typeof d.startMinutes === "number" ? d.startMinutes : state.lastTimes.startMinutes,
                   endMinutes: typeof d.endMinutes === "number" ? d.endMinutes : state.lastTimes.endMinutes,
                   slots: sanitizeSlots(d.slots),
+                  savedAt: (typeof d.savedAt === "string" || typeof d.saved_at === "string") ? (d.savedAt || d.saved_at) : null,
                 };
               }
             });
@@ -285,6 +314,16 @@
           .eq('day', dateKey);
       } else {
         // Upsert row
+        const serializedSlots = (dayData.slots || []).map((s, idx) => ({
+          id: s.id || `slot-${idx + 1}`,
+          start: typeof s.start === "number" ? s.start : null,
+          end: typeof s.end === "number" ? s.end : null,
+          text: typeof s.taskText === "string" ? s.taskText : (s.text || ""),
+          taskText: typeof s.taskText === "string" ? s.taskText : (s.text || ""),
+          status: s.status || "NONE",
+          markedAt: s.markedAt || null,
+        }));
+
         await supabaseClient
           .from('planner_days')
           .upsert({
@@ -292,7 +331,8 @@
             day: dateKey,
             start_min: dayData.startMinutes,
             end_min: dayData.endMinutes,
-            slots: dayData.slots,
+            slots: serializedSlots,
+            saved_at: dayData.savedAt || null,
           }, { onConflict: 'user_id,day' });
       }
     } catch (err) {
@@ -309,16 +349,19 @@
       try {
         const { data, error } = await supabaseClient
           .from('planner_days')
-          .select('day, start_min, end_min, slots')
+          .select('day, start_min, end_min, slots, saved_at')
           .eq('user_id', currentUserId);
 
         if (!error && Array.isArray(data)) {
           data.forEach((row) => {
             if (row && typeof row.day === "string") {
+              const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+              const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
               state.days[row.day] = {
-                startMinutes: typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME,
-                endMinutes: typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME,
-                slots: sanitizeSlots(row.slots),
+                startMinutes: sMin,
+                endMinutes: eMin,
+                slots: sanitizeSlots(row.slots, sMin),
+                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
               };
             }
           });
@@ -352,47 +395,116 @@
     return state.days[selectedDateKey] || null;
   }
 
-  function hasSavedSlotsWithDuration(dayData) {
+  function isSlotEmpty(slot) {
+    if (!slot) return true;
+    const noStart = slot.start === null || slot.start === undefined || isNaN(slot.start);
+    const noEnd = slot.end === null || slot.end === undefined || isNaN(slot.end);
+    const textVal = (typeof slot.taskText === "string" ? slot.taskText : (slot.text || "")).trim();
+    return noStart && noEnd && textVal === "";
+  }
+
+  function isSlotValid(slot, index, slots, dayStartMinutes, dayEndMinutes) {
+    return getSlotValidationError(slot, index, slots, dayStartMinutes, dayEndMinutes) === null;
+  }
+
+  function getSlotValidationError(slot, index, slots, dayStartMinutes, dayEndMinutes) {
+    if (!slot) return "Please choose a Start time and End time.";
+    if (slot.start === null || slot.start === undefined || isNaN(slot.start)) {
+      return "Please choose a Start time.";
+    }
+    if (slot.end === null || slot.end === undefined || isNaN(slot.end)) {
+      return "Please choose an End time.";
+    }
+
+    if (slot.start < dayStartMinutes || slot.start > dayEndMinutes) {
+      return `Start time must be inside the day’s range (${formatMinutesTo12Hour(dayStartMinutes)} - ${formatMinutesTo12Hour(dayEndMinutes)}).`;
+    }
+
+    if (slot.end < dayStartMinutes || slot.end > dayEndMinutes) {
+      return `End time must be inside the day’s range (${formatMinutesTo12Hour(dayStartMinutes)} - ${formatMinutesTo12Hour(dayEndMinutes)}).`;
+    }
+
+    if (slot.end < slot.start + 5) {
+      return "End time must be at least 5 minutes after Start time.";
+    }
+
+    // Check order and overlap with previous slot: Start must be at or after previous slot's End
+    if (index > 0) {
+      const prev = slots[index - 1];
+      if (prev && typeof prev.end === "number" && !isNaN(prev.end)) {
+        if (slot.start < prev.end) {
+          const prevStartStr = typeof prev.start === "number" ? formatMinutesTo12Hour(prev.start) : "";
+          const prevEndStr = formatMinutesTo12Hour(prev.end);
+          return `This overlaps Slot ${index} (${prevStartStr} - ${prevEndStr}).`;
+        }
+      }
+    }
+
+    // Check order and overlap with next slot: End must be at or before next slot's Start
+    if (index < slots.length - 1) {
+      const next = slots[index + 1];
+      if (next && typeof next.start === "number" && !isNaN(next.start)) {
+        if (slot.end > next.start) {
+          const nextStartStr = formatMinutesTo12Hour(next.start);
+          const nextEndStr = typeof next.end === "number" ? formatMinutesTo12Hour(next.end) : "";
+          return `This overlaps Slot ${index + 2} (${nextStartStr} - ${nextEndStr}).`;
+        }
+      }
+    }
+
+    // Check overlap with any other slots
+    for (let j = 0; j < slots.length; j++) {
+      if (j === index) continue;
+      const other = slots[j];
+      if (other && typeof other.start === "number" && typeof other.end === "number" && !isNaN(other.start) && !isNaN(other.end)) {
+        // Overlap occurs when max(start1, start2) < min(end1, end2)
+        if (Math.max(slot.start, other.start) < Math.min(slot.end, other.end)) {
+          const otherStartStr = formatMinutesTo12Hour(other.start);
+          const otherEndStr = formatMinutesTo12Hour(other.end);
+          return `This overlaps Slot ${j + 1} (${otherStartStr} - ${otherEndStr}).`;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function areAllSlotsValid(dayData) {
     if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) return false;
-    return dayData.slots.some((s) => typeof s.durationMinutes === "number" && s.durationMinutes > 0);
+    const { startMinutes, endMinutes, slots } = dayData;
+    for (let i = 0; i < slots.length; i++) {
+      if (isSlotEmpty(slots[i])) return false;
+      if (!isSlotValid(slots[i], i, slots, startMinutes, endMinutes)) return false;
+    }
+    return true;
   }
 
   function isScheduleFinished(dayData) {
-    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) return false;
-    let currentStart = dayData.startMinutes;
-    for (let i = 0; i < dayData.slots.length; i++) {
-      const slot = dayData.slots[i];
-      if (typeof slot.durationMinutes !== "number" || slot.durationMinutes === null) return false;
-      currentStart += slot.durationMinutes;
-    }
-    return currentStart === dayData.endMinutes;
+    return areAllSlotsValid(dayData);
   }
 
   function getFirstUnfinishedSlotIndex(dayData) {
     if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) return 0;
-    for (let i = 0; i < dayData.slots.length; i++) {
-      if (typeof dayData.slots[i].durationMinutes !== "number" || dayData.slots[i].durationMinutes === null) {
+    const { startMinutes, endMinutes, slots } = dayData;
+    for (let i = 0; i < slots.length; i++) {
+      if (!isSlotValid(slots[i], i, slots, startMinutes, endMinutes)) {
         return i;
       }
     }
-    // All existing slots have durations, but total does not reach endMinutes
-    return dayData.slots.length - 1;
+    return 0;
   }
 
   function getSlotsWithTimes() {
     const dayData = getCurrentDayData();
-    if (!dayData) return [];
-    let currentStart = dayData.startMinutes;
+    if (!dayData || !Array.isArray(dayData.slots)) return [];
     return dayData.slots.map((slot, index) => {
-      const start = currentStart;
-      const duration = typeof slot.durationMinutes === "number" ? slot.durationMinutes : null;
-      const end = duration !== null ? start + duration : start;
-      currentStart = end;
+      const s = typeof slot.start === "number" ? slot.start : dayData.startMinutes;
+      const e = typeof slot.end === "number" ? slot.end : s;
       return {
         slot,
         slotNumber: index + 1,
-        startMinutes: start,
-        endMinutes: end,
+        startMinutes: s,
+        endMinutes: e,
       };
     });
   }
@@ -400,23 +512,43 @@
   function getDayCompletionStatus(dateKey) {
     const day = state.days[dateKey];
     if (!day || !day.slots || day.slots.length === 0) return "NONE";
-    if (!isScheduleFinished(day)) return "NONE";
 
-    const total = day.slots.length;
-    const completedCount = day.slots.filter(s => s.status === "COMPLETED").length;
-    const notCompletedCount = day.slots.filter(s => s.status === "NOT_COMPLETED").length;
+    // If day is SAVED (savedAt is set)
+    if (day.savedAt) {
+      const total = day.slots.length;
+      const completedCount = day.slots.filter(s => s.status === "COMPLETED").length;
+      const notCompletedCount = day.slots.filter(s => s.status === "NOT_COMPLETED").length;
 
-    if (completedCount === total) return "FULLY_COMPLETED";
-    if (notCompletedCount === total) return "NOT_COMPLETED";
-    if (completedCount > 0 && notCompletedCount > 0) return "PARTLY_COMPLETED";
-    if (completedCount > 0 && completedCount < total) return "PARTLY_COMPLETED";
-    if (notCompletedCount > 0 && notCompletedCount < total) return "PARTLY_COMPLETED";
+      if (completedCount === total) return "FULLY_COMPLETED";
+      if (completedCount > 0 && notCompletedCount > 0) return "PARTLY_COMPLETED";
+      if (completedCount > 0 && completedCount < total) return "PARTLY_COMPLETED";
+      if (notCompletedCount > 0 && completedCount === 0) return "NOT_COMPLETED";
 
+      return "PLANNED_UNMARKED"; // Saved but nothing is marked
+    }
+
+    // Days with only a draft show a plain outline
     return "PLANNED_UNMARKED";
   }
 
   // --- VIEW SWITCHING ---
+  function clearSummarySaveMessage() {
+    if (summarySaveMessage) {
+      summarySaveMessage.innerHTML = "";
+      summarySaveMessage.className = "";
+      summarySaveMessage.style.display = "none";
+    }
+    if (summaryFinishMessage) {
+      summaryFinishMessage.innerHTML = "";
+      summaryFinishMessage.className = "";
+      summaryFinishMessage.style.display = "none";
+    }
+  }
+
   function switchView(viewName) {
+    if (viewName !== 'summary') {
+      clearSummarySaveMessage();
+    }
     Object.keys(views).forEach((name) => {
       views[name].classList.toggle('active', name === viewName);
     });
@@ -439,17 +571,33 @@
 
   function handleSelectDate(dateKey) {
     flushPendingDebouncedSave();
+    clearSummarySaveMessage();
     selectedDateKey = dateKey;
     updateDateButtonsState();
 
     const dayData = getCurrentDayData();
-    // Rule: If that date has at least one saved slot with a duration, open the SUMMARY page
-    if (hasSavedSlotsWithDuration(dayData)) {
+    const todayStr = getLocalDateKey(todayDate);
+    const isPastDate = dateKey < todayStr;
+
+    // PART 4: Opening a past date: selecting Yesterday (or any past date from the calendar) opens its Summary
+    // when the day was saved (or when it has at least one valid slot).
+    // Opening any saved day also opens Summary.
+    const hasValidSlot = dayData && Array.isArray(dayData.slots) && dayData.slots.some((s, idx) => isSlotValid(s, idx, dayData.slots, dayData.startMinutes, dayData.endMinutes));
+    const shouldOpenSummary = Boolean(dayData?.savedAt || (isPastDate && hasValidSlot));
+
+    if (shouldOpenSummary) {
       renderSummaryView();
       switchView('summary');
+      if (summaryHeaderTitle) {
+        summaryHeaderTitle.focus();
+      }
     } else {
+      // If the day has draft slots or nothing: open the first page (settings) for that date
       initSettingsView();
       switchView('settings');
+      if (startInput) {
+        startInput.focus();
+      }
     }
   }
 
@@ -529,7 +677,17 @@
     const dayData = getCurrentDayData();
     const settingsChanged = dayData && (dayData.startMinutes !== startMins || dayData.endMinutes !== endMins);
 
-    if (dayData && dayData.slots.length > 0 && settingsChanged) {
+    const hasSlotsOutside = Boolean(
+      settingsChanged &&
+      dayData &&
+      Array.isArray(dayData.slots) &&
+      dayData.slots.some(s => {
+        if (isSlotEmpty(s)) return false;
+        return (typeof s.start === "number" && s.start < startMins) || (typeof s.end === "number" && s.end > endMins);
+      })
+    );
+
+    if (hasSlotsOutside) {
       unconfirmedSettingsChange = {
         startMinutes: startMins,
         endMinutes: endMins,
@@ -544,22 +702,26 @@
           slots: [
             {
               id: "slot-1",
-              durationMinutes: null,
+              start: null,
+              end: null,
               taskText: "",
               status: "NONE",
+              markedAt: null,
             },
           ],
         };
       } else {
         state.days[selectedDateKey].startMinutes = startMins;
         state.days[selectedDateKey].endMinutes = endMins;
-        if (state.days[selectedDateKey].slots.length === 0) {
+        if (!state.days[selectedDateKey].slots || state.days[selectedDateKey].slots.length === 0) {
           state.days[selectedDateKey].slots = [
             {
               id: "slot-1",
-              durationMinutes: null,
+              start: null,
+              end: null,
               taskText: "",
               status: "NONE",
+              markedAt: null,
             },
           ];
         }
@@ -578,19 +740,34 @@
 
   settingsDialogContinue.addEventListener('click', () => {
     if (!unconfirmedSettingsChange) return;
-    state.lastTimes = { ...unconfirmedSettingsChange };
-    state.days[selectedDateKey] = {
-      startMinutes: unconfirmedSettingsChange.startMinutes,
-      endMinutes: unconfirmedSettingsChange.endMinutes,
-      slots: [
-        {
-          id: "slot-1",
-          durationMinutes: null,
-          taskText: "",
-          status: "NONE",
-        },
-      ],
-    };
+    const { startMinutes: newStart, endMinutes: newEnd } = unconfirmedSettingsChange;
+    state.lastTimes = { startMinutes: newStart, endMinutes: newEnd };
+
+    const dayData = getCurrentDayData();
+    if (dayData) {
+      dayData.startMinutes = newStart;
+      dayData.endMinutes = newEnd;
+      // Continue removes only the slots that are outside. Nothing else is cleared.
+      dayData.slots = (dayData.slots || []).filter(s => {
+        if (isSlotEmpty(s)) return false;
+        const outStart = typeof s.start === "number" && s.start < newStart;
+        const outEnd = typeof s.end === "number" && s.end > newEnd;
+        return !(outStart || outEnd);
+      });
+
+      if (dayData.slots.length === 0) {
+        dayData.slots = [
+          {
+            id: "slot-1",
+            start: null,
+            end: null,
+            taskText: "",
+            status: "NONE",
+            markedAt: null,
+          },
+        ];
+      }
+    }
     saveStorage(selectedDateKey);
     settingsConfirmDialog.close();
     unconfirmedSettingsChange = null;
@@ -604,146 +781,145 @@
     const dayData = getCurrentDayData();
     if (!dayData) return;
 
-    const slotsWithTimes = getSlotsWithTimes();
-    const current = slotsWithTimes[currentSlotIndex];
-    if (!current) return;
+    if (!Array.isArray(dayData.slots) || dayData.slots.length === 0) {
+      dayData.slots = [
+        {
+          id: "slot-1",
+          start: null,
+          end: null,
+          taskText: "",
+          status: "NONE",
+          markedAt: null,
+        },
+      ];
+    }
 
-    const slot = current.slot;
-    const dayEndMins = dayData.endMinutes;
-    const availableMins = dayEndMins - current.startMinutes;
+    if (currentSlotIndex >= dayData.slots.length) {
+      currentSlotIndex = Math.max(0, dayData.slots.length - 1);
+    }
 
-    slotBadge.textContent = `Slot ${current.slotNumber}`;
+    const slot = dayData.slots[currentSlotIndex];
+    if (!slot) return;
 
+    // 1. "Slot N" and the selected date.
+    slotBadge.textContent = `Slot ${currentSlotIndex + 1}`;
     const selectedObj = parseLocalDateKey(selectedDateKey);
     slotDateDisplay.textContent = formatFullDisplayDate(selectedObj);
 
-    const currentEnd = typeof slot.durationMinutes === "number" && slot.durationMinutes !== null ? current.startMinutes + slot.durationMinutes : null;
-    const isLastSlot = currentEnd !== null && currentEnd === dayEndMins;
+    // 2. "Start time" and "End time": two time inputs, each with a visible label, at least 44px high, 16px text.
+    // They start EMPTY for a new slot. The system never pre-fills them.
+    slotStartTimeInput.value = (typeof slot.start === "number" && !isNaN(slot.start)) ? minutesToTimeString(slot.start) : "";
+    slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? minutesToTimeString(slot.end) : "";
 
-    if (currentEnd !== null) {
-      slotTimeRange.textContent = `${formatMinutesTo12Hour(current.startMinutes)} - ${formatMinutesTo12Hour(currentEnd)}`;
-      slotEndLabel.textContent = `Ends at ${formatMinutesTo12Hour(currentEnd)}`;
-    } else {
-      slotTimeRange.textContent = `Starts at ${formatMinutesTo12Hour(current.startMinutes)}`;
-      slotEndLabel.textContent = "";
-    }
+    // 3. The "Work for this slot" text box (it may stay empty).
+    slotTaskInput.value = slot.taskText || slot.text || "";
 
-    const effectiveEnd = currentEnd !== null && currentEnd <= dayEndMins ? currentEnd : current.startMinutes;
-    slotTimeLeft.textContent = formatRemainingTime(Math.max(0, dayEndMins - effectiveEnd));
-
-    slotWorkDurationInput.value = typeof slot.durationMinutes === "number" && slot.durationMinutes !== null ? slot.durationMinutes : "";
-
-    let durationError = "";
-    if (typeof slot.durationMinutes === "number" && slot.durationMinutes !== null) {
-      if (slot.durationMinutes < MIN_SLOT_DURATION) {
-        durationError = `Duration must be a whole number of at least ${MIN_SLOT_DURATION} minutes.`;
-      } else if (slot.durationMinutes > availableMins) {
-        durationError = `Only ${availableMins} minutes are left. Choose ${availableMins} minutes or less.`;
-      } else {
-        const leftover = availableMins - slot.durationMinutes;
-        if (leftover >= 1 && leftover < MIN_SLOT_DURATION) {
-          durationError = `This leaves ${leftover} minute${leftover === 1 ? "" : "s"}, which is too short for a slot. Choose a different duration.`;
-        }
-      }
-    }
-
-    if (durationError) {
-      slotDurationError.textContent = durationError;
-      slotDurationError.style.display = "block";
-    } else {
-      slotDurationError.style.display = "none";
-      slotDurationError.textContent = "";
-    }
-
-    const isDurationValid = typeof slot.durationMinutes === "number" && slot.durationMinutes !== null && durationError === "";
-
-    slotTaskInput.value = slot.taskText || "";
-
-    if (isLastSlot) {
-      slotNextBtn.textContent = "Finish ✓";
-      slotNextBtn.className = "btn btn-finish";
-    } else {
-      slotNextBtn.textContent = "Next →";
-      slotNextBtn.className = "btn btn-primary";
-    }
-
-    slotNextBtn.disabled = !isDurationValid;
+    // Validate slot
+    updateSlotValidationUI();
   }
 
-  function handleSlotDurationChangeRequest(newDuration) {
+  function updateSlotValidationUI(showErrorAlways = false) {
     const dayData = getCurrentDayData();
     if (!dayData) return;
 
-    const idx = currentSlotIndex;
-    const laterSlotsExist = dayData.slots.length > idx + 1;
+    const slot = dayData.slots[currentSlotIndex];
+    if (!slot) return;
 
-    if (laterSlotsExist) {
-      durationChangeConfirm = {
-        slotIndex: idx,
-        newDuration,
-      };
-      durationConfirmDialog.showModal();
+    const error = getSlotValidationError(
+      slot,
+      currentSlotIndex,
+      dayData.slots,
+      dayData.startMinutes,
+      dayData.endMinutes
+    );
+
+    // Keep Next button clickable at all times
+    slotNextBtn.disabled = false;
+
+    // Show error message if explicitly requested or if user has typed something that has an error
+    const hasTypedSomething = Boolean(slotStartTimeInput.value || slotEndTimeInput.value);
+    if (error && (showErrorAlways || hasTypedSomething)) {
+      slotRulesMessage.textContent = error;
+      slotRulesMessage.style.display = "block";
     } else {
-      dayData.slots[idx].durationMinutes = newDuration;
-      saveStorage(selectedDateKey);
-      renderSlotPage();
+      slotRulesMessage.textContent = "";
+      slotRulesMessage.style.display = "none";
     }
   }
 
-  durationDialogCancel.addEventListener('click', () => {
-    durationConfirmDialog.close();
-    durationChangeConfirm = null;
-    renderSlotPage();
-  });
-
-  durationDialogContinue.addEventListener('click', () => {
-    if (!durationChangeConfirm) return;
+  function handleSlotTimeInput() {
     const dayData = getCurrentDayData();
-    if (dayData) {
-      const { slotIndex, newDuration } = durationChangeConfirm;
-      dayData.slots = dayData.slots.slice(0, slotIndex + 1);
-      dayData.slots[slotIndex].durationMinutes = newDuration;
-      saveStorage(selectedDateKey);
-    }
-    durationConfirmDialog.close();
-    durationChangeConfirm = null;
-    renderSlotPage();
-  });
+    if (!dayData || !dayData.slots[currentSlotIndex]) return;
 
-  slotWorkDurationInput.addEventListener('input', () => {
-    const val = slotWorkDurationInput.value.trim();
-    if (!val) {
-      const dayData = getCurrentDayData();
-      if (dayData && dayData.slots[currentSlotIndex]) {
-        dayData.slots[currentSlotIndex].durationMinutes = null;
-        saveStorage(selectedDateKey);
-        renderSlotPage();
-      }
-    } else {
-      const num = parseInt(val, 10);
-      if (!isNaN(num) && num > 0) {
-        handleSlotDurationChangeRequest(num);
-      }
+    const slot = dayData.slots[currentSlotIndex];
+    const startVal = slotStartTimeInput.value;
+    const endVal = slotEndTimeInput.value;
+
+    slot.start = startVal ? timeStringToMinutes(startVal) : null;
+    slot.end = endVal ? timeStringToMinutes(endVal) : null;
+
+    updateSlotValidationUI();
+
+    if (textSaveDebounceTimer) {
+      clearTimeout(textSaveDebounceTimer);
     }
-  });
+    textSaveDebounceTimer = setTimeout(() => {
+      textSaveDebounceTimer = null;
+      saveStorage(selectedDateKey);
+    }, 600);
+  }
+
+  slotStartTimeInput.addEventListener('input', handleSlotTimeInput);
+  slotEndTimeInput.addEventListener('input', handleSlotTimeInput);
 
   slotTaskInput.addEventListener('input', () => {
+    clearSummarySaveMessage();
     const dayData = getCurrentDayData();
     if (dayData && dayData.slots[currentSlotIndex]) {
       dayData.slots[currentSlotIndex].taskText = slotTaskInput.value;
-      // Save debounced after at most 600ms
+      dayData.slots[currentSlotIndex].text = slotTaskInput.value;
+
       if (textSaveDebounceTimer) {
         clearTimeout(textSaveDebounceTimer);
       }
       textSaveDebounceTimer = setTimeout(() => {
         textSaveDebounceTimer = null;
         saveStorage(selectedDateKey);
-      }, 500);
+      }, 600);
     }
   });
 
+  function cleanupTrailingEmptySlots(dayData) {
+    if (!dayData || !Array.isArray(dayData.slots)) return;
+    // A new empty slot exists only while the user is on its page. If the user leaves it (Back or Finish)
+    // with Start, End, and text all empty, delete it. Never keep an empty slot.
+    while (dayData.slots.length > 1 && isSlotEmpty(dayData.slots[dayData.slots.length - 1])) {
+      dayData.slots.pop();
+    }
+  }
+
   slotBackBtn.addEventListener('click', () => {
     flushPendingDebouncedSave();
+    const dayData = getCurrentDayData();
+    if (dayData) {
+      if (isSlotEmpty(dayData.slots[currentSlotIndex])) {
+        dayData.slots.splice(currentSlotIndex, 1);
+        if (dayData.slots.length === 0) {
+          dayData.slots = [
+            {
+              id: "slot-1",
+              start: null,
+              end: null,
+              taskText: "",
+              status: "NONE",
+              markedAt: null,
+            },
+          ];
+        }
+        saveStorage(selectedDateKey);
+      }
+    }
+
     if (currentSlotIndex === 0) {
       initSettingsView();
       switchView('settings');
@@ -758,27 +934,49 @@
     const dayData = getCurrentDayData();
     if (!dayData) return;
 
-    const slotsWithTimes = getSlotsWithTimes();
-    const current = slotsWithTimes[currentSlotIndex];
-    if (!current || typeof current.slot.durationMinutes !== "number" || current.slot.durationMinutes === null) return;
-
-    const dayEndMins = dayData.endMinutes;
-    if (current.endMinutes === dayEndMins) {
-      renderSummaryView();
-      switchView('summary');
+    const slot = dayData.slots[currentSlotIndex];
+    const validationError = getSlotValidationError(slot, currentSlotIndex, dayData.slots, dayData.startMinutes, dayData.endMinutes);
+    if (validationError) {
+      slotRulesMessage.textContent = validationError;
+      slotRulesMessage.style.display = "block";
+      if (!slotStartTimeInput.value) {
+        slotStartTimeInput.focus();
+      } else if (!slotEndTimeInput.value) {
+        slotEndTimeInput.focus();
+      }
       return;
     }
 
     const nextIndex = currentSlotIndex + 1;
-    if (dayData.slots[nextIndex]) {
+
+    // If the current slot ends exactly at the day's Ending Time, finishing the day opens the Summary
+    if (slot.end === dayData.endMinutes) {
+      cleanupTrailingEmptySlots(dayData);
+      saveStorage(selectedDateKey);
+      renderSummaryView();
+      showSaveSuccessMessage();
+      switchView('summary');
+      return;
+    }
+
+    if (nextIndex < dayData.slots.length) {
       currentSlotIndex = nextIndex;
       renderSlotPage();
     } else {
+      // Next on the last slot creates a new empty slot and opens it (limit 48 slots)
+      if (dayData.slots.length >= 48) {
+        slotRulesMessage.textContent = "Maximum 48 slots reached for this day.";
+        slotRulesMessage.style.display = "block";
+        return;
+      }
       const newSlot = {
         id: `slot-${nextIndex + 1}`,
-        durationMinutes: null,
+        start: null,
+        end: null,
         taskText: "",
+        text: "",
         status: "NONE",
+        markedAt: null,
       };
       dayData.slots.push(newSlot);
       currentSlotIndex = nextIndex;
@@ -790,25 +988,41 @@
   // --- SUMMARY VIEW LOGIC ---
   function renderSummaryView() {
     const dayData = getCurrentDayData();
-    if (!dayData) return;
+    const selectedObj = parseLocalDateKey(selectedDateKey);
+    const shortDateStr = formatShortDisplayDate(selectedObj);
 
-    const slotsWithTimes = getSlotsWithTimes();
+    // If there is no saved plan for this date (or slots array is empty)
+    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) {
+      summaryHeaderSubtitle.textContent = `${shortDateStr} - No slots planned`;
+      if (summaryUnfinishedBanner) summaryUnfinishedBanner.style.display = "none";
+      if (summaryEmptyState) summaryEmptyState.style.display = "block";
+      summarySlotsList.innerHTML = "";
+      if (summaryResultArea) summaryResultArea.innerHTML = "";
+      if (summarySaveSection) summarySaveSection.style.display = "none";
+      return;
+    }
+
+    if (summaryEmptyState) summaryEmptyState.style.display = "none";
+    if (summarySaveSection) summarySaveSection.style.display = "flex";
+
+    // Filter out trailing empty slots and sort by start time
+    cleanupTrailingEmptySlots(dayData);
+    const slotsWithTimes = getSlotsWithTimes()
+      .filter(item => !isSlotEmpty(item.slot))
+      .sort((a, b) => a.startMinutes - b.startMinutes);
     const totalSlots = slotsWithTimes.length;
     const startStr = formatMinutesTo12Hour(dayData.startMinutes);
     const endStr = formatMinutesTo12Hour(dayData.endMinutes);
 
-    const selectedObj = parseLocalDateKey(selectedDateKey);
-    const shortDateStr = formatShortDisplayDate(selectedObj);
-
-    // Required Format: "Wed, 4 Mar 2026 - 9:00 AM - 6:00 PM, 7 slots"
+    // Cards are sorted by start time. Subtitle shows selected date and number of slots.
     summaryHeaderSubtitle.textContent = `${shortDateStr} - ${startStr} - ${endStr}, ${totalSlots} ${totalSlots === 1 ? "slot" : "slots"}`;
 
     // Handle Unfinished Plan Banner
     const isFinished = isScheduleFinished(dayData);
     if (!isFinished) {
-      summaryUnfinishedBanner.style.display = "flex";
+      if (summaryUnfinishedBanner) summaryUnfinishedBanner.style.display = "flex";
     } else {
-      summaryUnfinishedBanner.style.display = "none";
+      if (summaryUnfinishedBanner) summaryUnfinishedBanner.style.display = "none";
     }
 
     // Render cards using textContent exclusively for user text
@@ -841,9 +1055,10 @@
       badgeSpan.style.cssText = "font-size: 0.75rem; font-weight: 700; background: var(--slate-200); color: var(--slate-800); padding: 2px 8px; border-radius: 9999px;";
       badgeSpan.textContent = `Slot ${slotNumber}`;
 
+      const durationMinutes = Math.max(0, endMinutes - startMinutes);
       const durSpan = document.createElement('span');
       durSpan.style.cssText = "font-size: 0.75rem; color: var(--slate-500); font-weight: 600;";
-      durSpan.textContent = typeof slot.durationMinutes === "number" && slot.durationMinutes ? `${slot.durationMinutes} min` : "No duration set";
+      durSpan.textContent = `${durationMinutes} min`;
 
       metaRow.appendChild(badgeSpan);
       metaRow.appendChild(durSpan);
@@ -873,6 +1088,45 @@
       btnNotCompleted.innerHTML = `<span>✗ Not Completed</span>`;
       btnNotCompleted.setAttribute('aria-label', `Mark slot ${slotNumber} Not Completed`);
 
+      const markMessageEl = document.createElement('div');
+      markMessageEl.style.cssText = "font-size: 0.82rem; font-weight: 600; margin-top: 6px; width: 100%;";
+
+      function formatMarkedAtMessage(status, markedAt, planDateKey) {
+        if (!status || status === "NONE") {
+          return { text: "Not marked yet", muted: true };
+        }
+        if (!markedAt) {
+          if (status === "COMPLETED") {
+            return { text: "Marked Completed (time not recorded)", muted: false };
+          } else {
+            return { text: "Marked Not Completed (time not recorded)", muted: false };
+          }
+        }
+
+        const markDate = new Date(markedAt);
+        if (isNaN(markDate.getTime())) {
+          return {
+            text: status === "COMPLETED" ? "Marked Completed (time not recorded)" : "Marked Not Completed (time not recorded)",
+            muted: false
+          };
+        }
+
+        const markDayKey = getLocalDateKey(markDate);
+        const timePart = formatMinutesTo12Hour(markDate.getHours() * 60 + markDate.getMinutes());
+
+        const isDifferentDay = markDayKey !== planDateKey;
+        const prefix = status === "COMPLETED" ? "✓ Marked Completed" : "✗ Marked Not Completed";
+
+        if (isDifferentDay) {
+          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const datePart = `${days[markDate.getDay()]}, ${markDate.getDate()} ${months[markDate.getMonth()]}`;
+          return { text: `${prefix} on ${datePart} at ${timePart}`, muted: false };
+        }
+
+        return { text: `${prefix} at ${timePart}`, muted: false };
+      }
+
       function updateSlotCardButtons() {
         const currentStatus = slot.status || "NONE";
         const isComp = currentStatus === "COMPLETED";
@@ -883,32 +1137,54 @@
 
         btnNotCompleted.classList.toggle('not-completed-active', isNotComp);
         btnNotCompleted.setAttribute('aria-pressed', String(isNotComp));
+
+        const msgInfo = formatMarkedAtMessage(currentStatus, slot.markedAt, selectedDateKey);
+        markMessageEl.textContent = msgInfo.text;
+        markMessageEl.style.color = msgInfo.muted ? "var(--slate-500)" : "var(--slate-800)";
       }
 
       btnCompleted.addEventListener('click', () => {
-        slot.status = slot.status === "COMPLETED" ? "NONE" : "COMPLETED";
+        clearSummarySaveMessage();
+        if (slot.status === "COMPLETED") {
+          slot.status = "NONE";
+          slot.markedAt = null;
+        } else {
+          slot.status = "COMPLETED";
+          slot.markedAt = new Date().toISOString();
+        }
         saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
         updateSummaryResult();
+        updateSummarySaveState();
       });
 
       btnNotCompleted.addEventListener('click', () => {
-        slot.status = slot.status === "NOT_COMPLETED" ? "NONE" : "NOT_COMPLETED";
+        clearSummarySaveMessage();
+        if (slot.status === "NOT_COMPLETED") {
+          slot.status = "NONE";
+          slot.markedAt = null;
+        } else {
+          slot.status = "NOT_COMPLETED";
+          slot.markedAt = new Date().toISOString();
+        }
         saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
         updateSummaryResult();
+        updateSummarySaveState();
       });
 
       updateSlotCardButtons();
 
       btnGroup.appendChild(btnCompleted);
       btnGroup.appendChild(btnNotCompleted);
+      btnGroup.appendChild(markMessageEl);
       card.appendChild(btnGroup);
 
       summarySlotsList.appendChild(card);
     });
 
     updateSummaryResult();
+    updateSummarySaveState();
   }
 
   summaryContinuePlanningBtn.addEventListener('click', () => {
@@ -919,6 +1195,13 @@
     switchView('slot');
   });
 
+  if (summaryPlanThisDayBtn) {
+    summaryPlanThisDayBtn.addEventListener('click', () => {
+      initSettingsView();
+      switchView('settings');
+    });
+  }
+
   function updateSummaryResult() {
     if (!summaryResultArea) return;
     summaryResultArea.innerHTML = "";
@@ -926,10 +1209,11 @@
     const dayData = getCurrentDayData();
     if (!dayData || !dayData.slots) return;
 
-    const total = dayData.slots.length;
-    const isFinished = isScheduleFinished(dayData);
-    const completedCount = dayData.slots.filter((s) => s.status === "COMPLETED").length;
-    const notCompletedCount = dayData.slots.filter((s) => s.status === "NOT_COMPLETED").length;
+    const validSlots = (dayData.slots || []).filter(s => !isSlotEmpty(s));
+    const total = validSlots.length;
+    const isFinished = areAllSlotsValid(dayData);
+    const completedCount = validSlots.filter((s) => s.status === "COMPLETED").length;
+    const notCompletedCount = validSlots.filter((s) => s.status === "NOT_COMPLETED").length;
     const allCompleted = total > 0 && completedCount === total;
     const allNotCompleted = total > 0 && notCompletedCount === total;
     const isHalfOrPartlyCompleted = total > 0 && ((completedCount > 0 && completedCount < total) || (notCompletedCount > 0 && notCompletedCount < total));
@@ -1036,14 +1320,151 @@
 
   dialogConfirmBtn.addEventListener('click', () => {
     newDayDialog.close();
+    clearSummarySaveMessage();
     if (state.days[selectedDateKey]) {
       state.days[selectedDateKey].slots = [];
+      state.days[selectedDateKey].savedAt = null;
     }
     currentSlotIndex = 0;
     saveStorage(selectedDateKey);
     initSettingsView();
     switchView('settings');
   });
+
+
+  function updateSummarySaveState() {
+    if (!summarySaveBtn || !summarySaveHint) return;
+    const dayData = getCurrentDayData();
+    const valid = areAllSlotsValid(dayData);
+
+    if (valid) {
+      summarySaveBtn.disabled = false;
+      summarySaveBtn.textContent = "Save";
+      summarySaveHint.textContent = "Press Save to store this day.";
+    } else {
+      summarySaveBtn.disabled = true;
+      summarySaveBtn.textContent = "Save";
+      summarySaveHint.textContent = "Finish the plan to save.";
+    }
+  }
+
+  function showSaveSuccessMessage() {
+    const selectedObj = parseLocalDateKey(selectedDateKey);
+    const todayStr = getLocalDateKey(todayDate);
+    const isToday = selectedDateKey === todayStr;
+
+    let text = isToday
+      ? "Today’s work has been saved successfully."
+      : `Work for ${formatShortDisplayDate(selectedObj)} has been saved successfully.`;
+
+    // Render message in summarySaveMessage (above Save button)
+    if (summarySaveMessage) {
+      summarySaveMessage.innerHTML = "";
+      summarySaveMessage.className = "save-message-box save-message-success";
+      summarySaveMessage.style.display = "flex";
+
+      const checkIcon = document.createElement('span');
+      checkIcon.setAttribute('aria-hidden', 'true');
+      checkIcon.style.marginRight = "8px";
+      checkIcon.textContent = "✓";
+
+      const msgSpan = document.createElement('span');
+      msgSpan.textContent = text;
+
+      summarySaveMessage.appendChild(checkIcon);
+      summarySaveMessage.appendChild(msgSpan);
+    }
+
+    // Also render prominent message in summaryFinishMessage (at top of summary cards)
+    if (summaryFinishMessage) {
+      summaryFinishMessage.innerHTML = "";
+      summaryFinishMessage.className = "save-message-box save-message-success";
+      summaryFinishMessage.style.display = "flex";
+
+      const checkIconTop = document.createElement('span');
+      checkIconTop.setAttribute('aria-hidden', 'true');
+      checkIconTop.style.marginRight = "8px";
+      checkIconTop.textContent = "✓";
+
+      const msgSpanTop = document.createElement('span');
+      msgSpanTop.textContent = text;
+
+      summaryFinishMessage.appendChild(checkIconTop);
+      summaryFinishMessage.appendChild(msgSpanTop);
+    }
+  }
+
+  function showSaveErrorMessage() {
+    if (!summarySaveMessage) return;
+    summarySaveMessage.innerHTML = "";
+    summarySaveMessage.className = "save-message-box save-message-error";
+    summarySaveMessage.style.display = "flex";
+
+    const errorSpan = document.createElement('span');
+    errorSpan.textContent = "Could not save. Check your internet and try again.";
+
+    const retryBtn = document.createElement('button');
+    retryBtn.type = "button";
+    retryBtn.className = "btn-save-retry";
+    retryBtn.textContent = "Retry";
+    retryBtn.setAttribute('aria-label', "Retry saving this day's work");
+    retryBtn.addEventListener('click', () => {
+      handleSaveDay();
+    });
+
+    summarySaveMessage.appendChild(errorSpan);
+    summarySaveMessage.appendChild(retryBtn);
+  }
+
+  async function handleSaveDay() {
+    const dayData = getCurrentDayData();
+    if (!dayData || !areAllSlotsValid(dayData)) return;
+
+    if (summarySaveBtn) {
+      summarySaveBtn.disabled = true;
+      summarySaveBtn.textContent = "Saving…";
+    }
+
+    try {
+      const nowIso = new Date().toISOString();
+      dayData.savedAt = nowIso;
+
+      // 1. Save to local storage under key including signed-in user id
+      saveToLocalStorage();
+
+      // 2. Upsert to Supabase planner_days if signed in
+      if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+        const { error } = await supabaseClient
+          .from('planner_days')
+          .upsert({
+            user_id: currentUserId,
+            day: selectedDateKey,
+            start_min: dayData.startMinutes,
+            end_min: dayData.endMinutes,
+            slots: dayData.slots,
+            saved_at: nowIso,
+          }, { onConflict: 'user_id,day' });
+
+        if (error) {
+          throw error;
+        }
+      }
+
+      showSaveSuccessMessage();
+    } catch (err) {
+      console.warn("Save day error:", err);
+      showSaveErrorMessage();
+    } finally {
+      if (summarySaveBtn) {
+        summarySaveBtn.disabled = false;
+        summarySaveBtn.textContent = "Save";
+      }
+    }
+  }
+
+  if (summarySaveBtn) {
+    summarySaveBtn.addEventListener('click', handleSaveDay);
+  }
 
   // --- MONTHLY CALENDAR DIALOG ---
   function renderCalendarGrid() {
@@ -1112,13 +1533,19 @@
     }
   }
 
-  calendarToggleBtn.addEventListener('click', () => {
+  function openCalendarDialog() {
     const selectedObj = parseLocalDateKey(selectedDateKey);
     calendarViewYear = selectedObj.getFullYear();
     calendarViewMonth = selectedObj.getMonth();
     renderCalendarGrid();
     calendarDialog.showModal();
-  });
+  }
+
+  calendarToggleBtn.addEventListener('click', openCalendarDialog);
+
+  if (summaryCalendarToggleBtn) {
+    summaryCalendarToggleBtn.addEventListener('click', openCalendarDialog);
+  }
 
   calendarCloseBtn.addEventListener('click', () => {
     calendarDialog.close();
@@ -1204,16 +1631,10 @@
 
       document.documentElement.classList.add('auth-ready');
 
-      // Check if Today has saved slots with duration
-      const todayData = getCurrentDayData();
-      if (hasSavedSlotsWithDuration(todayData)) {
-        updateDateButtonsState();
-        renderSummaryView();
-        switchView('summary');
-      } else {
-        initSettingsView();
-        switchView('settings');
-      }
+      // PART 1: After sign-in (and when a signed-in user opens the site), open the first page with TODAY selected.
+      selectedDateKey = getLocalDateKey(todayDate);
+      initSettingsView();
+      switchView('settings');
     } catch (e) {
       console.error('Auth verification error:', e);
       window.location.replace('login.html');
