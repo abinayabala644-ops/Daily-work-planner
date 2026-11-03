@@ -505,6 +505,101 @@
       outline-offset: 1px;
     }
 
+    
+    /* Save Section at bottom of Summary */
+    .summary-save-section {
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .save-message-box {
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .save-message-success {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+
+    .save-message-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    .btn-save-retry {
+      min-height: 44px;
+      padding: 8px 18px;
+      background: #991b1b;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-save-retry:focus-visible {
+      outline: 2px solid #7f1d1d;
+      outline-offset: 2px;
+    }
+
+    .summary-save-hint {
+      font-size: 0.88rem;
+      color: var(--slate-600);
+      margin: 0;
+      text-align: center;
+    }
+
+    .btn-summary-save {
+      width: 100%;
+      min-height: 44px;
+      padding: 12px 20px;
+      background: var(--slate-900);
+      color: #ffffff;
+      border: 1px solid var(--slate-900);
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+
+    .btn-summary-save:hover:not(:disabled) {
+      background: var(--slate-800);
+    }
+
+    .btn-summary-save:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
+    .btn-summary-save:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      background: var(--slate-400);
+      border-color: var(--slate-400);
+    }
+
     /* Result Card Styles (at the very end of Summary page) */
     .summary-result-area {
       margin-top: 8px;
@@ -1072,7 +1167,14 @@
 
       <div id="summary-slots-list" class="summary-slots-grid"></div>
 
-      <div id="summary-result-area" class="summary-result-area" aria-live="polite"></div>
+            <div id="summary-result-area" class="summary-result-area" aria-live="polite"></div>
+
+      <!-- Save Section at very end of Summary page -->
+      <div id="summary-save-section" class="summary-save-section">
+        <div id="summary-save-message" role="status" aria-live="polite" style="display: none;"></div>
+        <p id="summary-save-hint" class="summary-save-hint">Press Save to store this day.</p>
+        <button type="button" id="summary-save-btn" class="btn-summary-save">Save</button>
+      </div>
     </div>
   </div>
 

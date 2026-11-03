@@ -136,6 +136,10 @@
   const summaryStartNewDayBtn = document.getElementById('summary-start-new-day-btn');
   const summarySlotsList = document.getElementById('summary-slots-list');
   const summaryResultArea = document.getElementById('summary-result-area');
+  const summarySaveSection = document.getElementById('summary-save-section');
+  const summarySaveMessage = document.getElementById('summary-save-message');
+  const summarySaveHint = document.getElementById('summary-save-hint');
+  const summarySaveBtn = document.getElementById('summary-save-btn');
 
   // Calendar Dialog Elements
   const calendarDialog = document.getElementById('calendar-dialog');
@@ -257,6 +261,7 @@
                   startMinutes: typeof d.startMinutes === "number" ? d.startMinutes : state.lastTimes.startMinutes,
                   endMinutes: typeof d.endMinutes === "number" ? d.endMinutes : state.lastTimes.endMinutes,
                   slots: sanitizeSlots(d.slots),
+                  savedAt: (typeof d.savedAt === "string" || typeof d.saved_at === "string") ? (d.savedAt || d.saved_at) : null,
                 };
               }
             });
@@ -297,6 +302,7 @@
             start_min: dayData.startMinutes,
             end_min: dayData.endMinutes,
             slots: dayData.slots,
+            saved_at: dayData.savedAt || null,
           }, { onConflict: 'user_id,day' });
       }
     } catch (err) {
@@ -313,7 +319,7 @@
       try {
         const { data, error } = await supabaseClient
           .from('planner_days')
-          .select('day, start_min, end_min, slots')
+          .select('day, start_min, end_min, slots, saved_at')
           .eq('user_id', currentUserId);
 
         if (!error && Array.isArray(data)) {
@@ -323,6 +329,7 @@
                 startMinutes: typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME,
                 endMinutes: typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME,
                 slots: sanitizeSlots(row.slots),
+                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
               };
             }
           });
@@ -404,23 +411,38 @@
   function getDayCompletionStatus(dateKey) {
     const day = state.days[dateKey];
     if (!day || !day.slots || day.slots.length === 0) return "NONE";
-    if (!isScheduleFinished(day)) return "NONE";
 
-    const total = day.slots.length;
-    const completedCount = day.slots.filter(s => s.status === "COMPLETED").length;
-    const notCompletedCount = day.slots.filter(s => s.status === "NOT_COMPLETED").length;
+    // If day is SAVED (savedAt is set)
+    if (day.savedAt) {
+      const total = day.slots.length;
+      const completedCount = day.slots.filter(s => s.status === "COMPLETED").length;
+      const notCompletedCount = day.slots.filter(s => s.status === "NOT_COMPLETED").length;
 
-    if (completedCount === total) return "FULLY_COMPLETED";
-    if (notCompletedCount === total) return "NOT_COMPLETED";
-    if (completedCount > 0 && notCompletedCount > 0) return "PARTLY_COMPLETED";
-    if (completedCount > 0 && completedCount < total) return "PARTLY_COMPLETED";
-    if (notCompletedCount > 0 && notCompletedCount < total) return "PARTLY_COMPLETED";
+      if (completedCount === total) return "FULLY_COMPLETED";
+      if (completedCount > 0 && notCompletedCount > 0) return "PARTLY_COMPLETED";
+      if (completedCount > 0 && completedCount < total) return "PARTLY_COMPLETED";
+      if (notCompletedCount > 0 && completedCount === 0) return "NOT_COMPLETED";
 
+      return "PLANNED_UNMARKED"; // Saved but nothing is marked
+    }
+
+    // Days with only a draft show a plain outline
     return "PLANNED_UNMARKED";
   }
 
   // --- VIEW SWITCHING ---
+  function clearSummarySaveMessage() {
+    if (summarySaveMessage) {
+      summarySaveMessage.innerHTML = "";
+      summarySaveMessage.className = "";
+      summarySaveMessage.style.display = "none";
+    }
+  }
+
   function switchView(viewName) {
+    if (viewName !== 'summary') {
+      clearSummarySaveMessage();
+    }
     Object.keys(views).forEach((name) => {
       views[name].classList.toggle('active', name === viewName);
     });
@@ -443,16 +465,26 @@
 
   function handleSelectDate(dateKey) {
     flushPendingDebouncedSave();
+    clearSummarySaveMessage();
     selectedDateKey = dateKey;
     updateDateButtonsState();
 
-    // Opening a date (via Yesterday/Today/Tomorrow or calendar) always opens the Summary page
-    renderSummaryView();
-    switchView('summary');
-
-    // Move focus to Summary page title for accessibility
-    if (summaryHeaderTitle) {
-      summaryHeaderTitle.focus();
+    const dayData = getCurrentDayData();
+    // 4. Opening a date:
+    // If the day is SAVED (saved_at is set): open the SUMMARY page for that date
+    if (dayData && dayData.savedAt) {
+      renderSummaryView();
+      switchView('summary');
+      if (summaryHeaderTitle) {
+        summaryHeaderTitle.focus();
+      }
+    } else {
+      // If the day has draft slots or nothing: open the first page (settings) for that date
+      initSettingsView();
+      switchView('settings');
+      if (settingsStartTimeInput) {
+        settingsStartTimeInput.focus();
+      }
     }
   }
 
@@ -731,6 +763,7 @@
   });
 
   slotTaskInput.addEventListener('input', () => {
+    clearSummarySaveMessage();
     const dayData = getCurrentDayData();
     if (dayData && dayData.slots[currentSlotIndex]) {
       dayData.slots[currentSlotIndex].taskText = slotTaskInput.value;
@@ -803,10 +836,12 @@
       if (summaryEmptyState) summaryEmptyState.style.display = "block";
       summarySlotsList.innerHTML = "";
       if (summaryResultArea) summaryResultArea.innerHTML = "";
+      if (summarySaveSection) summarySaveSection.style.display = "none";
       return;
     }
 
     if (summaryEmptyState) summaryEmptyState.style.display = "none";
+    if (summarySaveSection) summarySaveSection.style.display = "flex";
 
     const slotsWithTimes = getSlotsWithTimes();
     const totalSlots = slotsWithTimes.length;
@@ -899,17 +934,21 @@
       }
 
       btnCompleted.addEventListener('click', () => {
+        clearSummarySaveMessage();
         slot.status = slot.status === "COMPLETED" ? "NONE" : "COMPLETED";
         saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
         updateSummaryResult();
+        updateSummarySaveState();
       });
 
       btnNotCompleted.addEventListener('click', () => {
+        clearSummarySaveMessage();
         slot.status = slot.status === "NOT_COMPLETED" ? "NONE" : "NOT_COMPLETED";
         saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
         updateSummaryResult();
+        updateSummarySaveState();
       });
 
       updateSlotCardButtons();
@@ -922,6 +961,7 @@
     });
 
     updateSummaryResult();
+    updateSummarySaveState();
   }
 
   summaryContinuePlanningBtn.addEventListener('click', () => {
@@ -1056,14 +1096,131 @@
 
   dialogConfirmBtn.addEventListener('click', () => {
     newDayDialog.close();
+    clearSummarySaveMessage();
     if (state.days[selectedDateKey]) {
       state.days[selectedDateKey].slots = [];
+      state.days[selectedDateKey].savedAt = null;
     }
     currentSlotIndex = 0;
     saveStorage(selectedDateKey);
     initSettingsView();
     switchView('settings');
   });
+
+
+  function updateSummarySaveState() {
+    if (!summarySaveBtn || !summarySaveHint) return;
+    const dayData = getCurrentDayData();
+    const finished = isScheduleFinished(dayData);
+
+    if (finished) {
+      summarySaveBtn.disabled = false;
+      summarySaveBtn.textContent = "Save";
+      summarySaveHint.textContent = "Press Save to store this day.";
+    } else {
+      summarySaveBtn.disabled = true;
+      summarySaveBtn.textContent = "Save";
+      summarySaveHint.textContent = "Finish the plan to save.";
+    }
+  }
+
+  function showSaveSuccessMessage() {
+    if (!summarySaveMessage) return;
+    const selectedObj = parseLocalDateKey(selectedDateKey);
+    const todayStr = getLocalDateKey(todayDate);
+    const isToday = selectedDateKey === todayStr;
+
+    let text = isToday
+      ? "Today’s work has been saved successfully."
+      : `Work for ${formatShortDisplayDate(selectedObj)} has been saved successfully.`;
+
+    summarySaveMessage.innerHTML = "";
+    summarySaveMessage.className = "save-message-box save-message-success";
+    summarySaveMessage.style.display = "flex";
+
+    const checkIcon = document.createElement('span');
+    checkIcon.setAttribute('aria-hidden', 'true');
+    checkIcon.style.marginRight = "8px";
+    checkIcon.textContent = "✓";
+
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = text;
+
+    summarySaveMessage.appendChild(checkIcon);
+    summarySaveMessage.appendChild(msgSpan);
+  }
+
+  function showSaveErrorMessage() {
+    if (!summarySaveMessage) return;
+    summarySaveMessage.innerHTML = "";
+    summarySaveMessage.className = "save-message-box save-message-error";
+    summarySaveMessage.style.display = "flex";
+
+    const errorSpan = document.createElement('span');
+    errorSpan.textContent = "Could not save. Check your internet and try again.";
+
+    const retryBtn = document.createElement('button');
+    retryBtn.type = "button";
+    retryBtn.className = "btn-save-retry";
+    retryBtn.textContent = "Retry";
+    retryBtn.setAttribute('aria-label', "Retry saving this day's work");
+    retryBtn.addEventListener('click', () => {
+      handleSaveDay();
+    });
+
+    summarySaveMessage.appendChild(errorSpan);
+    summarySaveMessage.appendChild(retryBtn);
+  }
+
+  async function handleSaveDay() {
+    const dayData = getCurrentDayData();
+    if (!dayData || !isScheduleFinished(dayData)) return;
+
+    if (summarySaveBtn) {
+      summarySaveBtn.disabled = true;
+      summarySaveBtn.textContent = "Saving…";
+    }
+
+    try {
+      const nowIso = new Date().toISOString();
+      dayData.savedAt = nowIso;
+
+      // 1. Save to local storage under key including signed-in user id
+      saveToLocalStorage();
+
+      // 2. Upsert to Supabase planner_days if signed in
+      if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+        const { error } = await supabaseClient
+          .from('planner_days')
+          .upsert({
+            user_id: currentUserId,
+            day: selectedDateKey,
+            start_min: dayData.startMinutes,
+            end_min: dayData.endMinutes,
+            slots: dayData.slots,
+            saved_at: nowIso,
+          }, { onConflict: 'user_id,day' });
+
+        if (error) {
+          throw error;
+        }
+      }
+
+      showSaveSuccessMessage();
+    } catch (err) {
+      console.warn("Save day error:", err);
+      showSaveErrorMessage();
+    } finally {
+      if (summarySaveBtn) {
+        summarySaveBtn.disabled = false;
+        summarySaveBtn.textContent = "Save";
+      }
+    }
+  }
+
+  if (summarySaveBtn) {
+    summarySaveBtn.addEventListener('click', handleSaveDay);
+  }
 
   // --- MONTHLY CALENDAR DIALOG ---
   function renderCalendarGrid() {
@@ -1230,9 +1387,9 @@
 
       document.documentElement.classList.add('auth-ready');
 
-      // Check if Today has saved slots with duration
+      // Check if Today is SAVED
       const todayData = getCurrentDayData();
-      if (hasSavedSlotsWithDuration(todayData)) {
+      if (todayData && todayData.savedAt) {
         updateDateButtonsState();
         renderSummaryView();
         switchView('summary');
