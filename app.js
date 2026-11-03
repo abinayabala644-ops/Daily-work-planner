@@ -135,6 +135,7 @@
   const summaryStartNewDayBtn = document.getElementById('summary-start-new-day-btn');
   const summarySlotsList = document.getElementById('summary-slots-list');
   const summaryResultArea = document.getElementById('summary-result-area');
+  const summaryFinishMessage = document.getElementById('summary-finish-message');
   const summarySaveSection = document.getElementById('summary-save-section');
   const summarySaveMessage = document.getElementById('summary-save-message');
   const summarySaveHint = document.getElementById('summary-save-hint');
@@ -537,6 +538,11 @@
       summarySaveMessage.innerHTML = "";
       summarySaveMessage.className = "";
       summarySaveMessage.style.display = "none";
+    }
+    if (summaryFinishMessage) {
+      summaryFinishMessage.innerHTML = "";
+      summaryFinishMessage.className = "";
+      summaryFinishMessage.style.display = "none";
     }
   }
 
@@ -1359,7 +1365,6 @@
   }
 
   function showSaveSuccessMessage() {
-    if (!summarySaveMessage) return;
     const selectedObj = parseLocalDateKey(selectedDateKey);
     const todayStr = getLocalDateKey(todayDate);
     const isToday = selectedDateKey === todayStr;
@@ -1368,20 +1373,41 @@
       ? "Today’s work has been saved successfully."
       : `Work for ${formatShortDisplayDate(selectedObj)} has been saved successfully.`;
 
-    summarySaveMessage.innerHTML = "";
-    summarySaveMessage.className = "save-message-box save-message-success";
-    summarySaveMessage.style.display = "flex";
+    // Render message in summarySaveMessage (above Save button)
+    if (summarySaveMessage) {
+      summarySaveMessage.innerHTML = "";
+      summarySaveMessage.className = "save-message-box save-message-success";
+      summarySaveMessage.style.display = "flex";
 
-    const checkIcon = document.createElement('span');
-    checkIcon.setAttribute('aria-hidden', 'true');
-    checkIcon.style.marginRight = "8px";
-    checkIcon.textContent = "✓";
+      const checkIcon = document.createElement('span');
+      checkIcon.setAttribute('aria-hidden', 'true');
+      checkIcon.style.marginRight = "8px";
+      checkIcon.textContent = "✓";
 
-    const msgSpan = document.createElement('span');
-    msgSpan.textContent = text;
+      const msgSpan = document.createElement('span');
+      msgSpan.textContent = text;
 
-    summarySaveMessage.appendChild(checkIcon);
-    summarySaveMessage.appendChild(msgSpan);
+      summarySaveMessage.appendChild(checkIcon);
+      summarySaveMessage.appendChild(msgSpan);
+    }
+
+    // Also render prominent message in summaryFinishMessage (at top of summary cards)
+    if (summaryFinishMessage) {
+      summaryFinishMessage.innerHTML = "";
+      summaryFinishMessage.className = "save-message-box save-message-success";
+      summaryFinishMessage.style.display = "flex";
+
+      const checkIconTop = document.createElement('span');
+      checkIconTop.setAttribute('aria-hidden', 'true');
+      checkIconTop.style.marginRight = "8px";
+      checkIconTop.textContent = "✓";
+
+      const msgSpanTop = document.createElement('span');
+      msgSpanTop.textContent = text;
+
+      summaryFinishMessage.appendChild(checkIconTop);
+      summaryFinishMessage.appendChild(msgSpanTop);
+    }
   }
 
   function showSaveErrorMessage() {
