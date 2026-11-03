@@ -1087,38 +1087,41 @@
         <button type="button" id="slot-back-btn" class="btn btn-secondary">
           &larr; Back
         </button>
-        <div style="text-align: right;">
-          <span style="font-size: 0.75rem; color: var(--slate-500); font-weight: 600; text-transform: uppercase;">Time left in your day</span>
-          <p id="slot-time-left" style="font-size: 1.15rem; font-weight: 800; color: var(--slate-900); font-family: 'JetBrains Mono', monospace;">0 min</p>
+      </div>
+
+      <div class="slot-header-section" style="margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+          <span id="slot-badge" class="slot-badge" style="font-size: 0.88rem; padding: 4px 12px;">Slot 1</span>
+        </div>
+        <div id="slot-date-display" class="selected-date-slot-display" style="font-size: 1rem; color: var(--slate-600); font-weight: 600;"></div>
+      </div>
+
+      <div class="slot-times-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="slot-start-time" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Start time</label>
+          <input type="time" id="slot-start-time" class="time-input" style="min-height: 44px; font-size: 16px; width: 100%;" />
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="slot-end-time" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">End time</label>
+          <input type="time" id="slot-end-time" class="time-input" style="min-height: 44px; font-size: 16px; width: 100%;" />
         </div>
       </div>
 
-      <div class="slot-banner">
-        <div class="slot-badge-row">
-          <span id="slot-badge" class="slot-badge">Slot 1</span>
-          <span id="slot-end-label" style="font-size: 0.8rem; font-weight: 600; color: var(--slate-600);"></span>
-        </div>
-        <div id="slot-time-range" class="slot-time-range">9:00 AM - 9:45 AM</div>
-        <div id="slot-date-display" class="selected-date-slot-display"></div>
-      </div>
+      <div id="slot-rules-message" class="field-error-text" style="display: none; margin-bottom: 16px; font-size: 0.88rem; font-weight: 600;"></div>
 
-      <div class="form-group">
-        <label for="slot-work-duration" class="form-label">Set Your Work Duration</label>
-        <div class="duration-input-wrapper">
-          <input type="number" id="slot-work-duration" inputmode="numeric" min="5" placeholder="e.g. 45" class="duration-number-input" />
-          <span class="duration-unit-hint">minutes</span>
-        </div>
-        <p id="slot-duration-error" class="field-error-text" style="display: none;"></p>
-      </div>
-
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom: 20px;">
         <label for="slot-task-input" class="form-label">Work for this slot</label>
         <textarea id="slot-task-input" class="textarea-box" placeholder="Type what you plan to do in this slot…"></textarea>
       </div>
 
-      <button type="button" id="slot-next-btn" class="btn btn-primary" disabled>
-        Next &rarr;
-      </button>
+      <div class="slot-actions-row" style="display: flex; gap: 12px; align-items: center;">
+        <button type="button" id="slot-next-btn" class="btn btn-primary" style="flex: 1; min-height: 44px;" disabled>
+          Next &rarr;
+        </button>
+        <button type="button" id="slot-finish-btn" class="btn" style="flex: 1; min-height: 44px; background: var(--slate-800); color: #fff; font-weight: 700;" disabled>
+          Finish
+        </button>
+      </div>
     </div>
 
     <!-- PAGE 3: DAILY WORK SUMMARY PAGE -->
@@ -1236,7 +1239,7 @@
   <dialog id="settings-confirm-dialog">
     <div class="modal-box">
       <h3 class="modal-title">Clear Current Slots?</h3>
-      <p class="modal-desc">Changing the times clears all your slots and their statuses for this date.</p>
+      <p class="modal-desc">Some slots are outside the new times and will be removed.</p>
       <div class="modal-actions">
         <button type="button" id="settings-dialog-cancel" class="btn btn-secondary">Cancel</button>
         <button type="button" id="settings-dialog-continue" class="btn" style="background: var(--rose-600); color: #fff;">Continue</button>
