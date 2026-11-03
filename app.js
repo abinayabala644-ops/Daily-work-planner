@@ -120,7 +120,6 @@
   const slotRulesMessage = document.getElementById('slot-rules-message');
   const slotTaskInput = document.getElementById('slot-task-input');
   const slotNextBtn = document.getElementById('slot-next-btn');
-  const slotFinishBtn = document.getElementById('slot-finish-btn');
 
   // Summary Elements
   const summaryHeaderTitle = document.getElementById('summary-header-title');
@@ -834,9 +833,8 @@
       dayData.endMinutes
     );
 
-    // Keep buttons clickable at all times
+    // Keep Next button clickable at all times
     slotNextBtn.disabled = false;
-    slotFinishBtn.disabled = false;
 
     // Show error message if explicitly requested or if user has typed something that has an error
     const hasTypedSomething = Boolean(slotStartTimeInput.value || slotEndTimeInput.value);
@@ -950,6 +948,17 @@
     }
 
     const nextIndex = currentSlotIndex + 1;
+
+    // If the current slot ends exactly at the day's Ending Time, finishing the day opens the Summary
+    if (slot.end === dayData.endMinutes) {
+      cleanupTrailingEmptySlots(dayData);
+      saveStorage(selectedDateKey);
+      renderSummaryView();
+      showSaveSuccessMessage();
+      switchView('summary');
+      return;
+    }
+
     if (nextIndex < dayData.slots.length) {
       currentSlotIndex = nextIndex;
       renderSlotPage();
@@ -974,31 +983,6 @@
       saveStorage(selectedDateKey);
       renderSlotPage();
     }
-  });
-
-  slotFinishBtn.addEventListener('click', () => {
-    flushPendingDebouncedSave();
-    const dayData = getCurrentDayData();
-    if (!dayData) return;
-
-    const slot = dayData.slots[currentSlotIndex];
-    const validationError = getSlotValidationError(slot, currentSlotIndex, dayData.slots, dayData.startMinutes, dayData.endMinutes);
-    if (validationError) {
-      slotRulesMessage.textContent = validationError;
-      slotRulesMessage.style.display = "block";
-      if (!slotStartTimeInput.value) {
-        slotStartTimeInput.focus();
-      } else if (!slotEndTimeInput.value) {
-        slotEndTimeInput.focus();
-      }
-      return;
-    }
-
-    cleanupTrailingEmptySlots(dayData);
-    saveStorage(selectedDateKey);
-    renderSummaryView();
-    showSaveSuccessMessage();
-    switchView('summary');
   });
 
   // --- SUMMARY VIEW LOGIC ---
