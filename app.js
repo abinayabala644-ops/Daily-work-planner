@@ -439,7 +439,18 @@
     const slotStart = typeof slot.start === "number" && !isNaN(slot.start) ? slot.start : dayStartMinutes;
 
     if (slot.end < slotStart + 5) {
-      return "The End time must be at least 5 minutes after the Start time.";
+      const endFormatted = formatMinutesTo12Hour(slot.end);
+      const startFormatted = formatMinutesTo12Hour(slotStart);
+      const isBefore = slot.end <= slotStart;
+      const isMorningTypo = slot.end < 720 && slotStart >= 720;
+
+      if (isBefore && isMorningTypo) {
+        const pmMinutes = slot.end + 720;
+        const pmFormatted = formatMinutesTo12Hour(pmMinutes);
+        const pm24Str = minutesToTimeString(pmMinutes);
+        return `The End time (${endFormatted}) is before the Start time (${startFormatted}). For ${pmFormatted}, type ${pm24Str}.`;
+      }
+      return `The End time (${endFormatted}) must be at least 5 minutes after the Start time (${startFormatted}).`;
     }
 
     if (slot.end > dayEndMinutes) {
