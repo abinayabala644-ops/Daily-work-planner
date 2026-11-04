@@ -8,7 +8,7 @@
  * - Times stored as minutes since midnight; single 12-hour AM/PM formatting helper.
  * - Slot start time is never stored (derived sequentially from day.startMinutes).
  * - Slots 1 to N: NO checkbox and NO Completed / Not Completed buttons on ANY slot page.
- * - The LAST slot (ending at day.endMinutes) has its primary button read "Finish" which opens the Summary page.
+ * - The LAST slot (ending at day.endMinutes) has Next open the Summary page.
  * - DAILY WORK SUMMARY PAGE:
  *     1. Title "Daily Work Summary" with formatted date, day range, and slot count.
  *     2. Organized list of ALL slots in time order (each card has ✓ Completed and ✗ Not Completed buttons).
@@ -122,8 +122,7 @@
   const slotRulesMessage = document.getElementById('slot-rules-message');
   const slotTaskInput = document.getElementById('slot-task-input');
   const slotNextBtn = document.getElementById('slot-next-btn');
-  const slotFinishBtn = document.getElementById('slot-finish-btn');
-  const slotFullHint = document.getElementById('slot-full-hint');
+  const slotEndLastHint = document.getElementById('slot-end-last-hint');
 
   // Summary Elements
   const summaryHeaderTitle = document.getElementById('summary-header-title');
@@ -841,19 +840,14 @@
     const hasTypedEnd = Boolean(slotEndTimeInput.value);
     const isEndValid = Boolean(hasTypedEnd && !error);
 
-    // Buttons: Next and Finish both disabled until End time is valid
-    if (slotFinishBtn) {
-      slotFinishBtn.disabled = !isEndValid;
-    }
-
-    const isDayFull = isEndValid && slot.end === dayData.endMinutes;
+    // Next is disabled until the slot is valid
     if (slotNextBtn) {
-      // Next also stays disabled when End time equals day's Ending Time
-      slotNextBtn.disabled = !isEndValid || isDayFull;
+      slotNextBtn.disabled = !isEndValid;
     }
 
-    if (slotFullHint) {
-      slotFullHint.style.display = isDayFull ? "block" : "none";
+    const isLastSlot = isEndValid && slot.end === dayData.endMinutes;
+    if (slotEndLastHint) {
+      slotEndLastHint.style.display = isLastSlot ? "block" : "none";
     }
 
     if (error && (showErrorAlways || hasTypedEnd)) {
@@ -972,7 +966,7 @@
 
   function cleanupTrailingEmptySlots(dayData) {
     if (!dayData || !Array.isArray(dayData.slots)) return;
-    // A new empty slot exists only while the user is on its page. If the user leaves it (Back or Finish)
+    // A new empty slot exists only while the user is on its page. If the user leaves it (Back or leaving the page)
     // with End and text empty, delete it. Never keep an empty slot.
     while (dayData.slots.length > 1 && isSlotEmpty(dayData.slots[dayData.slots.length - 1])) {
       dayData.slots.pop();
@@ -1017,17 +1011,28 @@
 
     const slot = dayData.slots[currentSlotIndex];
     const validationError = getSlotValidationError(slot, currentSlotIndex, dayData.slots, dayData.startMinutes, dayData.endMinutes);
-    if (validationError || slot.end === dayData.endMinutes) {
+    if (validationError) {
       updateSlotValidationUI(true);
       return;
     }
 
+    // If this slot's End time EQUALS the day's Ending Time: Next saves the slot and opens the SUMMARY page
+    if (slot.end === dayData.endMinutes) {
+      cleanupTrailingEmptySlots(dayData);
+      saveStorage(selectedDateKey);
+      renderSummaryView();
+      showSaveSuccessMessage();
+      switchView('summary');
+      return;
+    }
+
+    // If this slot's End time is LESS than the day's Ending Time:
     const nextIndex = currentSlotIndex + 1;
     if (nextIndex < dayData.slots.length) {
       currentSlotIndex = nextIndex;
       renderSlotPage();
     } else {
-      // Next on the last slot creates a new slot whose Start time is this slot's End time
+      // Next on the last slot creates a new empty slot whose Start time is this slot's End time and opens it
       if (dayData.slots.length >= 48) {
         slotRulesMessage.textContent = "Maximum 48 slots reached for this day.";
         slotRulesMessage.style.display = "block";
@@ -1048,27 +1053,6 @@
       renderSlotPage();
     }
   });
-
-  if (slotFinishBtn) {
-    slotFinishBtn.addEventListener('click', () => {
-      flushPendingDebouncedSave();
-      const dayData = getCurrentDayData();
-      if (!dayData) return;
-
-      const slot = dayData.slots[currentSlotIndex];
-      const validationError = getSlotValidationError(slot, currentSlotIndex, dayData.slots, dayData.startMinutes, dayData.endMinutes);
-      if (validationError) {
-        updateSlotValidationUI(true);
-        return;
-      }
-
-      cleanupTrailingEmptySlots(dayData);
-      saveStorage(selectedDateKey);
-      renderSummaryView();
-      showSaveSuccessMessage();
-      switchView('summary');
-    });
-  }
 
   // --- SUMMARY VIEW LOGIC ---
   function renderSummaryView() {

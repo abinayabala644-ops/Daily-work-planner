@@ -314,15 +314,6 @@
       border-color: var(--slate-300);
     }
 
-    .btn-finish {
-      background: var(--emerald-600);
-      color: #ffffff;
-      width: 100%;
-    }
-
-    .btn-finish:hover:not(:disabled) {
-      background: var(--emerald-700);
-    }
 
     /* Date Quick Navigation Row */
     .date-nav-section {
@@ -1110,6 +1101,7 @@
         <div class="form-group" style="margin-bottom: 0;">
           <label for="slot-end-time" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">End time</label>
           <input type="time" id="slot-end-time" class="time-input" style="min-height: 44px; font-size: 16px; width: 100%;" />
+          <p id="slot-end-last-hint" style="display: none; margin: 4px 0 0 0; font-size: 0.78rem; color: var(--slate-500);">This is the last slot. Next opens your summary.</p>
         </div>
       </div>
 
@@ -1120,15 +1112,11 @@
         <textarea id="slot-task-input" class="textarea-box" placeholder="Type what you plan to do in this slot…"></textarea>
       </div>
 
-      <div class="slot-actions-row" style="display: flex; gap: 12px; align-items: center;">
-        <button type="button" id="slot-next-btn" class="btn btn-primary" style="flex: 1; min-height: 44px;" disabled>
+      <div class="slot-actions-row">
+        <button type="button" id="slot-next-btn" class="btn btn-primary" style="width: 100%; min-height: 44px;" disabled>
           Next &rarr;
         </button>
-        <button type="button" id="slot-finish-btn" class="btn" style="flex: 1; min-height: 44px; background: var(--slate-800); color: #fff; font-weight: 700;" disabled>
-          Finish
-        </button>
       </div>
-      <p id="slot-full-hint" style="display: none; margin: 8px 0 0 0; text-align: center; font-size: 0.88rem; color: var(--slate-600); font-weight: 600;">The day is full. Press Finish.</p>
     </div>
 
     <!-- PAGE 3: DAILY WORK SUMMARY PAGE -->
