@@ -1061,13 +1061,13 @@
 
       <div class="form-group">
         <label for="starting-time-input" class="form-label">Starting Time</label>
-        <input type="time" id="starting-time-input" value="09:00" class="time-input" />
+        <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 2:00 PM" id="starting-time-input" value="9:00 AM" class="time-input" aria-describedby="error-start-time" />
         <p id="error-start-time" class="field-error-text" style="display: none;"></p>
       </div>
 
       <div class="form-group">
         <label for="ending-time-input" class="form-label">Ending Time</label>
-        <input type="time" id="ending-time-input" value="18:00" class="time-input" />
+        <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 2:00 PM" id="ending-time-input" value="6:00 PM" class="time-input" aria-describedby="error-end-time" />
         <p id="error-end-time" class="field-error-text" style="display: none;"></p>
       </div>
     </div>
@@ -1100,7 +1100,7 @@
         </div>
         <div class="form-group" style="margin-bottom: 0;">
           <label for="slot-end-time" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">End time</label>
-          <input type="time" id="slot-end-time" class="time-input" style="min-height: 44px; font-size: 16px; width: 100%;" />
+          <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 2:00 PM" id="slot-end-time" class="time-input" style="min-height: 44px; font-size: 16px; width: 100%;" aria-describedby="slot-rules-message" />
           <p id="slot-end-last-hint" style="display: none; margin: 4px 0 0 0; font-size: 0.78rem; color: var(--slate-500);">This is the last slot. Next opens your summary.</p>
         </div>
       </div>

@@ -205,6 +205,106 @@
     return `${m} min`;
   }
 
+  function parseFlexibleTime(input) {
+    if (!input || typeof input !== 'string') {
+      return { minutes: null, error: 'EMPTY' };
+    }
+    const raw = input.trim();
+    if (!raw) {
+      return { minutes: null, error: 'EMPTY' };
+    }
+
+    // Only allow digits, colon, dot, space, and a, p, m
+    if (!/^[0-9:\.\sapmAPM]+$/.test(raw)) {
+      return { minutes: null, error: 'INVALID' };
+    }
+
+    const lower = raw.toLowerCase().trim();
+
+    let meridiem = null;
+    let timePart = lower;
+    if (lower.endsWith('am') || lower.endsWith('a.m.')) {
+      meridiem = 'am';
+      timePart = lower.replace(/a\.?m\.?$/, '').trim();
+    } else if (lower.endsWith('pm') || lower.endsWith('p.m.')) {
+      meridiem = 'pm';
+      timePart = lower.replace(/p\.?m\.?$/, '').trim();
+    } else if (/[a-z]/.test(lower)) {
+      return { minutes: null, error: 'INVALID' };
+    }
+
+    let hour = null;
+    let min = 0;
+
+    if (/^(\d{1,2})[:\.\s]+(\d{1,2})$/.test(timePart)) {
+      const match = timePart.match(/^(\d{1,2})[:\.\s]+(\d{1,2})$/);
+      hour = parseInt(match[1], 10);
+      min = parseInt(match[2], 10);
+    } else if (/^\d{3,4}$/.test(timePart)) {
+      if (timePart.length === 3) {
+        hour = parseInt(timePart.slice(0, 1), 10);
+        min = parseInt(timePart.slice(1), 10);
+      } else {
+        hour = parseInt(timePart.slice(0, 2), 10);
+        min = parseInt(timePart.slice(2), 10);
+      }
+    } else if (/^\d{1,2}$/.test(timePart)) {
+      hour = parseInt(timePart, 10);
+      min = 0;
+    } else {
+      return { minutes: null, error: 'INVALID' };
+    }
+
+    if (isNaN(hour) || isNaN(min) || min < 0 || min > 59) {
+      return { minutes: null, error: 'INVALID' };
+    }
+
+    if (meridiem) {
+      if (hour < 1 || hour > 12) {
+        return { minutes: null, error: 'INVALID' };
+      }
+      let h24 = hour % 12;
+      if (meridiem === 'pm') {
+        h24 += 12;
+      }
+      return { minutes: h24 * 60 + min, error: null };
+    }
+
+    // No am/pm specified
+    if (hour >= 13 && hour <= 23) {
+      return { minutes: hour * 60 + min, error: null };
+    }
+
+    if (hour === 0) {
+      return { minutes: min, error: 'OUT_OF_RANGE' };
+    }
+
+    if (hour > 23) {
+      return { minutes: null, error: 'INVALID' };
+    }
+
+    // Hour 1 to 12
+    const morningHour = (hour === 12) ? 0 : hour;
+    const afternoonHour = (hour === 12) ? 12 : (hour + 12);
+
+    const morningMins = morningHour * 60 + min;
+    const afternoonMins = afternoonHour * 60 + min;
+
+    const morningInRange = morningMins >= 540 && morningMins <= 1080;
+    const afternoonInRange = afternoonMins >= 540 && afternoonMins <= 1080;
+
+    if (morningInRange && !afternoonInRange) {
+      return { minutes: morningMins, error: null };
+    }
+    if (afternoonInRange && !morningInRange) {
+      return { minutes: afternoonMins, error: null };
+    }
+
+    // Neither fits into 9:00 AM to 6:00 PM
+    return { minutes: afternoonMins > 1080 ? afternoonMins : morningMins, error: 'OUT_OF_RANGE' };
+  }
+
+
   // --- SUPABASE CLIENT HELPERS ---
   function areKeysPlaceholder() {
     return (
@@ -432,25 +532,21 @@
 
   function getSlotValidationError(slot, index, slots, dayStartMinutes, dayEndMinutes) {
     if (!slot) return "Please choose an End time.";
+    if (slot.invalidFormat) {
+      return "Type a time like 2:00 or 9:30 AM.";
+    }
     if (slot.end === null || slot.end === undefined || isNaN(slot.end)) {
       return "Please choose an End time.";
     }
 
     const slotStart = typeof slot.start === "number" && !isNaN(slot.start) ? slot.start : dayStartMinutes;
 
-    if (slot.end < slotStart + 5) {
-      const endFormatted = formatMinutesTo12Hour(slot.end);
-      const startFormatted = formatMinutesTo12Hour(slotStart);
-      const isBefore = slot.end <= slotStart;
-      const isMorningTypo = slot.end < 720 && slotStart >= 720;
+    if (slot.end < MIN_WORK_TIME || slot.end > MAX_WORK_TIME) {
+      return "The day ends at " + formatMinutesTo12Hour(dayEndMinutes) + ". Choose an earlier End time.";
+    }
 
-      if (isBefore && isMorningTypo) {
-        const pmMinutes = slot.end + 720;
-        const pmFormatted = formatMinutesTo12Hour(pmMinutes);
-        const pm24Str = minutesToTimeString(pmMinutes);
-        return `The End time (${endFormatted}) is before the Start time (${startFormatted}). For ${pmFormatted}, type ${pm24Str}.`;
-      }
-      return `The End time (${endFormatted}) must be at least 5 minutes after the Start time (${startFormatted}).`;
+    if (slot.end < slotStart + 5) {
+      return "The End time must be at least 5 minutes after the Start time.";
     }
 
     if (slot.end > dayEndMinutes) {
@@ -612,8 +708,8 @@
     const startMins = dayData ? dayData.startMinutes : state.lastTimes.startMinutes;
     const endMins = dayData ? dayData.endMinutes : state.lastTimes.endMinutes;
 
-    startInput.value = minutesToTimeString(startMins || MIN_WORK_TIME);
-    endInput.value = minutesToTimeString(endMins || MAX_WORK_TIME);
+    startInput.value = formatMinutesTo12Hour(startMins || MIN_WORK_TIME);
+    endInput.value = formatMinutesTo12Hour(endMins || MAX_WORK_TIME);
 
     clearSettingsErrors();
   }
@@ -623,12 +719,33 @@
     errorEndTime.style.display = "none";
   }
 
+  function handleTimeFieldBlur(inputEl) {
+    if (!inputEl) return;
+    const val = inputEl.value.trim();
+    if (!val) return;
+    const parsed = parseFlexibleTime(val);
+    if (!parsed.error && parsed.minutes !== null) {
+      inputEl.value = formatMinutesTo12Hour(parsed.minutes);
+    }
+  }
+
+  [startInput, endInput].forEach(inp => {
+    if (!inp) return;
+    inp.addEventListener('blur', () => handleTimeFieldBlur(inp));
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        handleTimeFieldBlur(inp);
+        inp.blur();
+      }
+    });
+  });
+
   settingsNextBtn.addEventListener('click', () => {
     clearSettingsErrors();
     let hasError = false;
 
-    const startVal = startInput.value;
-    const endVal = endInput.value;
+    const startVal = startInput.value.trim();
+    const endVal = endInput.value.trim();
 
     if (!startVal) {
       errorStartTime.textContent = "Please select a Starting Time.";
@@ -642,22 +759,41 @@
       hasError = true;
     }
 
-    const startMins = timeStringToMinutes(startVal);
-    const endMins = timeStringToMinutes(endVal);
+    const startParsed = parseFlexibleTime(startVal);
+    const endParsed = parseFlexibleTime(endVal);
 
-    if (startMins < MIN_WORK_TIME || startMins > MAX_WORK_TIME) {
-      errorStartTime.textContent = "Starting Time must be inside 9:00 AM to 6:00 PM.";
-      errorStartTime.style.display = "block";
-      hasError = true;
+    let startMins = startParsed.minutes;
+    let endMins = endParsed.minutes;
+
+    if (startVal) {
+      if (startParsed.error === 'INVALID') {
+        errorStartTime.textContent = "Type a time like 2:00 or 9:30 AM.";
+        errorStartTime.style.display = "block";
+        hasError = true;
+      } else if (startParsed.error === 'OUT_OF_RANGE' || startMins < MIN_WORK_TIME || startMins > MAX_WORK_TIME) {
+        errorStartTime.textContent = "Starting Time must be inside 9:00 AM to 6:00 PM.";
+        errorStartTime.style.display = "block";
+        hasError = true;
+      } else {
+        startInput.value = formatMinutesTo12Hour(startMins);
+      }
     }
 
-    if (endMins < MIN_WORK_TIME || endMins > MAX_WORK_TIME) {
-      errorEndTime.textContent = "Ending Time must be inside 9:00 AM to 6:00 PM.";
-      errorEndTime.style.display = "block";
-      hasError = true;
+    if (endVal) {
+      if (endParsed.error === 'INVALID') {
+        errorEndTime.textContent = "Type a time like 2:00 or 9:30 AM.";
+        errorEndTime.style.display = "block";
+        hasError = true;
+      } else if (endParsed.error === 'OUT_OF_RANGE' || endMins < MIN_WORK_TIME || endMins > MAX_WORK_TIME) {
+        errorEndTime.textContent = "Ending Time must be inside 9:00 AM to 6:00 PM.";
+        errorEndTime.style.display = "block";
+        hasError = true;
+      } else {
+        endInput.value = formatMinutesTo12Hour(endMins);
+      }
     }
 
-    if (!hasError && endMins <= startMins) {
+    if (!hasError && endMins !== null && startMins !== null && endMins <= startMins) {
       errorEndTime.textContent = "Ending Time must be after Starting Time.";
       errorEndTime.style.display = "block";
       hasError = true;
@@ -824,7 +960,7 @@
     }
 
     // 2. End time: empty for new slot, never pre-filled
-    slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? minutesToTimeString(slot.end) : "";
+    slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? formatMinutesTo12Hour(slot.end) : "";
 
     // 3. Work for this slot
     slotTaskInput.value = slot.taskText || slot.text || "";
@@ -909,7 +1045,7 @@
         if (dayData && dayData.slots[durationChangeConfirm.slotIndex]) {
           const slot = dayData.slots[durationChangeConfirm.slotIndex];
           slot.end = durationChangeConfirm.savedEndMinutes;
-          slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? minutesToTimeString(slot.end) : "";
+          slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? formatMinutesTo12Hour(slot.end) : "";
           updateSlotValidationUI();
         }
       }
@@ -934,18 +1070,54 @@
     });
   }
 
+  function handleSlotEndTimeBlur() {
+    if (!slotEndTimeInput) return;
+    const val = slotEndTimeInput.value.trim();
+    if (!val) return;
+    const parsed = parseFlexibleTime(val);
+    if (!parsed.error && parsed.minutes !== null) {
+      slotEndTimeInput.value = formatMinutesTo12Hour(parsed.minutes);
+    }
+  }
+
+  slotEndTimeInput.addEventListener('blur', handleSlotEndTimeBlur);
+  slotEndTimeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      handleSlotEndTimeBlur();
+      slotEndTimeInput.blur();
+    }
+  });
+
   slotEndTimeInput.addEventListener('input', () => {
     const dayData = getCurrentDayData();
     if (!dayData || !dayData.slots[currentSlotIndex]) return;
 
-    const val = slotEndTimeInput.value;
-    const endMinutes = val ? timeStringToMinutes(val) : null;
+    const val = slotEndTimeInput.value.trim();
+    const slot = dayData.slots[currentSlotIndex];
+
+    if (!val) {
+      slot.end = null;
+      slot.invalidFormat = false;
+      updateSlotValidationUI();
+      return;
+    }
+
+    const parsed = parseFlexibleTime(val);
+    if (parsed.error === 'INVALID') {
+      slot.end = null;
+      slot.invalidFormat = true;
+      updateSlotValidationUI();
+      return;
+    }
+
+    slot.invalidFormat = false;
+    const endMinutes = parsed.minutes;
 
     const laterSlotsExist = dayData.slots.length > currentSlotIndex + 1;
     if (laterSlotsExist && endMinutes !== null) {
       handleSlotEndTimeChange(endMinutes);
     } else {
-      dayData.slots[currentSlotIndex].end = endMinutes;
+      slot.end = endMinutes;
       updateSlotValidationUI();
 
       if (textSaveDebounceTimer) {
