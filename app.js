@@ -32,6 +32,19 @@
   let currentUserId = "anonymous";
   let storageKey = "dailyPlanner:anonymous";
 
+  // Safe ISO timestamp generator without using Date.prototype.toISOString directly for dates
+  function getIsoTimestamp(d = new Date()) {
+    const pad = (n) => String(n).padStart(2, '0');
+    const padMs = (n) => String(n).padStart(3, '0');
+    return d.getUTCFullYear() + '-' +
+      pad(d.getUTCMonth() + 1) + '-' +
+      pad(d.getUTCDate()) + 'T' +
+      pad(d.getUTCHours()) + ':' +
+      pad(d.getUTCMinutes()) + ':' +
+      pad(d.getUTCSeconds()) + '.' +
+      padMs(d.getUTCMilliseconds()) + 'Z';
+  }
+
   // --- LOCAL DATE HELPERS (Never use toISOString to avoid UTC shift bugs) ---
   function getLocalDateKey(dateObj) {
     const y = dateObj.getFullYear();
@@ -92,10 +105,29 @@
 
   // DOM Views
   const views = {
+    home: document.getElementById('view-home'),
     settings: document.getElementById('view-settings'),
     slot: document.getElementById('view-slot'),
     summary: document.getElementById('view-summary'),
   };
+
+  // Home Page Elements
+  const homeDailyProverb = document.getElementById('home-daily-proverb');
+  const btnActivityMain = document.getElementById('btn-activity-main');
+  const btnActivityArrow = document.getElementById('btn-activity-arrow');
+  const activityDropdownMenu = document.getElementById('activity-dropdown-menu');
+  const activityPanelTitle = document.getElementById('activity-panel-title');
+  const activityPanelContent = document.getElementById('activity-panel-content');
+  const btnHomeNext = document.getElementById('btn-home-next');
+
+  // Summary to Home Button
+  const summaryToHomeBtn = document.getElementById('summary-to-home-btn');
+
+  // In-app Reminder Banner Elements
+  const appReminderBanner = document.getElementById('app-reminder-banner');
+  const reminderBannerTask = document.getElementById('reminder-banner-task');
+  const reminderBannerTiming = document.getElementById('reminder-banner-timing');
+  const reminderDismissBtn = document.getElementById('reminder-dismiss-btn');
 
   // First Page Navigation Elements
   const btnYesterday = document.getElementById('btn-yesterday');
@@ -118,7 +150,7 @@
   const slotLegacyNotice = document.getElementById('slot-legacy-notice');
   const slotStartDisplay = document.getElementById('slot-start-display');
   const slotStartHint = document.getElementById('slot-start-hint');
-  const slotEndTimeInput = document.getElementById('slot-end-time');
+  const slotEndSelect = document.getElementById('slot-end-select');
   const slotRulesMessage = document.getElementById('slot-rules-message');
   const slotTaskInput = document.getElementById('slot-task-input');
   const slotNextBtn = document.getElementById('slot-next-btn');
@@ -443,6 +475,40 @@
     }
   }
 
+
+  async function loadRange(fromKey, toKey) {
+    if (!supabaseClient || !currentUserId || currentUserId === "anonymous") {
+      return;
+    }
+    try {
+      const { data, error } = await supabaseClient
+        .from('planner_days')
+        .select('day, start_min, end_min, slots, saved_at')
+        .eq('user_id', currentUserId)
+        .gte('day', fromKey)
+        .lte('day', toKey);
+
+      if (!error && Array.isArray(data)) {
+        data.forEach((row) => {
+          if (row && typeof row.day === "string") {
+            const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+            const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
+            state.days[row.day] = {
+              startMinutes: sMin,
+              endMinutes: eMin,
+              slots: sanitizeSlots(row.slots, sMin),
+              savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
+            };
+          }
+        });
+        saveToLocalStorage();
+      }
+    } catch (err) {
+      console.warn("loadRange error:", err);
+      throw err;
+    }
+  }
+
   async function loadPlans() {
     // 1. Load from user-scoped localStorage first
     loadFromLocalStorage();
@@ -617,6 +683,444 @@
     // Days with only a draft show a plain outline
     return "PLANNED_UNMARKED";
   }
+
+
+  // --- HOME VIEW (MY WORK BOARD) LOGIC ---
+  const PROVERBS = [
+    "Well begun is half done.",
+    "A stitch in time saves nine.",
+    "Slow and steady wins the race.",
+    "Practice makes perfect.",
+    "Rome was not built in a day.",
+    "Where there is a will, there is a way.",
+    "The early bird catches the worm.",
+    "A journey of a thousand miles begins with a single step.",
+    "Better late than never.",
+    "Actions speak louder than words.",
+    "Time and tide wait for no man.",
+    "Many hands make light work."
+  ];
+
+  let currentActivityTab = null; // 'previous' | 'recent' | 'upcoming' | null
+  let isActivityMenuOpen = false;
+
+  function updateHomeProverb() {
+    if (!homeDailyProverb) return;
+    const now = new Date();
+    // Choose by LOCAL calendar date (day number since a fixed date modulo 12, never random)
+    const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const fixedEpoch = new Date(2026, 0, 1);
+    const diffDays = Math.floor((localMidnight.getTime() - fixedEpoch.getTime()) / 86400000);
+    const proverbIndex = ((diffDays % 12) + 12) % 12;
+    homeDailyProverb.textContent = PROVERBS[proverbIndex];
+  }
+
+  function setActivityMenuOpen(open) {
+    isActivityMenuOpen = open;
+    if (btnActivityMain) btnActivityMain.setAttribute('aria-expanded', String(open));
+    if (btnActivityArrow) btnActivityArrow.setAttribute('aria-expanded', String(open));
+    if (activityDropdownMenu) {
+      activityDropdownMenu.style.display = open ? 'flex' : 'none';
+      if (open) {
+        const firstItem = activityDropdownMenu.querySelector('.activity-menu-item');
+        if (firstItem) firstItem.focus();
+      }
+    }
+  }
+
+  function toggleActivityMenu() {
+    setActivityMenuOpen(!isActivityMenuOpen);
+  }
+
+  // Keyboard navigation for activity menu
+  if (activityDropdownMenu) {
+    activityDropdownMenu.addEventListener('keydown', (e) => {
+      const items = Array.from(activityDropdownMenu.querySelectorAll('.activity-menu-item'));
+      const currentIndex = items.indexOf(document.activeElement);
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setActivityMenuOpen(false);
+        if (btnActivityMain) btnActivityMain.focus();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIndex = (currentIndex + 1) % items.length;
+        items[nextIndex].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIndex = (currentIndex - 1 + items.length) % items.length;
+        items[prevIndex].focus();
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!isActivityMenuOpen) return;
+    if (
+      btnActivityMain && btnActivityMain.contains(e.target) ||
+      btnActivityArrow && btnActivityArrow.contains(e.target) ||
+      activityDropdownMenu && activityDropdownMenu.contains(e.target)
+    ) {
+      return;
+    }
+    setActivityMenuOpen(false);
+  });
+
+  if (btnActivityMain) btnActivityMain.addEventListener('click', toggleActivityMenu);
+  if (btnActivityArrow) btnActivityArrow.addEventListener('click', toggleActivityMenu);
+
+  function renderActivityList(items, emptyMessage) {
+    if (!activityPanelContent) return;
+    activityPanelContent.innerHTML = "";
+
+    if (!items || items.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'activity-panel-message';
+      p.textContent = emptyMessage;
+      activityPanelContent.appendChild(p);
+      return;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'activity-items-list';
+
+    items.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'activity-item-card';
+
+      const top = document.createElement('div');
+      top.className = 'activity-item-top';
+
+      const dateEl = document.createElement('span');
+      dateEl.className = 'activity-item-date';
+      const dObj = parseLocalDateKey(it.dateKey);
+      dateEl.textContent = formatShortDisplayDate(dObj);
+
+      const timeEl = document.createElement('span');
+      timeEl.className = 'activity-item-time';
+      timeEl.textContent = `${formatMinutesTo12Hour(it.startMinutes)} - ${formatMinutesTo12Hour(it.endMinutes)}`;
+
+      top.appendChild(dateEl);
+      top.appendChild(timeEl);
+      card.appendChild(top);
+
+      if (it.taskText) {
+        const taskEl = document.createElement('div');
+        taskEl.className = 'activity-item-task';
+        taskEl.textContent = it.taskText;
+        card.appendChild(taskEl);
+      }
+
+      const statusEl = document.createElement('div');
+      statusEl.className = 'activity-item-status ' + (it.status === 'COMPLETED' ? 'comp' : (it.status === 'NOT_COMPLETED' ? 'not-comp' : 'unmarked'));
+      if (it.status === 'COMPLETED') {
+        statusEl.textContent = '✓ Completed';
+      } else if (it.status === 'NOT_COMPLETED') {
+        statusEl.textContent = '✗ Not Completed';
+      } else {
+        statusEl.textContent = 'Not marked yet';
+      }
+      card.appendChild(statusEl);
+
+      const markMsg = formatMarkedAtMessage(it.status, it.markedAt, it.dateKey);
+      const markEl = document.createElement('div');
+      markEl.className = 'activity-item-markmsg';
+      markEl.textContent = markMsg.text;
+      card.appendChild(markEl);
+
+      list.appendChild(card);
+    });
+
+    activityPanelContent.appendChild(list);
+  }
+
+  async function loadAndShowActivity(tab) {
+    currentActivityTab = tab;
+    setActivityMenuOpen(false);
+
+    if (activityPanelTitle) {
+      activityPanelTitle.style.display = 'block';
+      activityPanelTitle.textContent =
+        tab === 'previous' ? 'Previous Activity' :
+        tab === 'recent' ? 'Recent Activity' : 'Upcoming Activity';
+    }
+
+    if (activityPanelContent) {
+      activityPanelContent.innerHTML = '<p class="activity-panel-message">Loading…</p>';
+    }
+
+    const todayStr = getLocalDateKey(todayDate);
+    const yesterdayStr = getLocalDateKey(addDays(todayDate, -1));
+
+    try {
+      if (tab === 'previous') {
+        await loadRange(yesterdayStr, yesterdayStr);
+        const day = state.days[yesterdayStr];
+        if (!day || !Array.isArray(day.slots) || day.slots.length === 0) {
+          renderActivityList([], "You have not added any work for yesterday.");
+          return;
+        }
+
+        const validSlots = [];
+        day.slots.forEach((s, idx) => {
+          const sMin = getEffectiveSlotStart(day, idx);
+          const eMin = typeof s.end === "number" ? s.end : null;
+          const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+          const status = s.status || "NONE";
+          if (eMin !== null && (text || status !== "NONE")) {
+            if (status === "COMPLETED") {
+              validSlots.push({
+                dateKey: yesterdayStr,
+                startMinutes: sMin,
+                endMinutes: eMin,
+                taskText: text,
+                status,
+                markedAt: s.markedAt || null,
+              });
+            }
+          }
+        });
+
+        if (validSlots.length === 0) {
+          renderActivityList([], "No completed work found for yesterday.");
+        } else {
+          renderActivityList(validSlots, "");
+        }
+      } else if (tab === 'recent') {
+        const from7Days = getLocalDateKey(addDays(todayDate, -7));
+        await loadRange(from7Days, todayStr);
+
+        const items = [];
+        // today and previous 7 days: newest date first, in time order within a day, at most 10 items
+        for (let offset = 0; offset >= -7; offset--) {
+          const dKey = getLocalDateKey(addDays(todayDate, offset));
+          const day = state.days[dKey];
+          if (day && Array.isArray(day.slots)) {
+            day.slots.forEach((s, idx) => {
+              const sMin = getEffectiveSlotStart(day, idx);
+              const eMin = typeof s.end === "number" ? s.end : null;
+              const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+              const status = s.status || "NONE";
+              if (eMin !== null && (text || status !== "NONE")) {
+                items.push({
+                  dateKey: dKey,
+                  startMinutes: sMin,
+                  endMinutes: eMin,
+                  taskText: text,
+                  status,
+                  markedAt: s.markedAt || null,
+                });
+              }
+            });
+          }
+        }
+
+        const capped = items.slice(0, 10);
+        if (capped.length === 0) {
+          renderActivityList([], "No recent activity yet.");
+        } else {
+          renderActivityList(capped, "");
+        }
+      } else if (tab === 'upcoming') {
+        const to60Days = getLocalDateKey(addDays(todayDate, 60));
+        await loadRange(todayStr, to60Days);
+
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+
+        const items = [];
+        // slots on dates after today, and today's slots that start later than current time, earliest first, looking ahead 60 days, at most 20
+        for (let offset = 0; offset <= 60; offset++) {
+          const dKey = getLocalDateKey(addDays(todayDate, offset));
+          const day = state.days[dKey];
+          if (day && Array.isArray(day.slots)) {
+            day.slots.forEach((s, idx) => {
+              const sMin = getEffectiveSlotStart(day, idx);
+              const eMin = typeof s.end === "number" ? s.end : null;
+              const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+              const status = s.status || "NONE";
+
+              if (eMin !== null && (text || status !== "NONE")) {
+                if (dKey === todayStr) {
+                  if (sMin > currentMins) {
+                    items.push({
+                      dateKey: dKey,
+                      startMinutes: sMin,
+                      endMinutes: eMin,
+                      taskText: text,
+                      status,
+                      markedAt: s.markedAt || null,
+                    });
+                  }
+                } else {
+                  items.push({
+                    dateKey: dKey,
+                    startMinutes: sMin,
+                    endMinutes: eMin,
+                    taskText: text,
+                    status,
+                    markedAt: s.markedAt || null,
+                  });
+                }
+              }
+            });
+          }
+        }
+
+        const capped = items.slice(0, 20);
+        if (capped.length === 0) {
+          renderActivityList([], "You have not added any work yet.");
+        } else {
+          renderActivityList(capped, "");
+        }
+      }
+    } catch (err) {
+      if (activityPanelContent) {
+        activityPanelContent.innerHTML = "";
+        const p = document.createElement('p');
+        p.className = 'activity-panel-message';
+        p.textContent = "Could not load your activity.";
+
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn btn-secondary';
+        retry.style.minHeight = '44px';
+        retry.style.marginTop = '8px';
+        retry.textContent = 'Retry';
+        retry.addEventListener('click', () => loadAndShowActivity(tab));
+
+        activityPanelContent.appendChild(p);
+        activityPanelContent.appendChild(retry);
+      }
+    }
+  }
+
+  if (activityDropdownMenu) {
+    activityDropdownMenu.querySelectorAll('.activity-menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const tab = item.getAttribute('data-tab');
+        loadAndShowActivity(tab);
+      });
+    });
+  }
+
+  async function renderHomeView() {
+    updateHomeProverb();
+    // Reload user's saved plans every time Home opens
+    try {
+      await loadPlans();
+    } catch (e) {
+      console.warn("Failed to refresh plans on Home open", e);
+    }
+    checkInAppReminders();
+
+    if (currentActivityTab) {
+      loadAndShowActivity(currentActivityTab);
+    } else {
+      if (activityPanelTitle) activityPanelTitle.style.display = 'none';
+      if (activityPanelContent) {
+        activityPanelContent.innerHTML = '<p class="activity-panel-message">Choose an activity to view.</p>';
+      }
+    }
+  }
+
+  if (btnHomeNext) {
+    btnHomeNext.addEventListener('click', () => {
+      selectedDateKey = getLocalDateKey(todayDate);
+      initSettingsView();
+      switchView('settings');
+      if (startInput) startInput.focus();
+    });
+  }
+
+  if (summaryToHomeBtn) {
+    summaryToHomeBtn.addEventListener('click', async () => {
+      switchView('home');
+      await renderHomeView();
+    });
+  }
+
+  // --- IN-APP REMINDER SYSTEM ---
+  let dismissedReminderSlotIds = new Set();
+
+  async function checkInAppReminders() {
+    if (!appReminderBanner || !currentUserId || currentUserId === "anonymous") return;
+
+    const todayStr = getLocalDateKey(todayDate);
+    // Ensure today data is loaded
+    if (!state.days[todayStr]) {
+      try {
+        await loadRange(todayStr, todayStr);
+      } catch (e) {
+        // Ignore
+      }
+    }
+
+    const todayData = state.days[todayStr];
+    if (!todayData || !Array.isArray(todayData.slots)) {
+      appReminderBanner.style.display = "none";
+      return;
+    }
+
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    let matchingSlot = null;
+    for (let idx = 0; idx < todayData.slots.length; idx++) {
+      const slot = todayData.slots[idx];
+      const sStart = getEffectiveSlotStart(todayData, idx);
+      const sEnd = typeof slot.end === "number" ? slot.end : null;
+      const taskText = (typeof slot.taskText === "string" ? slot.taskText : (slot.text || "")).trim();
+      const status = slot.status || "NONE";
+
+      if (
+        sEnd !== null &&
+        sStart <= currentMins &&
+        currentMins < sEnd &&
+        taskText !== "" &&
+        status !== "COMPLETED"
+      ) {
+        const slotKey = todayStr + ":" + (slot.id || idx);
+        if (!dismissedReminderSlotIds.has(slotKey)) {
+          matchingSlot = {
+            slot,
+            slotKey,
+            start: sStart,
+            end: sEnd,
+            taskText,
+          };
+          break; // earliest matching slot
+        }
+      }
+    }
+
+    if (matchingSlot) {
+      if (reminderBannerTask) {
+        reminderBannerTask.textContent = `Task: ${matchingSlot.taskText}`;
+      }
+      if (reminderBannerTiming) {
+        reminderBannerTiming.textContent = `Scheduled: ${formatMinutesTo12Hour(matchingSlot.start)} - ${formatMinutesTo12Hour(matchingSlot.end)}`;
+      }
+      appReminderBanner.style.display = "flex";
+
+      if (reminderDismissBtn) {
+        reminderDismissBtn.onclick = () => {
+          dismissedReminderSlotIds.add(matchingSlot.slotKey);
+          appReminderBanner.style.display = "none";
+        };
+      }
+    } else {
+      appReminderBanner.style.display = "none";
+    }
+  }
+
+  // Check reminders every 30 seconds & on visibilitychange
+  setInterval(checkInAppReminders, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkInAppReminders();
+    }
+  });
 
   // --- VIEW SWITCHING ---
   function clearSummarySaveMessage() {
@@ -959,14 +1463,60 @@
       }
     }
 
-    // 2. End time: empty for new slot, never pre-filled
-    slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? formatMinutesTo12Hour(slot.end) : "";
+    // Populate Finished By dropdown options
+    populateFinishedByDropdown(slot, effectiveStart, dayData.endMinutes);
 
     // 3. Work for this slot
     slotTaskInput.value = slot.taskText || slot.text || "";
 
     // Update validation and buttons state
     updateSlotValidationUI();
+  }
+
+  function populateFinishedByDropdown(slot, startMinutes, dayEndMinutes) {
+    if (!slotEndSelect) return;
+    slotEndSelect.innerHTML = '<option value="">Select time</option>';
+
+    const effectiveEnd = (typeof dayEndMinutes === "number" && !isNaN(dayEndMinutes)) ? dayEndMinutes : MAX_WORK_TIME;
+    const minEnd = startMinutes + 5;
+
+    // Generate 5-minute multiples from minEnd rounded up to nearest 5
+    const firstOptionTime = Math.ceil(minEnd / 5) * 5;
+    const standardTimes = new Set();
+
+    for (let t = firstOptionTime; t <= effectiveEnd; t += 5) {
+      standardTimes.add(t);
+      const opt = document.createElement('option');
+      opt.value = String(t);
+      opt.textContent = formatMinutesTo12Hour(t);
+      slotEndSelect.appendChild(opt);
+    }
+
+    // A saved Finished By that is not a multiple of 5 (older data) is added as an extra option and shown selected
+    const savedEnd = (typeof slot.end === "number" && !isNaN(slot.end)) ? slot.end : null;
+    if (savedEnd !== null) {
+      if (!standardTimes.has(savedEnd)) {
+        const extraOpt = document.createElement('option');
+        extraOpt.value = String(savedEnd);
+        extraOpt.textContent = formatMinutesTo12Hour(savedEnd);
+        // Insert in chronological order or append
+        let inserted = false;
+        const opts = Array.from(slotEndSelect.options);
+        for (let i = 1; i < opts.length; i++) {
+          if (parseInt(opts[i].value, 10) > savedEnd) {
+            slotEndSelect.insertBefore(extraOpt, opts[i]);
+            inserted = true;
+            break;
+          }
+        }
+        if (!inserted) {
+          slotEndSelect.appendChild(extraOpt);
+        }
+      }
+      slotEndSelect.value = String(savedEnd);
+    } else {
+      slotEndSelect.value = "";
+    }
   }
 
   function updateSlotValidationUI(showErrorAlways = false) {
@@ -984,8 +1534,8 @@
       dayData.endMinutes
     );
 
-    const hasTypedEnd = Boolean(slotEndTimeInput.value);
-    const isEndValid = Boolean(hasTypedEnd && !error);
+    const hasChosenEnd = Boolean(slotEndSelect.value);
+    const isEndValid = Boolean(hasChosenEnd && !error);
 
     // Next is disabled until the slot is valid
     if (slotNextBtn) {
@@ -997,7 +1547,7 @@
       slotEndLastHint.style.display = isLastSlot ? "block" : "none";
     }
 
-    if (error && (showErrorAlways || hasTypedEnd)) {
+    if (error && (showErrorAlways || hasChosenEnd)) {
       slotRulesMessage.textContent = error;
       slotRulesMessage.style.display = "block";
     } else {
@@ -1045,7 +1595,7 @@
         if (dayData && dayData.slots[durationChangeConfirm.slotIndex]) {
           const slot = dayData.slots[durationChangeConfirm.slotIndex];
           slot.end = durationChangeConfirm.savedEndMinutes;
-          slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? formatMinutesTo12Hour(slot.end) : "";
+          slotEndSelect.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? String(slot.end) : "";
           updateSlotValidationUI();
         }
       }
@@ -1070,48 +1620,13 @@
     });
   }
 
-  function handleSlotEndTimeBlur() {
-    if (!slotEndTimeInput) return;
-    const val = slotEndTimeInput.value.trim();
-    if (!val) return;
-    const parsed = parseFlexibleTime(val);
-    if (!parsed.error && parsed.minutes !== null) {
-      slotEndTimeInput.value = formatMinutesTo12Hour(parsed.minutes);
-    }
-  }
-
-  slotEndTimeInput.addEventListener('blur', handleSlotEndTimeBlur);
-  slotEndTimeInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      handleSlotEndTimeBlur();
-      slotEndTimeInput.blur();
-    }
-  });
-
-  slotEndTimeInput.addEventListener('input', () => {
+  slotEndSelect.addEventListener('change', () => {
     const dayData = getCurrentDayData();
     if (!dayData || !dayData.slots[currentSlotIndex]) return;
 
-    const val = slotEndTimeInput.value.trim();
+    const val = slotEndSelect.value;
+    const endMinutes = val ? parseInt(val, 10) : null;
     const slot = dayData.slots[currentSlotIndex];
-
-    if (!val) {
-      slot.end = null;
-      slot.invalidFormat = false;
-      updateSlotValidationUI();
-      return;
-    }
-
-    const parsed = parseFlexibleTime(val);
-    if (parsed.error === 'INVALID') {
-      slot.end = null;
-      slot.invalidFormat = true;
-      updateSlotValidationUI();
-      return;
-    }
-
-    slot.invalidFormat = false;
-    const endMinutes = parsed.minutes;
 
     const laterSlotsExist = dayData.slots.length > currentSlotIndex + 1;
     if (laterSlotsExist && endMinutes !== null) {
@@ -1204,7 +1719,6 @@
       cleanupTrailingEmptySlots(dayData);
       saveStorage(selectedDateKey);
       renderSummaryView();
-      showSaveSuccessMessage();
       switchView('summary');
       return;
     }
@@ -1236,6 +1750,42 @@
       renderSlotPage();
     }
   });
+
+  function formatMarkedAtMessage(status, markedAt, planDateKey) {
+    if (!status || status === "NONE") {
+      return { text: "Not marked yet", muted: true };
+    }
+    if (!markedAt) {
+      if (status === "COMPLETED") {
+        return { text: "Marked Completed (time not recorded)", muted: false };
+      } else {
+        return { text: "Marked Not Completed (time not recorded)", muted: false };
+      }
+    }
+
+    const markDate = new Date(markedAt);
+    if (isNaN(markDate.getTime())) {
+      return {
+        text: status === "COMPLETED" ? "Marked Completed (time not recorded)" : "Marked Not Completed (time not recorded)",
+        muted: false
+      };
+    }
+
+    const markDayKey = getLocalDateKey(markDate);
+    const timePart = formatMinutesTo12Hour(markDate.getHours() * 60 + markDate.getMinutes());
+
+    const isDifferentDay = markDayKey !== planDateKey;
+    const prefix = status === "COMPLETED" ? "✓ Marked Completed" : "✗ Marked Not Completed";
+
+    if (isDifferentDay) {
+      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const datePart = `${days[markDate.getDay()]}, ${markDate.getDate()} ${months[markDate.getMonth()]}`;
+      return { text: `${prefix} on ${datePart} at ${timePart}`, muted: false };
+    }
+
+    return { text: `${prefix} at ${timePart}`, muted: false };
+  }
 
   // --- SUMMARY VIEW LOGIC ---
   function renderSummaryView() {
@@ -1343,41 +1893,7 @@
       const markMessageEl = document.createElement('div');
       markMessageEl.style.cssText = "font-size: 0.82rem; font-weight: 600; margin-top: 6px; width: 100%;";
 
-      function formatMarkedAtMessage(status, markedAt, planDateKey) {
-        if (!status || status === "NONE") {
-          return { text: "Not marked yet", muted: true };
-        }
-        if (!markedAt) {
-          if (status === "COMPLETED") {
-            return { text: "Marked Completed (time not recorded)", muted: false };
-          } else {
-            return { text: "Marked Not Completed (time not recorded)", muted: false };
-          }
-        }
-
-        const markDate = new Date(markedAt);
-        if (isNaN(markDate.getTime())) {
-          return {
-            text: status === "COMPLETED" ? "Marked Completed (time not recorded)" : "Marked Not Completed (time not recorded)",
-            muted: false
-          };
-        }
-
-        const markDayKey = getLocalDateKey(markDate);
-        const timePart = formatMinutesTo12Hour(markDate.getHours() * 60 + markDate.getMinutes());
-
-        const isDifferentDay = markDayKey !== planDateKey;
-        const prefix = status === "COMPLETED" ? "✓ Marked Completed" : "✗ Marked Not Completed";
-
-        if (isDifferentDay) {
-          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          const datePart = `${days[markDate.getDay()]}, ${markDate.getDate()} ${months[markDate.getMonth()]}`;
-          return { text: `${prefix} on ${datePart} at ${timePart}`, muted: false };
-        }
-
-        return { text: `${prefix} at ${timePart}`, muted: false };
-      }
+      // formatMarkedAtMessage is declared in outer scope
 
       function updateSlotCardButtons() {
         const currentStatus = slot.status || "NONE";
@@ -1402,7 +1918,7 @@
           slot.markedAt = null;
         } else {
           slot.status = "COMPLETED";
-          slot.markedAt = new Date().toISOString();
+          slot.markedAt = getIsoTimestamp();
         }
         saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
@@ -1417,7 +1933,7 @@
           slot.markedAt = null;
         } else {
           slot.status = "NOT_COMPLETED";
-          slot.markedAt = new Date().toISOString();
+          slot.markedAt = getIsoTimestamp();
         }
         saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
@@ -1601,15 +2117,13 @@
   }
 
   function showSaveSuccessMessage() {
-    const selectedObj = parseLocalDateKey(selectedDateKey);
-    const todayStr = getLocalDateKey(todayDate);
-    const isToday = selectedDateKey === todayStr;
+    // Show ONE green message "Saved Successfully!" with a check mark above the Save button
+    if (summaryFinishMessage) {
+      summaryFinishMessage.innerHTML = "";
+      summaryFinishMessage.className = "";
+      summaryFinishMessage.style.display = "none";
+    }
 
-    let text = isToday
-      ? "Today’s work has been saved successfully."
-      : `Work for ${formatShortDisplayDate(selectedObj)} has been saved successfully.`;
-
-    // Render message in summarySaveMessage (above Save button)
     if (summarySaveMessage) {
       summarySaveMessage.innerHTML = "";
       summarySaveMessage.className = "save-message-box save-message-success";
@@ -1621,28 +2135,10 @@
       checkIcon.textContent = "✓";
 
       const msgSpan = document.createElement('span');
-      msgSpan.textContent = text;
+      msgSpan.textContent = "Saved Successfully!";
 
       summarySaveMessage.appendChild(checkIcon);
       summarySaveMessage.appendChild(msgSpan);
-    }
-
-    // Also render prominent message in summaryFinishMessage (at top of summary cards)
-    if (summaryFinishMessage) {
-      summaryFinishMessage.innerHTML = "";
-      summaryFinishMessage.className = "save-message-box save-message-success";
-      summaryFinishMessage.style.display = "flex";
-
-      const checkIconTop = document.createElement('span');
-      checkIconTop.setAttribute('aria-hidden', 'true');
-      checkIconTop.style.marginRight = "8px";
-      checkIconTop.textContent = "✓";
-
-      const msgSpanTop = document.createElement('span');
-      msgSpanTop.textContent = text;
-
-      summaryFinishMessage.appendChild(checkIconTop);
-      summaryFinishMessage.appendChild(msgSpanTop);
     }
   }
 
@@ -1678,7 +2174,7 @@
     }
 
     try {
-      const nowIso = new Date().toISOString();
+      const nowIso = getIsoTimestamp();
       dayData.savedAt = nowIso;
 
       // 1. Save to local storage under key including signed-in user id
@@ -1883,10 +2379,10 @@
 
       document.documentElement.classList.add('auth-ready');
 
-      // PART 1: After sign-in (and when a signed-in user opens the site), open the first page with TODAY selected.
+      // A signed-in user who opens the site lands on Home (My Work Board)
       selectedDateKey = getLocalDateKey(todayDate);
-      initSettingsView();
-      switchView('settings');
+      switchView('home');
+      await renderHomeView();
     } catch (e) {
       console.error('Auth verification error:', e);
       window.location.replace('login.html');
