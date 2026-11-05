@@ -1562,6 +1562,156 @@
       word-break: break-word;
     }
 
+
+    /* Upcoming Work Scheduling Form Card */
+    .upcoming-schedule-form-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+    .upcoming-form-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .upcoming-form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 600px) {
+      .upcoming-form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .upcoming-form-grid .full-span {
+        grid-column: 1 / -1;
+      }
+    }
+    .upcoming-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .upcoming-form-label {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--slate-700);
+    }
+    .upcoming-form-input,
+    .upcoming-form-select {
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--slate-900);
+      padding: 10px 14px;
+      border: 1px solid var(--slate-300);
+      border-radius: 8px;
+      min-height: 44px;
+      background: #ffffff;
+      outline: none;
+    }
+    .upcoming-form-input:focus-visible,
+    .upcoming-form-select:focus-visible {
+      border-color: var(--slate-900);
+      outline: 2px solid var(--slate-900);
+      outline-offset: 1px;
+    }
+    .upcoming-form-error {
+      color: #b91c1c;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin: 4px 0 0 0;
+    }
+    .upcoming-form-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-save-upcoming {
+      min-height: 44px;
+      padding: 10px 22px;
+      background: var(--slate-900);
+      color: #ffffff;
+      border: 1px solid var(--slate-900);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+    .btn-save-upcoming:hover:not(:disabled) {
+      background: var(--slate-800);
+    }
+    .btn-save-upcoming:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+    .btn-cancel-edit-upcoming {
+      min-height: 44px;
+      padding: 10px 18px;
+      background: #ffffff;
+      color: var(--slate-700);
+      border: 1px solid var(--slate-300);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-cancel-edit-upcoming:hover {
+      background: var(--slate-100);
+    }
+    .upcoming-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--slate-100);
+    }
+    .btn-tile-action {
+      min-height: 36px;
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .btn-tile-edit {
+      background: var(--slate-100);
+      color: var(--slate-800);
+      border-color: var(--slate-200);
+    }
+    .btn-tile-edit:hover {
+      background: var(--slate-200);
+    }
+    .btn-tile-delete {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fecaca;
+    }
+    .btn-tile-delete:hover {
+      background: #fee2e2;
+    }
+
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>

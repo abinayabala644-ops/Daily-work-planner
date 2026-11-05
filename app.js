@@ -574,6 +574,61 @@
     }
   }
 
+
+  async function loadAllUpcomingWork() {
+    loadFromLocalStorage();
+
+    if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+      const todayStr = getLocalDateKey(todayDate);
+      const pageSize = 1000;
+      let page = 0;
+      let keepFetching = true;
+
+      while (keepFetching) {
+        const fromIdx = page * pageSize;
+        const toIdx = (page + 1) * pageSize - 1;
+
+        const { data, error } = await supabaseClient
+          .from('planner_days')
+          .select('day, start_min, end_min, slots, saved_at')
+          .eq('user_id', currentUserId)
+          .gte('day', todayStr)
+          .order('day', { ascending: true })
+          .range(fromIdx, toIdx);
+
+        if (error) {
+          console.warn("loadAllUpcomingWork error:", error);
+          throw error;
+        }
+
+        if (Array.isArray(data)) {
+          data.forEach((row) => {
+            if (row && typeof row.day === "string") {
+              const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+              const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
+              state.days[row.day] = {
+                startMinutes: sMin,
+                endMinutes: eMin,
+                slots: sanitizeSlots(row.slots, sMin),
+                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
+              };
+            }
+          });
+
+          if (data.length < pageSize) {
+            keepFetching = false;
+          } else {
+            page++;
+          }
+        } else {
+          keepFetching = false;
+        }
+      }
+
+      saveToLocalStorage();
+    }
+  }
+
   async function loadPlans() {
     // 1. Load from user-scoped localStorage first
     loadFromLocalStorage();
@@ -769,6 +824,8 @@
   let currentActivityTab = null; // 'previous' | 'today' | 'upcoming' | null
   let isActivityMenuOpen = false;
   let selectedPreviousWorkDateKey = getLocalDateKey(todayDate);
+  let editingUpcomingTask = null; // { dateKey, slotId } or null
+  let isUpcomingSaving = false;
 
   if (workDetailCloseBtn && workDetailDialog) {
     workDetailCloseBtn.addEventListener('click', () => {
@@ -1086,24 +1143,358 @@
     activityPanelContent.appendChild(section);
   }
 
-  function renderUpcomingWorkTiles(upcomingItems) {
+  function renderUpcomingWorkSection(upcomingItems) {
     if (!activityPanelContent) return;
     activityPanelContent.innerHTML = "";
+
+    const todayStr = getLocalDateKey(todayDate);
+    const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
+
+    // --- 1. Scheduling Form Card ---
+    const formCard = document.createElement('div');
+    formCard.className = 'upcoming-schedule-form-card';
+
+    const formTitle = document.createElement('h3');
+    formTitle.className = 'upcoming-form-title';
+    formTitle.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>${editingUpcomingTask ? 'Edit Scheduled Work' : 'Schedule Future Work'}`;
+    formCard.appendChild(formTitle);
+
+    const formGrid = document.createElement('div');
+    formGrid.className = 'upcoming-form-grid';
+
+    // 1. Select Date
+    const dateGroup = document.createElement('div');
+    dateGroup.className = 'upcoming-form-group';
+    const dateLabel = document.createElement('label');
+    dateLabel.className = 'upcoming-form-label';
+    dateLabel.htmlFor = 'upcoming-form-date';
+    dateLabel.textContent = '1. Select Date';
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.id = 'upcoming-form-date';
+    dateInput.className = 'upcoming-form-input';
+    dateInput.min = tomorrowStr; // future dates
+    dateInput.value = editingUpcomingTask ? editingUpcomingTask.dateKey : tomorrowStr;
+    dateGroup.appendChild(dateLabel);
+    dateGroup.appendChild(dateInput);
+    formGrid.appendChild(dateGroup);
+
+    // 2. Starting Time
+    const startGroup = document.createElement('div');
+    startGroup.className = 'upcoming-form-group';
+    const startLabel = document.createElement('label');
+    startLabel.className = 'upcoming-form-label';
+    startLabel.htmlFor = 'upcoming-form-start';
+    startLabel.textContent = '2. Starting Time';
+    const startSelect = document.createElement('select');
+    startSelect.id = 'upcoming-form-start';
+    startSelect.className = 'upcoming-form-select';
+
+    for (let t = MIN_WORK_TIME; t <= MAX_WORK_TIME - 5; t += 5) {
+      const opt = document.createElement('option');
+      opt.value = String(t);
+      opt.textContent = formatMinutesTo12Hour(t);
+      startSelect.appendChild(opt);
+    }
+    const initialStart = editingUpcomingTask ? editingUpcomingTask.startMinutes : 540; // 9:00 AM
+    startSelect.value = String(initialStart);
+    startGroup.appendChild(startLabel);
+    startGroup.appendChild(startSelect);
+    formGrid.appendChild(startGroup);
+
+    // 3. Finished By
+    const endGroup = document.createElement('div');
+    endGroup.className = 'upcoming-form-group';
+    const endLabel = document.createElement('label');
+    endLabel.className = 'upcoming-form-label';
+    endLabel.htmlFor = 'upcoming-form-end';
+    endLabel.textContent = '3. Finished By';
+    const endSelect = document.createElement('select');
+    endSelect.id = 'upcoming-form-end';
+    endSelect.className = 'upcoming-form-select';
+
+    function updateFinishedByOptions(selectedStart) {
+      endSelect.innerHTML = '';
+      const minEnd = selectedStart + 5;
+      for (let t = minEnd; t <= MAX_WORK_TIME; t += 5) {
+        const opt = document.createElement('option');
+        opt.value = String(t);
+        opt.textContent = formatMinutesTo12Hour(t);
+        endSelect.appendChild(opt);
+      }
+      // Default to 1 hour later or 6:00 PM
+      const defaultEnd = Math.min(selectedStart + 60, MAX_WORK_TIME);
+      endSelect.value = String(defaultEnd);
+    }
+
+    updateFinishedByOptions(initialStart);
+    if (editingUpcomingTask && editingUpcomingTask.endMinutes) {
+      endSelect.value = String(editingUpcomingTask.endMinutes);
+    }
+
+    startSelect.addEventListener('change', () => {
+      const s = parseInt(startSelect.value, 10) || MIN_WORK_TIME;
+      updateFinishedByOptions(s);
+    });
+
+    endGroup.appendChild(endLabel);
+    endGroup.appendChild(endSelect);
+    formGrid.appendChild(endGroup);
+
+    // 4. Work / Task Name
+    const taskGroup = document.createElement('div');
+    taskGroup.className = 'upcoming-form-group full-span';
+    const taskLabel = document.createElement('label');
+    taskLabel.className = 'upcoming-form-label';
+    taskLabel.htmlFor = 'upcoming-form-task';
+    taskLabel.textContent = '4. Work / Task Name';
+    const taskInput = document.createElement('input');
+    taskInput.type = 'text';
+    taskInput.id = 'upcoming-form-task';
+    taskInput.className = 'upcoming-form-input';
+    taskInput.placeholder = 'e.g. Website Development, Project Review, Documentation…';
+    taskInput.value = editingUpcomingTask ? (editingUpcomingTask.taskText || '') : '';
+    taskGroup.appendChild(taskLabel);
+    taskGroup.appendChild(taskInput);
+    formGrid.appendChild(taskGroup);
+
+    formCard.appendChild(formGrid);
+
+    const formError = document.createElement('p');
+    formError.className = 'upcoming-form-error';
+    formError.style.display = 'none';
+    formCard.appendChild(formError);
+
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'upcoming-form-actions';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'btn-save-upcoming';
+    saveBtn.textContent = editingUpcomingTask ? 'Update Scheduled Work' : 'Save Work';
+
+    saveBtn.addEventListener('click', async () => {
+      if (isUpcomingSaving) return;
+
+      const dateVal = dateInput.value;
+      const startVal = parseInt(startSelect.value, 10);
+      const endVal = parseInt(endSelect.value, 10);
+      const taskVal = taskInput.value.trim();
+
+      if (!dateVal) {
+        formError.textContent = 'Please choose a date.';
+        formError.style.display = 'block';
+        dateInput.focus();
+        return;
+      }
+
+      if (!taskVal) {
+        formError.textContent = 'Please enter a work / task name.';
+        formError.style.display = 'block';
+        taskInput.focus();
+        return;
+      }
+
+      if (isNaN(startVal) || isNaN(endVal) || endVal <= startVal) {
+        formError.textContent = 'Finished By time must be after Starting Time.';
+        formError.style.display = 'block';
+        return;
+      }
+
+      formError.style.display = 'none';
+      isUpcomingSaving = true;
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+
+      try {
+        // Ensure day data exists
+        if (!state.days[dateVal]) {
+          state.days[dateVal] = {
+            startMinutes: MIN_WORK_TIME,
+            endMinutes: MAX_WORK_TIME,
+            slots: [],
+            savedAt: null,
+          };
+        }
+
+        const dayData = state.days[dateVal];
+        if (!Array.isArray(dayData.slots)) {
+          dayData.slots = [];
+        }
+
+        if (editingUpcomingTask) {
+          // If editing and date changed, remove from old date
+          if (editingUpcomingTask.dateKey !== dateVal && state.days[editingUpcomingTask.dateKey]) {
+            const oldDay = state.days[editingUpcomingTask.dateKey];
+            oldDay.slots = oldDay.slots.filter(s => s.id !== editingUpcomingTask.slotId);
+            saveStorage(editingUpcomingTask.dateKey);
+          }
+
+          // Update existing or add to new date
+          const existingSlot = dayData.slots.find(s => s.id === editingUpcomingTask.slotId);
+          if (existingSlot) {
+            existingSlot.start = startVal;
+            existingSlot.end = endVal;
+            existingSlot.taskText = taskVal;
+            existingSlot.text = taskVal;
+          } else {
+            dayData.slots.push({
+              id: editingUpcomingTask.slotId || ('slot-' + Date.now()),
+              start: startVal,
+              end: endVal,
+              taskText: taskVal,
+              text: taskVal,
+              status: 'NONE',
+              markedAt: null,
+            });
+          }
+        } else {
+          // Create new task slot
+          const newSlotId = 'slot-' + Date.now();
+          dayData.slots.push({
+            id: newSlotId,
+            start: startVal,
+            end: endVal,
+            taskText: taskVal,
+            text: taskVal,
+            status: 'NONE',
+            markedAt: null,
+          });
+        }
+
+        // Sort slots chronologically
+        dayData.slots.sort((a, b) => (a.start || 0) - (b.start || 0));
+
+        // Save immediately
+        saveStorage(dateVal);
+        editingUpcomingTask = null;
+
+        // Reload fresh upcoming work view
+        await loadAndShowActivity('upcoming');
+      } catch (err) {
+        console.error('Error saving upcoming work:', err);
+        formError.textContent = 'Could not save work. Please try again.';
+        formError.style.display = 'block';
+      } finally {
+        isUpcomingSaving = false;
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Work';
+      }
+    });
+
+    actionsRow.appendChild(saveBtn);
+
+    if (editingUpcomingTask) {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'btn-cancel-edit-upcoming';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => {
+        editingUpcomingTask = null;
+        renderUpcomingWorkSection(upcomingItems);
+      });
+      actionsRow.appendChild(cancelBtn);
+    }
+
+    formCard.appendChild(actionsRow);
+    activityPanelContent.appendChild(formCard);
+
+    // --- 2. Scheduled Tasks List Section ---
+    const listSection = document.createElement('div');
+    listSection.className = 'upcoming-tasks-list-section';
 
     if (!upcomingItems || upcomingItems.length === 0) {
       const p = document.createElement('p');
       p.className = 'activity-panel-message';
-      p.textContent = "You have not added any work yet.";
-      activityPanelContent.appendChild(p);
+      p.textContent = "No upcoming work scheduled.";
+      listSection.appendChild(p);
+      activityPanelContent.appendChild(listSection);
       return;
     }
 
     const grid = document.createElement('ul');
     grid.className = 'home-tiles-grid';
+
     upcomingItems.forEach(slotItem => {
-      grid.appendChild(createSlotTileElement(slotItem, true));
+      const li = document.createElement('li');
+      li.className = 'home-tile-card';
+      li.tabIndex = 0;
+      li.setAttribute('role', 'region');
+      li.setAttribute('aria-label', `Scheduled work: ${slotItem.taskText || 'task'} on ${slotItem.dateKey}`);
+
+      // Scheduled Date
+      const dateEl = document.createElement('div');
+      dateEl.className = 'home-tile-date';
+      dateEl.style.fontSize = '0.85rem';
+      dateEl.style.fontWeight = '700';
+      dateEl.style.color = 'var(--slate-700)';
+      const dObj = parseLocalDateKey(slotItem.dateKey);
+      dateEl.textContent = formatFullDisplayDate(dObj);
+      li.appendChild(dateEl);
+
+      // Work / Task Name
+      const taskDiv = document.createElement('div');
+      taskDiv.className = 'home-tile-task';
+      taskDiv.textContent = slotItem.taskText || 'No task written';
+      li.appendChild(taskDiv);
+
+      // Starting Time and Finished By Time
+      const timeSpan = document.createElement('div');
+      timeSpan.className = 'home-tile-time';
+      timeSpan.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+      li.appendChild(timeSpan);
+
+      // Edit / Delete Actions Row
+      const cardActions = document.createElement('div');
+      cardActions.className = 'upcoming-card-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn-tile-action btn-tile-edit';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        editingUpcomingTask = {
+          slotId: slotItem.slot.id,
+          dateKey: slotItem.dateKey,
+          startMinutes: slotItem.startMinutes,
+          endMinutes: slotItem.endMinutes,
+          taskText: slotItem.taskText,
+        };
+        renderUpcomingWorkSection(upcomingItems);
+        formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'btn-tile-action btn-tile-delete';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete scheduled work "${slotItem.taskText || 'task'}" on ${slotItem.dateKey}?`)) {
+          const dayData = state.days[slotItem.dateKey];
+          if (dayData && Array.isArray(dayData.slots)) {
+            dayData.slots = dayData.slots.filter(s => s.id !== slotItem.slot.id);
+            saveStorage(slotItem.dateKey);
+            loadAndShowActivity('upcoming');
+          }
+        }
+      });
+
+      cardActions.appendChild(editBtn);
+      cardActions.appendChild(deleteBtn);
+      li.appendChild(cardActions);
+
+      grid.appendChild(li);
     });
-    activityPanelContent.appendChild(grid);
+
+    listSection.appendChild(grid);
+    activityPanelContent.appendChild(listSection);
   }
 
   async function loadAndShowActivity(tab) {
@@ -1153,28 +1544,34 @@
         const todaySlots = getValidSlotsForDay(todayData, todayStr);
         renderTodayScheduleView(todaySlots);
       } else if (tab === 'upcoming') {
-        const to60Days = getLocalDateKey(addDays(todayDate, 60));
-        await loadRange(todayStr, to60Days);
+        await loadAllUpcomingWork();
 
         const now = new Date();
         const currentMins = now.getHours() * 60 + now.getMinutes();
 
         const items = [];
-        for (let offset = 0; offset <= 60; offset++) {
-          const dKey = getLocalDateKey(addDays(todayDate, offset));
+        // Future dates (> todayStr), plus today's slots that start later than current time
+        const sortedDayKeys = Object.keys(state.days)
+          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= todayStr)
+          .sort((a, b) => a.localeCompare(b)); // chronological by date
+
+        sortedDayKeys.forEach(dKey => {
           const day = state.days[dKey];
           if (day && Array.isArray(day.slots)) {
             day.slots.forEach((s, idx) => {
               const sMin = getEffectiveSlotStart(day, idx);
               const eMin = typeof s.end === "number" ? s.end : null;
-              if (sMin !== null && !isNaN(sMin) && eMin !== null && !isNaN(eMin)) {
-                const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
-                const status = s.status || "NONE";
+              const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+              const status = s.status || "NONE";
 
+              // Do not display empty or unsaved work slots as scheduled tasks
+              if (eMin !== null && !isNaN(eMin) && sMin !== null && !isNaN(sMin) && text !== "") {
                 if (dKey === todayStr) {
+                  // If it's today, only include future slots starting later than current time
                   if (sMin > currentMins) {
                     items.push({
                       dateKey: dKey,
+                      slot: s,
                       startMinutes: sMin,
                       endMinutes: eMin,
                       taskText: text,
@@ -1185,6 +1582,7 @@
                 } else {
                   items.push({
                     dateKey: dKey,
+                    slot: s,
                     startMinutes: sMin,
                     endMinutes: eMin,
                     taskText: text,
@@ -1195,10 +1593,17 @@
               }
             });
           }
-        }
+        });
 
-        const capped = items.slice(0, 20);
-        renderUpcomingWorkTiles(capped);
+        // Sort upcoming work by date and starting time
+        items.sort((a, b) => {
+          if (a.dateKey !== b.dateKey) {
+            return a.dateKey.localeCompare(b.dateKey);
+          }
+          return a.startMinutes - b.startMinutes;
+        });
+
+        renderUpcomingWorkSection(items);
       }
     } catch (err) {
       if (activityPanelContent) {
