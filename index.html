@@ -1758,7 +1758,7 @@
         </div>
 
         <div id="activity-dropdown-menu" class="activity-dropdown-menu" role="menu" style="display: none;" aria-label="My Activity Options">
-          <button type="button" class="activity-menu-item" role="menuitem" data-tab="previous" tabindex="-1">Previous / Current Work</button>
+          <button type="button" class="activity-menu-item" role="menuitem" data-tab="previous" tabindex="-1">Previous Work</button>
           <button type="button" class="activity-menu-item" role="menuitem" data-tab="today" tabindex="-1">Today's Schedule</button>
           <button type="button" class="activity-menu-item" role="menuitem" data-tab="upcoming" tabindex="-1">Upcoming Work</button>
         </div>
@@ -1774,6 +1774,25 @@
       <button type="button" id="btn-home-next" class="btn btn-primary" style="width: 100%; min-height: 44px; margin-top: 8px;">
         Next
       </button>
+    </div>
+
+    <!-- SEPARATE SCREEN: TODAY'S WORK SUMMARY -->
+    <div id="view-today-summary" class="card views">
+      <div class="header-row">
+        <div>
+          <h1 id="today-summary-title" class="header-title" tabindex="-1">Today's Work Summary</h1>
+          <p id="today-summary-subtitle" class="header-subtitle">All work activities scheduled for today</p>
+        </div>
+        <div>
+          <button type="button" id="btn-today-summary-home" class="btn btn-secondary" style="font-weight: 700;">
+            My Work Board
+          </button>
+        </div>
+      </div>
+
+      <div id="today-summary-content" style="margin-top: 18px;" aria-live="polite">
+        <!-- Loaded dynamically in app.js -->
+      </div>
     </div>
 
     <!-- PAGE 1: SCHEDULE SETUP -->
