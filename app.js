@@ -509,6 +509,61 @@
     }
   }
 
+
+  async function loadAllSavedWorkUpToNow() {
+    loadFromLocalStorage();
+
+    if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+      const todayStr = getLocalDateKey(todayDate);
+      const pageSize = 1000;
+      let page = 0;
+      let keepFetching = true;
+
+      while (keepFetching) {
+        const fromIdx = page * pageSize;
+        const toIdx = (page + 1) * pageSize - 1;
+
+        const { data, error } = await supabaseClient
+          .from('planner_days')
+          .select('day, start_min, end_min, slots, saved_at')
+          .eq('user_id', currentUserId)
+          .lte('day', todayStr)
+          .order('day', { ascending: false })
+          .range(fromIdx, toIdx);
+
+        if (error) {
+          console.warn("loadAllSavedWorkUpToNow error:", error);
+          throw error;
+        }
+
+        if (Array.isArray(data)) {
+          data.forEach((row) => {
+            if (row && typeof row.day === "string") {
+              const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+              const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
+              state.days[row.day] = {
+                startMinutes: sMin,
+                endMinutes: eMin,
+                slots: sanitizeSlots(row.slots, sMin),
+                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
+              };
+            }
+          });
+
+          if (data.length < pageSize) {
+            keepFetching = false;
+          } else {
+            page++;
+          }
+        } else {
+          keepFetching = false;
+        }
+      }
+
+      saveToLocalStorage();
+    }
+  }
+
   async function loadPlans() {
     // 1. Load from user-scoped localStorage first
     loadFromLocalStorage();
@@ -701,8 +756,9 @@
     "Many hands make light work."
   ];
 
-  let currentActivityTab = null; // 'previous' | 'recent' | 'upcoming' | null
+  let currentActivityTab = null; // 'previous-or-current' | 'upcoming' | null
   let isActivityMenuOpen = false;
+  let previousWorkVisibleLimit = 30;
 
   function updateHomeProverb() {
     if (!homeDailyProverb) return;
@@ -769,69 +825,238 @@
   if (btnActivityMain) btnActivityMain.addEventListener('click', toggleActivityMenu);
   if (btnActivityArrow) btnActivityArrow.addEventListener('click', toggleActivityMenu);
 
-  function renderActivityList(items, emptyMessage) {
+  function createSlotTileElement(slotItem) {
+    const li = document.createElement('li');
+    const statusClass = slotItem.status === 'COMPLETED' ? 'comp' : (slotItem.status === 'NOT_COMPLETED' ? 'not-comp' : 'unmarked');
+    li.className = 'home-tile-card ' + statusClass;
+
+    const timeSpan = document.createElement('div');
+    timeSpan.className = 'home-tile-time';
+    timeSpan.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+    li.appendChild(timeSpan);
+
+    const taskDiv = document.createElement('div');
+    if (slotItem.taskText) {
+      taskDiv.className = 'home-tile-task';
+      taskDiv.textContent = slotItem.taskText;
+    } else {
+      taskDiv.className = 'home-tile-task muted';
+      taskDiv.textContent = 'No task written';
+    }
+    li.appendChild(taskDiv);
+
+    const statusDiv = document.createElement('div');
+    statusDiv.className = 'home-tile-status ' + statusClass;
+    if (slotItem.status === 'COMPLETED') {
+      statusDiv.textContent = '✓ Completed';
+    } else if (slotItem.status === 'NOT_COMPLETED') {
+      statusDiv.textContent = '✗ Not Completed';
+    } else {
+      statusDiv.textContent = 'Not marked yet';
+    }
+    li.appendChild(statusDiv);
+
+    const markMsg = formatMarkedAtMessage(slotItem.status, slotItem.markedAt, slotItem.dateKey);
+    if (!markMsg.muted) {
+      const markDiv = document.createElement('div');
+      markDiv.className = 'home-tile-markmsg';
+      markDiv.textContent = markMsg.text;
+      li.appendChild(markDiv);
+    }
+
+    return li;
+  }
+
+  function formatPreviousDayHeading(dateKey) {
+    const todayStr = getLocalDateKey(todayDate);
+    const yesterdayStr = getLocalDateKey(addDays(todayDate, -1));
+    const dObj = parseLocalDateKey(dateKey);
+
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const formattedDate = `${days[dObj.getDay()]}, ${dObj.getDate()} ${months[dObj.getMonth()]} ${dObj.getFullYear()}`;
+
+    if (dateKey === yesterdayStr) {
+      return `Yesterday - ${formattedDate}`;
+    }
+    return formattedDate;
+  }
+
+  function getValidSlotsForDay(dayData, dateKey) {
+    if (!dayData || !Array.isArray(dayData.slots)) return [];
+    const validSlots = [];
+    dayData.slots.forEach((s, idx) => {
+      const sStart = getEffectiveSlotStart(dayData, idx);
+      const sEnd = typeof s.end === "number" ? s.end : null;
+      if (sEnd !== null && !isNaN(sEnd) && sStart !== null && !isNaN(sStart)) {
+        const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+        const status = s.status || "NONE";
+        validSlots.push({
+          dateKey,
+          startMinutes: sStart,
+          endMinutes: sEnd,
+          taskText: text,
+          status,
+          markedAt: s.markedAt || null,
+        });
+      }
+    });
+    // Ensure time order within the day
+    validSlots.sort((a, b) => a.startMinutes - b.startMinutes);
+    return validSlots;
+  }
+
+  function renderPreviousOrCurrentWorkView(allEarlierDaysList, todaySlots) {
     if (!activityPanelContent) return;
     activityPanelContent.innerHTML = "";
 
-    if (!items || items.length === 0) {
+    const hasTodayWork = todaySlots && todaySlots.length > 0;
+    const hasEarlierWork = allEarlierDaysList && allEarlierDaysList.length > 0;
+
+    if (!hasTodayWork && !hasEarlierWork) {
       const p = document.createElement('p');
       p.className = 'activity-panel-message';
-      p.textContent = emptyMessage;
+      p.textContent = "You have not added any work yet.";
       activityPanelContent.appendChild(p);
       return;
     }
 
-    const list = document.createElement('div');
-    list.className = 'activity-items-list';
+    // a) Section "Today" with today's date
+    const todaySection = document.createElement('section');
+    todaySection.className = 'home-day-section';
 
-    items.forEach(it => {
-      const card = document.createElement('div');
-      card.className = 'activity-item-card';
+    const todayHeader = document.createElement('div');
+    todayHeader.className = 'home-day-header';
+    const todayTitle = document.createElement('h3');
+    todayTitle.className = 'home-day-title';
+    todayTitle.textContent = `Today - ${formatFullDisplayDate(todayDate)}`;
+    todayHeader.appendChild(todayTitle);
 
-      const top = document.createElement('div');
-      top.className = 'activity-item-top';
+    if (hasTodayWork) {
+      const todayCount = document.createElement('span');
+      todayCount.className = 'home-day-count';
+      todayCount.textContent = `${todaySlots.length} ${todaySlots.length === 1 ? 'slot' : 'slots'}`;
+      todayHeader.appendChild(todayCount);
+    }
+    todaySection.appendChild(todayHeader);
 
-      const dateEl = document.createElement('span');
-      dateEl.className = 'activity-item-date';
-      const dObj = parseLocalDateKey(it.dateKey);
-      dateEl.textContent = formatShortDisplayDate(dObj);
+    if (hasTodayWork) {
+      const todayGrid = document.createElement('ul');
+      todayGrid.className = 'home-tiles-grid';
+      todaySlots.forEach(slotItem => {
+        todayGrid.appendChild(createSlotTileElement(slotItem));
+      });
+      todaySection.appendChild(todayGrid);
+    } else {
+      const emptyToday = document.createElement('p');
+      emptyToday.className = 'activity-panel-message';
+      emptyToday.style.padding = '12px 0';
+      emptyToday.style.textAlign = 'left';
+      emptyToday.textContent = "No work scheduled for today.";
+      todaySection.appendChild(emptyToday);
+    }
+    activityPanelContent.appendChild(todaySection);
 
-      const timeEl = document.createElement('span');
-      timeEl.className = 'activity-item-time';
-      timeEl.textContent = `${formatMinutesTo12Hour(it.startMinutes)} - ${formatMinutesTo12Hour(it.endMinutes)}`;
+    // b) Section "Previous work": every earlier day that has saved slots, newest date first
+    const prevWorkSection = document.createElement('section');
+    prevWorkSection.className = 'home-day-section';
 
-      top.appendChild(dateEl);
-      top.appendChild(timeEl);
-      card.appendChild(top);
+    const prevWorkHeader = document.createElement('div');
+    prevWorkHeader.className = 'home-day-header';
+    const prevWorkTitle = document.createElement('h3');
+    prevWorkTitle.className = 'home-day-title';
+    prevWorkTitle.textContent = "Previous work";
+    prevWorkHeader.appendChild(prevWorkTitle);
+    prevWorkSection.appendChild(prevWorkHeader);
 
-      if (it.taskText) {
-        const taskEl = document.createElement('div');
-        taskEl.className = 'activity-item-task';
-        taskEl.textContent = it.taskText;
-        card.appendChild(taskEl);
-      }
+    if (!hasEarlierWork) {
+      const emptyPrev = document.createElement('p');
+      emptyPrev.className = 'activity-panel-message';
+      emptyPrev.style.padding = '12px 0';
+      emptyPrev.style.textAlign = 'left';
+      emptyPrev.textContent = "No previous work yet.";
+      prevWorkSection.appendChild(emptyPrev);
+      activityPanelContent.appendChild(prevWorkSection);
+      return;
+    }
 
-      const statusEl = document.createElement('div');
-      statusEl.className = 'activity-item-status ' + (it.status === 'COMPLETED' ? 'comp' : (it.status === 'NOT_COMPLETED' ? 'not-comp' : 'unmarked'));
-      if (it.status === 'COMPLETED') {
-        statusEl.textContent = '✓ Completed';
-      } else if (it.status === 'NOT_COMPLETED') {
-        statusEl.textContent = '✗ Not Completed';
-      } else {
-        statusEl.textContent = 'Not marked yet';
-      }
-      card.appendChild(statusEl);
+    // c) Show 30 dates at a time
+    const visibleDays = allEarlierDaysList.slice(0, previousWorkVisibleLimit);
+    visibleDays.forEach(dayItem => {
+      const dayWrapper = document.createElement('div');
+      dayWrapper.className = 'home-day-section';
+      dayWrapper.style.marginBottom = '18px';
 
-      const markMsg = formatMarkedAtMessage(it.status, it.markedAt, it.dateKey);
-      const markEl = document.createElement('div');
-      markEl.className = 'activity-item-markmsg';
-      markEl.textContent = markMsg.text;
-      card.appendChild(markEl);
+      const dHeader = document.createElement('div');
+      dHeader.className = 'home-day-header';
 
-      list.appendChild(card);
+      const dTitle = document.createElement('h4');
+      dTitle.className = 'home-day-title';
+      dTitle.style.fontSize = '0.98rem';
+      dTitle.textContent = formatPreviousDayHeading(dayItem.dateKey);
+
+      const dCount = document.createElement('span');
+      dCount.className = 'home-day-count';
+      dCount.textContent = `${dayItem.slots.length} ${dayItem.slots.length === 1 ? 'slot' : 'slots'}`;
+
+      dHeader.appendChild(dTitle);
+      dHeader.appendChild(dCount);
+      dayWrapper.appendChild(dHeader);
+
+      const dGrid = document.createElement('ul');
+      dGrid.className = 'home-tiles-grid';
+      dayItem.slots.forEach(slotItem => {
+        dGrid.appendChild(createSlotTileElement(slotItem));
+      });
+      dayWrapper.appendChild(dGrid);
+
+      prevWorkSection.appendChild(dayWrapper);
     });
 
-    activityPanelContent.appendChild(list);
+    // Pagination controls if more than 30 dates exist
+    const totalDays = allEarlierDaysList.length;
+    const paginationRow = document.createElement('div');
+    paginationRow.className = 'home-pagination-row';
+
+    const countLabel = document.createElement('p');
+    countLabel.className = 'home-pagination-count';
+    countLabel.textContent = `Showing ${Math.min(previousWorkVisibleLimit, totalDays)} of ${totalDays} days.`;
+    paginationRow.appendChild(countLabel);
+
+    if (previousWorkVisibleLimit < totalDays) {
+      const showMoreBtn = document.createElement('button');
+      showMoreBtn.type = 'button';
+      showMoreBtn.className = 'btn-home-show-more';
+      showMoreBtn.textContent = 'Show more';
+      showMoreBtn.addEventListener('click', () => {
+        previousWorkVisibleLimit += 30;
+        renderPreviousOrCurrentWorkView(allEarlierDaysList, todaySlots);
+      });
+      paginationRow.appendChild(showMoreBtn);
+    }
+
+    prevWorkSection.appendChild(paginationRow);
+    activityPanelContent.appendChild(prevWorkSection);
+  }
+
+  function renderUpcomingWorkTiles(upcomingItems) {
+    if (!activityPanelContent) return;
+    activityPanelContent.innerHTML = "";
+
+    if (!upcomingItems || upcomingItems.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'activity-panel-message';
+      p.textContent = "You have not added any work yet.";
+      activityPanelContent.appendChild(p);
+      return;
+    }
+
+    const grid = document.createElement('ul');
+    grid.className = 'home-tiles-grid';
+    upcomingItems.forEach(slotItem => {
+      grid.appendChild(createSlotTileElement(slotItem));
+    });
+    activityPanelContent.appendChild(grid);
   }
 
   async function loadAndShowActivity(tab) {
@@ -841,8 +1066,7 @@
     if (activityPanelTitle) {
       activityPanelTitle.style.display = 'block';
       activityPanelTitle.textContent =
-        tab === 'previous' ? 'Previous Activity' :
-        tab === 'recent' ? 'Recent Activity' : 'Upcoming Activity';
+        tab === 'previous-or-current' ? 'Previous or Current Work' : 'Upcoming Work';
     }
 
     if (activityPanelContent) {
@@ -850,77 +1074,34 @@
     }
 
     const todayStr = getLocalDateKey(todayDate);
-    const yesterdayStr = getLocalDateKey(addDays(todayDate, -1));
 
     try {
-      if (tab === 'previous') {
-        await loadRange(yesterdayStr, yesterdayStr);
-        const day = state.days[yesterdayStr];
-        if (!day || !Array.isArray(day.slots) || day.slots.length === 0) {
-          renderActivityList([], "You have not added any work for yesterday.");
-          return;
-        }
+      if (tab === 'previous-or-current') {
+        previousWorkVisibleLimit = 30; // reset to first page of 30 dates
+        await loadAllSavedWorkUpToNow();
 
-        const validSlots = [];
-        day.slots.forEach((s, idx) => {
-          const sMin = getEffectiveSlotStart(day, idx);
-          const eMin = typeof s.end === "number" ? s.end : null;
-          const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
-          const status = s.status || "NONE";
-          if (eMin !== null && (text || status !== "NONE")) {
-            if (status === "COMPLETED") {
-              validSlots.push({
-                dateKey: yesterdayStr,
-                startMinutes: sMin,
-                endMinutes: eMin,
-                taskText: text,
-                status,
-                markedAt: s.markedAt || null,
-              });
-            }
+        // 1. Collect Today's slots
+        const todayData = state.days[todayStr];
+        const todaySlots = getValidSlotsForDay(todayData, todayStr);
+
+        // 2. Collect every earlier day that has saved slots, newest date first
+        const earlierDayKeys = Object.keys(state.days)
+          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k < todayStr)
+          .sort((a, b) => b.localeCompare(a)); // newest first
+
+        const earlierDaysList = [];
+        earlierDayKeys.forEach(dKey => {
+          const dayData = state.days[dKey];
+          const slots = getValidSlotsForDay(dayData, dKey);
+          if (slots.length > 0) {
+            earlierDaysList.push({
+              dateKey: dKey,
+              slots,
+            });
           }
         });
 
-        if (validSlots.length === 0) {
-          renderActivityList([], "No completed work found for yesterday.");
-        } else {
-          renderActivityList(validSlots, "");
-        }
-      } else if (tab === 'recent') {
-        const from7Days = getLocalDateKey(addDays(todayDate, -7));
-        await loadRange(from7Days, todayStr);
-
-        const items = [];
-        // today and previous 7 days: newest date first, in time order within a day, at most 10 items
-        for (let offset = 0; offset >= -7; offset--) {
-          const dKey = getLocalDateKey(addDays(todayDate, offset));
-          const day = state.days[dKey];
-          if (day && Array.isArray(day.slots)) {
-            day.slots.forEach((s, idx) => {
-              const sMin = getEffectiveSlotStart(day, idx);
-              const eMin = typeof s.end === "number" ? s.end : null;
-              const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
-              const status = s.status || "NONE";
-              if (eMin !== null && (text || status !== "NONE")) {
-                items.push({
-                  dateKey: dKey,
-                  startMinutes: sMin,
-                  endMinutes: eMin,
-                  taskText: text,
-                  status,
-                  markedAt: s.markedAt || null,
-                });
-              }
-            });
-          }
-        }
-
-        const capped = items.slice(0, 10);
-        if (capped.length === 0) {
-          renderActivityList([], "No recent activity yet.");
-        } else {
-          renderActivityList(capped, "");
-        }
+        renderPreviousOrCurrentWorkView(earlierDaysList, todaySlots);
       } else if (tab === 'upcoming') {
         const to60Days = getLocalDateKey(addDays(todayDate, 60));
         await loadRange(todayStr, to60Days);
@@ -937,10 +1118,10 @@
             day.slots.forEach((s, idx) => {
               const sMin = getEffectiveSlotStart(day, idx);
               const eMin = typeof s.end === "number" ? s.end : null;
-              const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
-              const status = s.status || "NONE";
+              if (sMin !== null && !isNaN(sMin) && eMin !== null && !isNaN(eMin)) {
+                const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+                const status = s.status || "NONE";
 
-              if (eMin !== null && (text || status !== "NONE")) {
                 if (dKey === todayStr) {
                   if (sMin > currentMins) {
                     items.push({
@@ -968,18 +1149,14 @@
         }
 
         const capped = items.slice(0, 20);
-        if (capped.length === 0) {
-          renderActivityList([], "You have not added any work yet.");
-        } else {
-          renderActivityList(capped, "");
-        }
+        renderUpcomingWorkTiles(capped);
       }
     } catch (err) {
       if (activityPanelContent) {
         activityPanelContent.innerHTML = "";
         const p = document.createElement('p');
         p.className = 'activity-panel-message';
-        p.textContent = "Could not load your activity.";
+        p.textContent = "Could not load your work.";
 
         const retry = document.createElement('button');
         retry.type = 'button';

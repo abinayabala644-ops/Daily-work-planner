@@ -1105,16 +1105,6 @@
       gap: 12px;
       width: 100%;
     }
-    .home-logo-badge {
-      width: 64px;
-      height: 64px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
-    }
     .home-title {
       font-size: 2.1rem;
       font-weight: 800;
@@ -1348,6 +1338,140 @@
       }
     }
 
+
+    /* Home Tile Grid and Day Sections */
+    .home-day-section {
+      margin-bottom: 24px;
+    }
+    .home-day-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0 0 12px 0;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--slate-200);
+    }
+    .home-day-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      margin: 0;
+    }
+    .home-day-count {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--slate-500);
+    }
+    .home-tiles-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    @media (min-width: 600px) {
+      .home-tiles-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .home-tile-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-left: 6px solid var(--slate-400);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      word-break: break-word;
+    }
+    .home-tile-card.comp {
+      border-left-color: #059669;
+    }
+    .home-tile-card.not-comp {
+      border-left-color: #e11d48;
+    }
+    .home-tile-card.unmarked {
+      border-left-color: var(--slate-400);
+    }
+    .home-tile-time {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--slate-900);
+      letter-spacing: -0.2px;
+    }
+    .home-tile-task {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--slate-800);
+      line-height: 1.4;
+    }
+    .home-tile-task.muted {
+      color: var(--slate-500);
+      font-style: italic;
+    }
+    .home-tile-status {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-top: 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .home-tile-status.comp {
+      color: #047857;
+    }
+    .home-tile-status.not-comp {
+      color: #b91c1c;
+    }
+    .home-tile-status.unmarked {
+      color: var(--slate-600);
+    }
+    .home-tile-markmsg {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--slate-500);
+    }
+    .home-pagination-row {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .home-pagination-count {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--slate-600);
+      margin: 0;
+    }
+    .btn-home-show-more {
+      min-height: 44px;
+      min-width: 140px;
+      padding: 10px 24px;
+      background: #ffffff;
+      color: var(--slate-800);
+      border: 1px solid var(--slate-300);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+    .btn-home-show-more:hover {
+      background: var(--slate-100);
+    }
+    .btn-home-show-more:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
@@ -1377,20 +1501,6 @@
       <div class="home-hero-card">
         <div class="home-hero-bg-shape" aria-hidden="true"></div>
         <div class="home-hero-content">
-          <div class="home-logo-badge" aria-hidden="true">
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="3" ry="3"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-              <circle cx="8" cy="14" r="1" fill="#ffffff"></circle>
-              <circle cx="12" cy="14" r="1" fill="#ffffff"></circle>
-              <circle cx="16" cy="14" r="1" fill="#ffffff"></circle>
-              <circle cx="8" cy="18" r="1" fill="#ffffff"></circle>
-              <circle cx="12" cy="18" r="1" fill="#ffffff"></circle>
-              <circle cx="16" cy="18" r="1" fill="#ffffff"></circle>
-            </svg>
-          </div>
           <h1 class="home-title">My Work Board</h1>
           <p id="home-daily-proverb" class="home-proverb">Well begun is half done.</p>
           <div class="home-emoji" aria-hidden="true">😊</div>
