@@ -196,6 +196,16 @@
   const durationDialogCancel = document.getElementById('duration-dialog-cancel');
   const durationDialogContinue = document.getElementById('duration-dialog-continue');
 
+  // Work Detail Dialog Elements
+  const workDetailDialog = document.getElementById('work-detail-dialog');
+  const detailDateVal = document.getElementById('detail-date-val');
+  const detailTaskVal = document.getElementById('detail-task-val');
+  const detailTimeVal = document.getElementById('detail-time-val');
+  const detailStatusVal = document.getElementById('detail-status-val');
+  const detailMarkRow = document.getElementById('detail-mark-row');
+  const detailMarkVal = document.getElementById('detail-mark-val');
+  const workDetailCloseBtn = document.getElementById('work-detail-close-btn');
+
   // Log out button
   const btnLogout = document.getElementById('btn-logout');
 
@@ -756,9 +766,46 @@
     "Many hands make light work."
   ];
 
-  let currentActivityTab = null; // 'previous-or-current' | 'upcoming' | null
+  let currentActivityTab = null; // 'previous' | 'today' | 'upcoming' | null
   let isActivityMenuOpen = false;
-  let previousWorkVisibleLimit = 30;
+  let selectedPreviousWorkDateKey = getLocalDateKey(todayDate);
+
+  if (workDetailCloseBtn && workDetailDialog) {
+    workDetailCloseBtn.addEventListener('click', () => {
+      workDetailDialog.close();
+    });
+  }
+
+  function showWorkDetailModal(slotItem) {
+    if (!workDetailDialog) return;
+    const dObj = parseLocalDateKey(slotItem.dateKey);
+
+    if (detailDateVal) {
+      detailDateVal.textContent = formatFullDisplayDate(dObj);
+    }
+    if (detailTaskVal) {
+      detailTaskVal.textContent = slotItem.taskText || "No task written";
+    }
+    if (detailTimeVal) {
+      detailTimeVal.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+    }
+    if (detailStatusVal) {
+      const emoji = slotItem.status === 'COMPLETED' ? '😊 ' : (slotItem.status === 'NOT_COMPLETED' ? '😔 ' : '⏳ ');
+      const statusLabel = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : 'Not marked yet');
+      detailStatusVal.textContent = emoji + statusLabel;
+    }
+    if (detailMarkRow && detailMarkVal) {
+      const markMsg = formatMarkedAtMessage(slotItem.status, slotItem.markedAt, slotItem.dateKey);
+      if (markMsg && !markMsg.muted) {
+        detailMarkVal.textContent = markMsg.text;
+        detailMarkRow.style.display = 'flex';
+      } else {
+        detailMarkRow.style.display = 'none';
+      }
+    }
+
+    workDetailDialog.showModal();
+  }
 
   function updateHomeProverb() {
     if (!homeDailyProverb) return;
@@ -825,16 +872,27 @@
   if (btnActivityMain) btnActivityMain.addEventListener('click', toggleActivityMenu);
   if (btnActivityArrow) btnActivityArrow.addEventListener('click', toggleActivityMenu);
 
-  function createSlotTileElement(slotItem) {
+  function createSlotTileElement(slotItem, includeDate = true) {
     const li = document.createElement('li');
     const statusClass = slotItem.status === 'COMPLETED' ? 'comp' : (slotItem.status === 'NOT_COMPLETED' ? 'not-comp' : 'unmarked');
     li.className = 'home-tile-card ' + statusClass;
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
+    li.setAttribute('aria-label', `View details for ${slotItem.taskText || 'task'} on ${slotItem.dateKey}`);
 
-    const timeSpan = document.createElement('div');
-    timeSpan.className = 'home-tile-time';
-    timeSpan.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
-    li.appendChild(timeSpan);
+    // Date
+    if (includeDate) {
+      const dateEl = document.createElement('div');
+      dateEl.className = 'home-tile-date';
+      dateEl.style.fontSize = '0.85rem';
+      dateEl.style.fontWeight = '700';
+      dateEl.style.color = 'var(--slate-700)';
+      const dObj = parseLocalDateKey(slotItem.dateKey);
+      dateEl.textContent = formatShortDisplayDate(dObj);
+      li.appendChild(dateEl);
+    }
 
+    // Work / Task Name
     const taskDiv = document.createElement('div');
     if (slotItem.taskText) {
       taskDiv.className = 'home-tile-task';
@@ -845,29 +903,42 @@
     }
     li.appendChild(taskDiv);
 
+    // Starting Time and Finished By Time
+    const timeSpan = document.createElement('div');
+    timeSpan.className = 'home-tile-time';
+    timeSpan.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+    li.appendChild(timeSpan);
+
+    // Completion Status + Relevant completion emoji
     const statusDiv = document.createElement('div');
     statusDiv.className = 'home-tile-status ' + statusClass;
+    let emoji = '⏳';
+    let statusText = 'Not marked yet';
     if (slotItem.status === 'COMPLETED') {
-      statusDiv.textContent = '✓ Completed';
+      emoji = '😊';
+      statusText = 'Completed';
     } else if (slotItem.status === 'NOT_COMPLETED') {
-      statusDiv.textContent = '✗ Not Completed';
-    } else {
-      statusDiv.textContent = 'Not marked yet';
+      emoji = '😔';
+      statusText = 'Not Completed';
     }
+    statusDiv.textContent = `${emoji} ${statusText}`;
     li.appendChild(statusDiv);
 
-    const markMsg = formatMarkedAtMessage(slotItem.status, slotItem.markedAt, slotItem.dateKey);
-    if (!markMsg.muted) {
-      const markDiv = document.createElement('div');
-      markDiv.className = 'home-tile-markmsg';
-      markDiv.textContent = markMsg.text;
-      li.appendChild(markDiv);
-    }
+    // Click handler to open saved details modal
+    li.addEventListener('click', () => {
+      showWorkDetailModal(slotItem);
+    });
+    li.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        showWorkDetailModal(slotItem);
+      }
+    });
 
     return li;
   }
 
-  function formatPreviousDayHeading(dateKey) {
+  function formatDayHeadingWithDate(dateKey) {
     const todayStr = getLocalDateKey(todayDate);
     const yesterdayStr = getLocalDateKey(addDays(todayDate, -1));
     const dObj = parseLocalDateKey(dateKey);
@@ -876,6 +947,9 @@
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const formattedDate = `${days[dObj.getDay()]}, ${dObj.getDate()} ${months[dObj.getMonth()]} ${dObj.getFullYear()}`;
 
+    if (dateKey === todayStr) {
+      return `Today - ${formattedDate}`;
+    }
     if (dateKey === yesterdayStr) {
       return `Yesterday - ${formattedDate}`;
     }
@@ -901,142 +975,115 @@
         });
       }
     });
-    // Ensure time order within the day
     validSlots.sort((a, b) => a.startMinutes - b.startMinutes);
     return validSlots;
   }
 
-  function renderPreviousOrCurrentWorkView(allEarlierDaysList, todaySlots) {
+  function renderPreviousWork30Days(daysList, fromKey, toKey) {
     if (!activityPanelContent) return;
     activityPanelContent.innerHTML = "";
 
-    const hasTodayWork = todaySlots && todaySlots.length > 0;
-    const hasEarlierWork = allEarlierDaysList && allEarlierDaysList.length > 0;
+    // Toolbar with calendar icon and date selector
+    const toolbar = document.createElement('div');
+    toolbar.className = 'prev-work-toolbar';
 
-    if (!hasTodayWork && !hasEarlierWork) {
-      const p = document.createElement('p');
-      p.className = 'activity-panel-message';
-      p.textContent = "You have not added any work yet.";
-      activityPanelContent.appendChild(p);
+    const dateLabel = document.createElement('label');
+    dateLabel.className = 'prev-work-date-label';
+    dateLabel.htmlFor = 'prev-work-date-selector';
+    dateLabel.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>Select Date:`;
+
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.id = 'prev-work-date-selector';
+    dateInput.className = 'prev-work-date-input';
+    dateInput.value = selectedPreviousWorkDateKey;
+    dateInput.addEventListener('change', () => {
+      if (dateInput.value) {
+        selectedPreviousWorkDateKey = dateInput.value;
+        loadAndShowActivity('previous');
+      }
+    });
+
+    const rangeInfo = document.createElement('p');
+    rangeInfo.className = 'prev-work-range-info';
+    const fromObj = parseLocalDateKey(fromKey);
+    const toObj = parseLocalDateKey(toKey);
+    rangeInfo.textContent = `Showing previous 30 calendar days (${formatShortDisplayDate(fromObj)} – ${formatShortDisplayDate(toObj)})`;
+
+    toolbar.appendChild(dateLabel);
+    toolbar.appendChild(dateInput);
+    toolbar.appendChild(rangeInfo);
+    activityPanelContent.appendChild(toolbar);
+
+    if (!daysList || daysList.length === 0) {
+      const emptyMsg = document.createElement('p');
+      emptyMsg.className = 'activity-panel-message';
+      emptyMsg.textContent = "You have not added any work yet.";
+      activityPanelContent.appendChild(emptyMsg);
       return;
     }
 
-    // a) Section "Today" with today's date
-    const todaySection = document.createElement('section');
-    todaySection.className = 'home-day-section';
-
-    const todayHeader = document.createElement('div');
-    todayHeader.className = 'home-day-header';
-    const todayTitle = document.createElement('h3');
-    todayTitle.className = 'home-day-title';
-    todayTitle.textContent = `Today - ${formatFullDisplayDate(todayDate)}`;
-    todayHeader.appendChild(todayTitle);
-
-    if (hasTodayWork) {
-      const todayCount = document.createElement('span');
-      todayCount.className = 'home-day-count';
-      todayCount.textContent = `${todaySlots.length} ${todaySlots.length === 1 ? 'slot' : 'slots'}`;
-      todayHeader.appendChild(todayCount);
-    }
-    todaySection.appendChild(todayHeader);
-
-    if (hasTodayWork) {
-      const todayGrid = document.createElement('ul');
-      todayGrid.className = 'home-tiles-grid';
-      todaySlots.forEach(slotItem => {
-        todayGrid.appendChild(createSlotTileElement(slotItem));
-      });
-      todaySection.appendChild(todayGrid);
-    } else {
-      const emptyToday = document.createElement('p');
-      emptyToday.className = 'activity-panel-message';
-      emptyToday.style.padding = '12px 0';
-      emptyToday.style.textAlign = 'left';
-      emptyToday.textContent = "No work scheduled for today.";
-      todaySection.appendChild(emptyToday);
-    }
-    activityPanelContent.appendChild(todaySection);
-
-    // b) Section "Previous work": every earlier day that has saved slots, newest date first
-    const prevWorkSection = document.createElement('section');
-    prevWorkSection.className = 'home-day-section';
-
-    const prevWorkHeader = document.createElement('div');
-    prevWorkHeader.className = 'home-day-header';
-    const prevWorkTitle = document.createElement('h3');
-    prevWorkTitle.className = 'home-day-title';
-    prevWorkTitle.textContent = "Previous work";
-    prevWorkHeader.appendChild(prevWorkTitle);
-    prevWorkSection.appendChild(prevWorkHeader);
-
-    if (!hasEarlierWork) {
-      const emptyPrev = document.createElement('p');
-      emptyPrev.className = 'activity-panel-message';
-      emptyPrev.style.padding = '12px 0';
-      emptyPrev.style.textAlign = 'left';
-      emptyPrev.textContent = "No previous work yet.";
-      prevWorkSection.appendChild(emptyPrev);
-      activityPanelContent.appendChild(prevWorkSection);
-      return;
-    }
-
-    // c) Show 30 dates at a time
-    const visibleDays = allEarlierDaysList.slice(0, previousWorkVisibleLimit);
-    visibleDays.forEach(dayItem => {
+    // Render each day's activities in separate individual tiles / cards
+    daysList.forEach(dayItem => {
       const dayWrapper = document.createElement('div');
       dayWrapper.className = 'home-day-section';
-      dayWrapper.style.marginBottom = '18px';
 
       const dHeader = document.createElement('div');
       dHeader.className = 'home-day-header';
-
-      const dTitle = document.createElement('h4');
+      const dTitle = document.createElement('h3');
       dTitle.className = 'home-day-title';
-      dTitle.style.fontSize = '0.98rem';
-      dTitle.textContent = formatPreviousDayHeading(dayItem.dateKey);
-
-      const dCount = document.createElement('span');
-      dCount.className = 'home-day-count';
-      dCount.textContent = `${dayItem.slots.length} ${dayItem.slots.length === 1 ? 'slot' : 'slots'}`;
-
+      dTitle.textContent = formatDayHeadingWithDate(dayItem.dateKey);
       dHeader.appendChild(dTitle);
-      dHeader.appendChild(dCount);
       dayWrapper.appendChild(dHeader);
 
       const dGrid = document.createElement('ul');
       dGrid.className = 'home-tiles-grid';
       dayItem.slots.forEach(slotItem => {
-        dGrid.appendChild(createSlotTileElement(slotItem));
+        dGrid.appendChild(createSlotTileElement(slotItem, true));
       });
       dayWrapper.appendChild(dGrid);
 
-      prevWorkSection.appendChild(dayWrapper);
+      activityPanelContent.appendChild(dayWrapper);
     });
+  }
 
-    // Pagination controls if more than 30 dates exist
-    const totalDays = allEarlierDaysList.length;
-    const paginationRow = document.createElement('div');
-    paginationRow.className = 'home-pagination-row';
+  function renderTodayScheduleView(todaySlots) {
+    if (!activityPanelContent) return;
+    activityPanelContent.innerHTML = "";
 
-    const countLabel = document.createElement('p');
-    countLabel.className = 'home-pagination-count';
-    countLabel.textContent = `Showing ${Math.min(previousWorkVisibleLimit, totalDays)} of ${totalDays} days.`;
-    paginationRow.appendChild(countLabel);
+    const section = document.createElement('section');
+    section.className = 'home-day-section';
 
-    if (previousWorkVisibleLimit < totalDays) {
-      const showMoreBtn = document.createElement('button');
-      showMoreBtn.type = 'button';
-      showMoreBtn.className = 'btn-home-show-more';
-      showMoreBtn.textContent = 'Show more';
-      showMoreBtn.addEventListener('click', () => {
-        previousWorkVisibleLimit += 30;
-        renderPreviousOrCurrentWorkView(allEarlierDaysList, todaySlots);
+    const dHeader = document.createElement('div');
+    dHeader.className = 'home-day-header';
+    const dTitle = document.createElement('h3');
+    dTitle.className = 'home-day-title';
+    dTitle.textContent = `Today - ${formatFullDisplayDate(todayDate)}`;
+    dHeader.appendChild(dTitle);
+    section.appendChild(dHeader);
+
+    if (!todaySlots || todaySlots.length === 0) {
+      const emptyMsg = document.createElement('p');
+      emptyMsg.className = 'activity-panel-message';
+      emptyMsg.style.textAlign = 'left';
+      emptyMsg.style.padding = '12px 0';
+      emptyMsg.textContent = "No work scheduled for today.";
+      section.appendChild(emptyMsg);
+    } else {
+      const grid = document.createElement('ul');
+      grid.className = 'home-tiles-grid';
+      todaySlots.forEach(slotItem => {
+        grid.appendChild(createSlotTileElement(slotItem, false));
       });
-      paginationRow.appendChild(showMoreBtn);
+      section.appendChild(grid);
     }
 
-    prevWorkSection.appendChild(paginationRow);
-    activityPanelContent.appendChild(prevWorkSection);
+    activityPanelContent.appendChild(section);
   }
 
   function renderUpcomingWorkTiles(upcomingItems) {
@@ -1054,7 +1101,7 @@
     const grid = document.createElement('ul');
     grid.className = 'home-tiles-grid';
     upcomingItems.forEach(slotItem => {
-      grid.appendChild(createSlotTileElement(slotItem));
+      grid.appendChild(createSlotTileElement(slotItem, true));
     });
     activityPanelContent.appendChild(grid);
   }
@@ -1066,7 +1113,8 @@
     if (activityPanelTitle) {
       activityPanelTitle.style.display = 'block';
       activityPanelTitle.textContent =
-        tab === 'previous-or-current' ? 'Previous or Current Work' : 'Upcoming Work';
+        tab === 'previous' ? 'Previous / Current Work' :
+        tab === 'today' ? "Today's Schedule" : 'Upcoming Work';
     }
 
     if (activityPanelContent) {
@@ -1076,32 +1124,34 @@
     const todayStr = getLocalDateKey(todayDate);
 
     try {
-      if (tab === 'previous-or-current') {
-        previousWorkVisibleLimit = 30; // reset to first page of 30 dates
-        await loadAllSavedWorkUpToNow();
+      if (tab === 'previous') {
+        const selObj = parseLocalDateKey(selectedPreviousWorkDateKey);
+        const fromDateObj = addDays(selObj, -29);
+        const fromKey = getLocalDateKey(fromDateObj);
+        const toKey = selectedPreviousWorkDateKey;
 
-        // 1. Collect Today's slots
-        const todayData = state.days[todayStr];
-        const todaySlots = getValidSlotsForDay(todayData, todayStr);
+        await loadRange(fromKey, toKey);
 
-        // 2. Collect every earlier day that has saved slots, newest date first
-        const earlierDayKeys = Object.keys(state.days)
-          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k < todayStr)
-          .sort((a, b) => b.localeCompare(a)); // newest first
-
-        const earlierDaysList = [];
-        earlierDayKeys.forEach(dKey => {
+        const daysList = [];
+        // Walk backwards from toKey to fromKey (newest date first)
+        for (let offset = 0; offset >= -29; offset--) {
+          const dKey = getLocalDateKey(addDays(selObj, offset));
           const dayData = state.days[dKey];
           const slots = getValidSlotsForDay(dayData, dKey);
           if (slots.length > 0) {
-            earlierDaysList.push({
+            daysList.push({
               dateKey: dKey,
               slots,
             });
           }
-        });
+        }
 
-        renderPreviousOrCurrentWorkView(earlierDaysList, todaySlots);
+        renderPreviousWork30Days(daysList, fromKey, toKey);
+      } else if (tab === 'today') {
+        await loadRange(todayStr, todayStr);
+        const todayData = state.days[todayStr];
+        const todaySlots = getValidSlotsForDay(todayData, todayStr);
+        renderTodayScheduleView(todaySlots);
       } else if (tab === 'upcoming') {
         const to60Days = getLocalDateKey(addDays(todayDate, 60));
         await loadRange(todayStr, to60Days);
@@ -1110,7 +1160,6 @@
         const currentMins = now.getHours() * 60 + now.getMinutes();
 
         const items = [];
-        // slots on dates after today, and today's slots that start later than current time, earliest first, looking ahead 60 days, at most 20
         for (let offset = 0; offset <= 60; offset++) {
           const dKey = getLocalDateKey(addDays(todayDate, offset));
           const day = state.days[dKey];
@@ -2495,7 +2544,7 @@
   });
 
   // Dialog backdrop close listeners
-  [newDayDialog, settingsConfirmDialog, durationConfirmDialog, calendarDialog].forEach((diag) => {
+  [newDayDialog, settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog].filter(Boolean).forEach((diag) => {
     diag.addEventListener('click', (e) => {
       const rect = diag.getBoundingClientRect();
       const isInDialog =
