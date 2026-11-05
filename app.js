@@ -32,6 +32,19 @@
   let currentUserId = "anonymous";
   let storageKey = "dailyPlanner:anonymous";
 
+  // Safe ISO timestamp generator without using Date.prototype.toISOString directly for dates
+  function getIsoTimestamp(d = new Date()) {
+    const pad = (n) => String(n).padStart(2, '0');
+    const padMs = (n) => String(n).padStart(3, '0');
+    return d.getUTCFullYear() + '-' +
+      pad(d.getUTCMonth() + 1) + '-' +
+      pad(d.getUTCDate()) + 'T' +
+      pad(d.getUTCHours()) + ':' +
+      pad(d.getUTCMinutes()) + ':' +
+      pad(d.getUTCSeconds()) + '.' +
+      padMs(d.getUTCMilliseconds()) + 'Z';
+  }
+
   // --- LOCAL DATE HELPERS (Never use toISOString to avoid UTC shift bugs) ---
   function getLocalDateKey(dateObj) {
     const y = dateObj.getFullYear();
@@ -92,10 +105,34 @@
 
   // DOM Views
   const views = {
+    home: document.getElementById('view-home'),
+    todaySummary: document.getElementById('view-today-summary'),
     settings: document.getElementById('view-settings'),
     slot: document.getElementById('view-slot'),
     summary: document.getElementById('view-summary'),
   };
+
+  // Home Page Elements
+  const homeDailyProverb = document.getElementById('home-daily-proverb');
+  const btnActivityMain = document.getElementById('btn-activity-main');
+  const btnActivityArrow = document.getElementById('btn-activity-arrow');
+  const activityDropdownMenu = document.getElementById('activity-dropdown-menu');
+  const activityPanelTitle = document.getElementById('activity-panel-title');
+  const activityPanelContent = document.getElementById('activity-panel-content');
+  const btnHomeNext = document.getElementById('btn-home-next');
+
+  // Today's Work Summary Page Elements
+  const btnTodaySummaryHome = document.getElementById('btn-today-summary-home');
+  const todaySummaryContent = document.getElementById('today-summary-content');
+
+  // Summary to Home Button
+  const summaryToHomeBtn = document.getElementById('summary-to-home-btn');
+
+  // In-app Reminder Banner Elements
+  const appReminderBanner = document.getElementById('app-reminder-banner');
+  const reminderBannerTask = document.getElementById('reminder-banner-task');
+  const reminderBannerTiming = document.getElementById('reminder-banner-timing');
+  const reminderDismissBtn = document.getElementById('reminder-dismiss-btn');
 
   // First Page Navigation Elements
   const btnYesterday = document.getElementById('btn-yesterday');
@@ -118,7 +155,7 @@
   const slotLegacyNotice = document.getElementById('slot-legacy-notice');
   const slotStartDisplay = document.getElementById('slot-start-display');
   const slotStartHint = document.getElementById('slot-start-hint');
-  const slotEndTimeInput = document.getElementById('slot-end-time');
+  const slotEndSelect = document.getElementById('slot-end-select');
   const slotRulesMessage = document.getElementById('slot-rules-message');
   const slotTaskInput = document.getElementById('slot-task-input');
   const slotNextBtn = document.getElementById('slot-next-btn');
@@ -163,6 +200,16 @@
   const durationConfirmDialog = document.getElementById('duration-confirm-dialog');
   const durationDialogCancel = document.getElementById('duration-dialog-cancel');
   const durationDialogContinue = document.getElementById('duration-dialog-continue');
+
+  // Work Detail Dialog Elements
+  const workDetailDialog = document.getElementById('work-detail-dialog');
+  const detailDateVal = document.getElementById('detail-date-val');
+  const detailTaskVal = document.getElementById('detail-task-val');
+  const detailTimeVal = document.getElementById('detail-time-val');
+  const detailStatusVal = document.getElementById('detail-status-val');
+  const detailMarkRow = document.getElementById('detail-mark-row');
+  const detailMarkVal = document.getElementById('detail-mark-val');
+  const workDetailCloseBtn = document.getElementById('work-detail-close-btn');
 
   // Log out button
   const btnLogout = document.getElementById('btn-logout');
@@ -443,6 +490,150 @@
     }
   }
 
+
+  async function loadRange(fromKey, toKey) {
+    if (!supabaseClient || !currentUserId || currentUserId === "anonymous") {
+      return;
+    }
+    try {
+      const { data, error } = await supabaseClient
+        .from('planner_days')
+        .select('day, start_min, end_min, slots, saved_at')
+        .eq('user_id', currentUserId)
+        .gte('day', fromKey)
+        .lte('day', toKey);
+
+      if (!error && Array.isArray(data)) {
+        data.forEach((row) => {
+          if (row && typeof row.day === "string") {
+            const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+            const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
+            state.days[row.day] = {
+              startMinutes: sMin,
+              endMinutes: eMin,
+              slots: sanitizeSlots(row.slots, sMin),
+              savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
+            };
+          }
+        });
+        saveToLocalStorage();
+      }
+    } catch (err) {
+      console.warn("loadRange error:", err);
+      throw err;
+    }
+  }
+
+
+  async function loadAllSavedWorkUpToNow() {
+    loadFromLocalStorage();
+
+    if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+      const todayStr = getLocalDateKey(todayDate);
+      const pageSize = 1000;
+      let page = 0;
+      let keepFetching = true;
+
+      while (keepFetching) {
+        const fromIdx = page * pageSize;
+        const toIdx = (page + 1) * pageSize - 1;
+
+        const { data, error } = await supabaseClient
+          .from('planner_days')
+          .select('day, start_min, end_min, slots, saved_at')
+          .eq('user_id', currentUserId)
+          .lte('day', todayStr)
+          .order('day', { ascending: false })
+          .range(fromIdx, toIdx);
+
+        if (error) {
+          console.warn("loadAllSavedWorkUpToNow error:", error);
+          throw error;
+        }
+
+        if (Array.isArray(data)) {
+          data.forEach((row) => {
+            if (row && typeof row.day === "string") {
+              const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+              const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
+              state.days[row.day] = {
+                startMinutes: sMin,
+                endMinutes: eMin,
+                slots: sanitizeSlots(row.slots, sMin),
+                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
+              };
+            }
+          });
+
+          if (data.length < pageSize) {
+            keepFetching = false;
+          } else {
+            page++;
+          }
+        } else {
+          keepFetching = false;
+        }
+      }
+
+      saveToLocalStorage();
+    }
+  }
+
+
+  async function loadAllUpcomingWork() {
+    loadFromLocalStorage();
+
+    if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+      const todayStr = getLocalDateKey(todayDate);
+      const pageSize = 1000;
+      let page = 0;
+      let keepFetching = true;
+
+      while (keepFetching) {
+        const fromIdx = page * pageSize;
+        const toIdx = (page + 1) * pageSize - 1;
+
+        const { data, error } = await supabaseClient
+          .from('planner_days')
+          .select('day, start_min, end_min, slots, saved_at')
+          .eq('user_id', currentUserId)
+          .gte('day', todayStr)
+          .order('day', { ascending: true })
+          .range(fromIdx, toIdx);
+
+        if (error) {
+          console.warn("loadAllUpcomingWork error:", error);
+          throw error;
+        }
+
+        if (Array.isArray(data)) {
+          data.forEach((row) => {
+            if (row && typeof row.day === "string") {
+              const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+              const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
+              state.days[row.day] = {
+                startMinutes: sMin,
+                endMinutes: eMin,
+                slots: sanitizeSlots(row.slots, sMin),
+                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
+              };
+            }
+          });
+
+          if (data.length < pageSize) {
+            keepFetching = false;
+          } else {
+            page++;
+          }
+        } else {
+          keepFetching = false;
+        }
+      }
+
+      saveToLocalStorage();
+    }
+  }
+
   async function loadPlans() {
     // 1. Load from user-scoped localStorage first
     loadFromLocalStorage();
@@ -617,6 +808,1037 @@
     // Days with only a draft show a plain outline
     return "PLANNED_UNMARKED";
   }
+
+
+  // --- HOME VIEW (MY WORK BOARD) LOGIC ---
+  const PROVERBS = [
+    "Well begun is half done.",
+    "A stitch in time saves nine.",
+    "Slow and steady wins the race.",
+    "Practice makes perfect.",
+    "Rome was not built in a day.",
+    "Where there is a will, there is a way.",
+    "The early bird catches the worm.",
+    "A journey of a thousand miles begins with a single step.",
+    "Better late than never.",
+    "Actions speak louder than words.",
+    "Time and tide wait for no man.",
+    "Many hands make light work."
+  ];
+
+  let currentActivityTab = null; // 'previous' | 'today' | 'upcoming' | null
+  let isActivityMenuOpen = false;
+  let selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
+  let editingUpcomingTask = null; // { dateKey, slotId } or null
+  let isUpcomingSaving = false;
+
+  if (workDetailCloseBtn && workDetailDialog) {
+    workDetailCloseBtn.addEventListener('click', () => {
+      workDetailDialog.close();
+    });
+  }
+
+  function showWorkDetailModal(slotItem) {
+    if (!workDetailDialog) return;
+    const dObj = parseLocalDateKey(slotItem.dateKey);
+
+    if (detailDateVal) {
+      detailDateVal.textContent = formatFullDisplayDate(dObj);
+    }
+    if (detailTaskVal) {
+      detailTaskVal.textContent = slotItem.taskText || "No task written";
+    }
+    if (detailTimeVal) {
+      detailTimeVal.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+    }
+    if (detailStatusVal) {
+      const emoji = slotItem.status === 'COMPLETED' ? '😊 ' : (slotItem.status === 'NOT_COMPLETED' ? '😔 ' : '⏳ ');
+      const statusLabel = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : 'Not marked yet');
+      detailStatusVal.textContent = emoji + statusLabel;
+    }
+    if (detailMarkRow && detailMarkVal) {
+      const markMsg = formatMarkedAtMessage(slotItem.status, slotItem.markedAt, slotItem.dateKey);
+      if (markMsg && !markMsg.muted) {
+        detailMarkVal.textContent = markMsg.text;
+        detailMarkRow.style.display = 'flex';
+      } else {
+        detailMarkRow.style.display = 'none';
+      }
+    }
+
+    workDetailDialog.showModal();
+  }
+
+  function updateHomeProverb() {
+    if (!homeDailyProverb) return;
+    const now = new Date();
+    // Choose by LOCAL calendar date (day number since a fixed date modulo 12, never random)
+    const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const fixedEpoch = new Date(2026, 0, 1);
+    const diffDays = Math.floor((localMidnight.getTime() - fixedEpoch.getTime()) / 86400000);
+    const proverbIndex = ((diffDays % 12) + 12) % 12;
+    homeDailyProverb.textContent = PROVERBS[proverbIndex];
+  }
+
+  function setActivityMenuOpen(open) {
+    isActivityMenuOpen = open;
+    if (btnActivityMain) btnActivityMain.setAttribute('aria-expanded', String(open));
+    if (btnActivityArrow) btnActivityArrow.setAttribute('aria-expanded', String(open));
+    if (activityDropdownMenu) {
+      activityDropdownMenu.style.display = open ? 'flex' : 'none';
+      if (open) {
+        const firstItem = activityDropdownMenu.querySelector('.activity-menu-item');
+        if (firstItem) firstItem.focus();
+      }
+    }
+  }
+
+  function toggleActivityMenu() {
+    setActivityMenuOpen(!isActivityMenuOpen);
+  }
+
+  // Keyboard navigation for activity menu
+  if (activityDropdownMenu) {
+    activityDropdownMenu.addEventListener('keydown', (e) => {
+      const items = Array.from(activityDropdownMenu.querySelectorAll('.activity-menu-item'));
+      const currentIndex = items.indexOf(document.activeElement);
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setActivityMenuOpen(false);
+        if (btnActivityMain) btnActivityMain.focus();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIndex = (currentIndex + 1) % items.length;
+        items[nextIndex].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIndex = (currentIndex - 1 + items.length) % items.length;
+        items[prevIndex].focus();
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!isActivityMenuOpen) return;
+    if (
+      btnActivityMain && btnActivityMain.contains(e.target) ||
+      btnActivityArrow && btnActivityArrow.contains(e.target) ||
+      activityDropdownMenu && activityDropdownMenu.contains(e.target)
+    ) {
+      return;
+    }
+    setActivityMenuOpen(false);
+  });
+
+  if (btnActivityMain) btnActivityMain.addEventListener('click', toggleActivityMenu);
+  if (btnActivityArrow) btnActivityArrow.addEventListener('click', toggleActivityMenu);
+
+  function createSlotTileElement(slotItem, includeDate = true) {
+    const li = document.createElement('li');
+    const statusClass = slotItem.status === 'COMPLETED' ? 'comp' : (slotItem.status === 'NOT_COMPLETED' ? 'not-comp' : 'unmarked');
+    li.className = 'home-tile-card ' + statusClass;
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
+    li.setAttribute('aria-label', `View details for ${slotItem.taskText || 'task'} on ${slotItem.dateKey}`);
+
+    // Date
+    if (includeDate) {
+      const dateEl = document.createElement('div');
+      dateEl.className = 'home-tile-date';
+      dateEl.style.fontSize = '0.85rem';
+      dateEl.style.fontWeight = '700';
+      dateEl.style.color = 'var(--slate-700)';
+      const dObj = parseLocalDateKey(slotItem.dateKey);
+      dateEl.textContent = formatShortDisplayDate(dObj);
+      li.appendChild(dateEl);
+    }
+
+    // Work / Task Name
+    const taskDiv = document.createElement('div');
+    if (slotItem.taskText) {
+      taskDiv.className = 'home-tile-task';
+      taskDiv.textContent = slotItem.taskText;
+    } else {
+      taskDiv.className = 'home-tile-task muted';
+      taskDiv.textContent = 'No task written';
+    }
+    li.appendChild(taskDiv);
+
+    // Starting Time and Finished By Time
+    const timeSpan = document.createElement('div');
+    timeSpan.className = 'home-tile-time';
+    timeSpan.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+    li.appendChild(timeSpan);
+
+    // Completion Status + Relevant completion emoji
+    const statusDiv = document.createElement('div');
+    statusDiv.className = 'home-tile-status ' + statusClass;
+    let emoji = '⏳';
+    let statusText = 'Not marked yet';
+    if (slotItem.status === 'COMPLETED') {
+      emoji = '😊';
+      statusText = 'Completed';
+    } else if (slotItem.status === 'NOT_COMPLETED') {
+      emoji = '😔';
+      statusText = 'Not Completed';
+    }
+    statusDiv.textContent = `${emoji} ${statusText}`;
+    li.appendChild(statusDiv);
+
+    // Click handler to open saved details modal
+    li.addEventListener('click', () => {
+      showWorkDetailModal(slotItem);
+    });
+    li.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        showWorkDetailModal(slotItem);
+      }
+    });
+
+    return li;
+  }
+
+  function formatDayHeadingWithDate(dateKey) {
+    const todayStr = getLocalDateKey(todayDate);
+    const yesterdayStr = getLocalDateKey(addDays(todayDate, -1));
+    const dObj = parseLocalDateKey(dateKey);
+
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const formattedDate = `${days[dObj.getDay()]}, ${dObj.getDate()} ${months[dObj.getMonth()]} ${dObj.getFullYear()}`;
+
+    if (dateKey === todayStr) {
+      return `Today - ${formattedDate}`;
+    }
+    if (dateKey === yesterdayStr) {
+      return `Yesterday - ${formattedDate}`;
+    }
+    return formattedDate;
+  }
+
+  function getValidSlotsForDay(dayData, dateKey) {
+    if (!dayData || !Array.isArray(dayData.slots)) return [];
+    const validSlots = [];
+    dayData.slots.forEach((s, idx) => {
+      const sStart = getEffectiveSlotStart(dayData, idx);
+      const sEnd = typeof s.end === "number" ? s.end : null;
+      if (sEnd !== null && !isNaN(sEnd) && sStart !== null && !isNaN(sStart)) {
+        const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+        const status = s.status || "NONE";
+        validSlots.push({
+          dateKey,
+          startMinutes: sStart,
+          endMinutes: sEnd,
+          taskText: text,
+          status,
+          markedAt: s.markedAt || null,
+        });
+      }
+    });
+    validSlots.sort((a, b) => a.startMinutes - b.startMinutes);
+    return validSlots;
+  }
+
+  function renderPreviousWork30Days(daysList, fromKey, toKey) {
+    if (!activityPanelContent) return;
+    activityPanelContent.innerHTML = "";
+
+    // Toolbar with calendar icon and date selector
+    const toolbar = document.createElement('div');
+    toolbar.className = 'prev-work-toolbar';
+
+    const dateLabel = document.createElement('label');
+    dateLabel.className = 'prev-work-date-label';
+    dateLabel.htmlFor = 'prev-work-date-selector';
+    dateLabel.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>Select Date:`;
+
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.id = 'prev-work-date-selector';
+    dateInput.className = 'prev-work-date-input';
+    dateInput.value = selectedPreviousWorkDateKey;
+    // Restrict previous work date selector to past dates (yesterday and earlier)
+    const yesterdayStr = getLocalDateKey(addDays(todayDate, -1));
+    dateInput.max = yesterdayStr;
+    dateInput.addEventListener('change', () => {
+      if (dateInput.value) {
+        selectedPreviousWorkDateKey = dateInput.value;
+        loadAndShowActivity('previous');
+      }
+    });
+
+    const rangeInfo = document.createElement('p');
+    rangeInfo.className = 'prev-work-range-info';
+    const fromObj = parseLocalDateKey(fromKey);
+    const toObj = parseLocalDateKey(toKey);
+    rangeInfo.textContent = `Showing previous 29 calendar days plus selected date (30 days total: ${formatShortDisplayDate(fromObj)} – ${formatShortDisplayDate(toObj)})`;
+
+    toolbar.appendChild(dateLabel);
+    toolbar.appendChild(dateInput);
+    toolbar.appendChild(rangeInfo);
+    activityPanelContent.appendChild(toolbar);
+
+    if (!daysList || daysList.length === 0) {
+      const emptyMsg = document.createElement('p');
+      emptyMsg.className = 'activity-panel-message';
+      emptyMsg.textContent = "You have not added any work yet.";
+      activityPanelContent.appendChild(emptyMsg);
+      return;
+    }
+
+    // Render each day's activities in separate individual tiles / cards
+    daysList.forEach(dayItem => {
+      const dayWrapper = document.createElement('div');
+      dayWrapper.className = 'home-day-section';
+
+      const dHeader = document.createElement('div');
+      dHeader.className = 'home-day-header';
+      const dTitle = document.createElement('h3');
+      dTitle.className = 'home-day-title';
+      dTitle.textContent = formatDayHeadingWithDate(dayItem.dateKey);
+      dHeader.appendChild(dTitle);
+      dayWrapper.appendChild(dHeader);
+
+      const dGrid = document.createElement('ul');
+      dGrid.className = 'home-tiles-grid';
+      dayItem.slots.forEach(slotItem => {
+        dGrid.appendChild(createSlotTileElement(slotItem, true));
+      });
+      dayWrapper.appendChild(dGrid);
+
+      activityPanelContent.appendChild(dayWrapper);
+    });
+  }
+
+  function renderTodayScheduleView(todaySlots) {
+    // Also render inside home activityPanelContent if currently viewed there
+    if (activityPanelContent && currentActivityTab === 'today') {
+      activityPanelContent.innerHTML = "";
+      const section = document.createElement('section');
+      section.className = 'home-day-section';
+
+      const dHeader = document.createElement('div');
+      dHeader.className = 'home-day-header';
+      const dTitle = document.createElement('h3');
+      dTitle.className = 'home-day-title';
+      dTitle.textContent = `Today - ${formatFullDisplayDate(todayDate)}`;
+      dHeader.appendChild(dTitle);
+      section.appendChild(dHeader);
+
+      if (!todaySlots || todaySlots.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.className = 'activity-panel-message';
+        emptyMsg.style.textAlign = 'left';
+        emptyMsg.style.padding = '12px 0';
+        emptyMsg.textContent = "No work scheduled for today.";
+        section.appendChild(emptyMsg);
+      } else {
+        const grid = document.createElement('ul');
+        grid.className = 'home-tiles-grid';
+        todaySlots.forEach(slotItem => {
+          grid.appendChild(createSlotTileElement(slotItem, true));
+        });
+        section.appendChild(grid);
+      }
+
+      activityPanelContent.appendChild(section);
+    }
+
+    // Render inside dedicated "Today's Work Summary" page
+    if (todaySummaryContent) {
+      todaySummaryContent.innerHTML = "";
+
+      const section = document.createElement('section');
+      section.className = 'home-day-section';
+      section.style.marginTop = '0';
+
+      const dHeader = document.createElement('div');
+      dHeader.className = 'home-day-header';
+      const dTitle = document.createElement('h3');
+      dTitle.className = 'home-day-title';
+      dTitle.textContent = `Today - ${formatFullDisplayDate(todayDate)}`;
+      dHeader.appendChild(dTitle);
+      section.appendChild(dHeader);
+
+      if (!todaySlots || todaySlots.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.className = 'activity-panel-message';
+        emptyMsg.style.textAlign = 'left';
+        emptyMsg.style.padding = '16px 0';
+        emptyMsg.textContent = "No work scheduled for today.";
+        section.appendChild(emptyMsg);
+      } else {
+        const grid = document.createElement('ul');
+        grid.className = 'home-tiles-grid';
+        todaySlots.forEach(slotItem => {
+          grid.appendChild(createSlotTileElement(slotItem, true));
+        });
+        section.appendChild(grid);
+      }
+
+      todaySummaryContent.appendChild(section);
+    }
+  }
+
+  function renderUpcomingWorkSection(upcomingItems) {
+    if (!activityPanelContent) return;
+    activityPanelContent.innerHTML = "";
+
+    const todayStr = getLocalDateKey(todayDate);
+    const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
+
+    // --- 1. Scheduling Form Card ---
+    const formCard = document.createElement('div');
+    formCard.className = 'upcoming-schedule-form-card';
+
+    const formTitle = document.createElement('h3');
+    formTitle.className = 'upcoming-form-title';
+    formTitle.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>${editingUpcomingTask ? 'Edit Scheduled Work' : 'Schedule Future Work'}`;
+    formCard.appendChild(formTitle);
+
+    const formGrid = document.createElement('div');
+    formGrid.className = 'upcoming-form-grid';
+
+    // 1. Select Date
+    const dateGroup = document.createElement('div');
+    dateGroup.className = 'upcoming-form-group';
+    const dateLabel = document.createElement('label');
+    dateLabel.className = 'upcoming-form-label';
+    dateLabel.htmlFor = 'upcoming-form-date';
+    dateLabel.textContent = '1. Select Date';
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.id = 'upcoming-form-date';
+    dateInput.className = 'upcoming-form-input';
+    dateInput.min = tomorrowStr; // future dates
+    dateInput.value = editingUpcomingTask ? editingUpcomingTask.dateKey : tomorrowStr;
+    dateGroup.appendChild(dateLabel);
+    dateGroup.appendChild(dateInput);
+    formGrid.appendChild(dateGroup);
+
+    // 2. Starting Time
+    const startGroup = document.createElement('div');
+    startGroup.className = 'upcoming-form-group';
+    const startLabel = document.createElement('label');
+    startLabel.className = 'upcoming-form-label';
+    startLabel.htmlFor = 'upcoming-form-start';
+    startLabel.textContent = '2. Starting Time';
+    const startSelect = document.createElement('select');
+    startSelect.id = 'upcoming-form-start';
+    startSelect.className = 'upcoming-form-select';
+
+    for (let t = MIN_WORK_TIME; t <= MAX_WORK_TIME - 5; t += 5) {
+      const opt = document.createElement('option');
+      opt.value = String(t);
+      opt.textContent = formatMinutesTo12Hour(t);
+      startSelect.appendChild(opt);
+    }
+    const initialStart = editingUpcomingTask ? editingUpcomingTask.startMinutes : 540; // 9:00 AM
+    startSelect.value = String(initialStart);
+    startGroup.appendChild(startLabel);
+    startGroup.appendChild(startSelect);
+    formGrid.appendChild(startGroup);
+
+    // 3. Finished By
+    const endGroup = document.createElement('div');
+    endGroup.className = 'upcoming-form-group';
+    const endLabel = document.createElement('label');
+    endLabel.className = 'upcoming-form-label';
+    endLabel.htmlFor = 'upcoming-form-end';
+    endLabel.textContent = '3. Finished By';
+    const endSelect = document.createElement('select');
+    endSelect.id = 'upcoming-form-end';
+    endSelect.className = 'upcoming-form-select';
+
+    function updateFinishedByOptions(selectedStart) {
+      endSelect.innerHTML = '';
+      const minEnd = selectedStart + 5;
+      for (let t = minEnd; t <= MAX_WORK_TIME; t += 5) {
+        const opt = document.createElement('option');
+        opt.value = String(t);
+        opt.textContent = formatMinutesTo12Hour(t);
+        endSelect.appendChild(opt);
+      }
+      // Default to 1 hour later or 6:00 PM
+      const defaultEnd = Math.min(selectedStart + 60, MAX_WORK_TIME);
+      endSelect.value = String(defaultEnd);
+    }
+
+    updateFinishedByOptions(initialStart);
+    if (editingUpcomingTask && editingUpcomingTask.endMinutes) {
+      endSelect.value = String(editingUpcomingTask.endMinutes);
+    }
+
+    startSelect.addEventListener('change', () => {
+      const s = parseInt(startSelect.value, 10) || MIN_WORK_TIME;
+      updateFinishedByOptions(s);
+    });
+
+    endGroup.appendChild(endLabel);
+    endGroup.appendChild(endSelect);
+    formGrid.appendChild(endGroup);
+
+    // 4. Work / Task Name
+    const taskGroup = document.createElement('div');
+    taskGroup.className = 'upcoming-form-group full-span';
+    const taskLabel = document.createElement('label');
+    taskLabel.className = 'upcoming-form-label';
+    taskLabel.htmlFor = 'upcoming-form-task';
+    taskLabel.textContent = '4. Work / Task Name';
+    const taskInput = document.createElement('input');
+    taskInput.type = 'text';
+    taskInput.id = 'upcoming-form-task';
+    taskInput.className = 'upcoming-form-input';
+    taskInput.placeholder = 'e.g. Website Development, Project Review, Documentation…';
+    taskInput.value = editingUpcomingTask ? (editingUpcomingTask.taskText || '') : '';
+    taskGroup.appendChild(taskLabel);
+    taskGroup.appendChild(taskInput);
+    formGrid.appendChild(taskGroup);
+
+    formCard.appendChild(formGrid);
+
+    const formError = document.createElement('p');
+    formError.className = 'upcoming-form-error';
+    formError.style.display = 'none';
+    formCard.appendChild(formError);
+
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'upcoming-form-actions';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'btn-save-upcoming';
+    saveBtn.textContent = editingUpcomingTask ? 'Update Scheduled Work' : 'Save Work';
+
+    saveBtn.addEventListener('click', async () => {
+      if (isUpcomingSaving) return;
+
+      const dateVal = dateInput.value;
+      const startVal = parseInt(startSelect.value, 10);
+      const endVal = parseInt(endSelect.value, 10);
+      const taskVal = taskInput.value.trim();
+
+      if (!dateVal) {
+        formError.textContent = 'Please choose a date.';
+        formError.style.display = 'block';
+        dateInput.focus();
+        return;
+      }
+
+      if (!taskVal) {
+        formError.textContent = 'Please enter a work / task name.';
+        formError.style.display = 'block';
+        taskInput.focus();
+        return;
+      }
+
+      if (isNaN(startVal) || isNaN(endVal) || endVal <= startVal) {
+        formError.textContent = 'Finished By time must be after Starting Time.';
+        formError.style.display = 'block';
+        return;
+      }
+
+      formError.style.display = 'none';
+      isUpcomingSaving = true;
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+
+      try {
+        // Ensure day data exists
+        if (!state.days[dateVal]) {
+          state.days[dateVal] = {
+            startMinutes: MIN_WORK_TIME,
+            endMinutes: MAX_WORK_TIME,
+            slots: [],
+            savedAt: null,
+          };
+        }
+
+        const dayData = state.days[dateVal];
+        if (!Array.isArray(dayData.slots)) {
+          dayData.slots = [];
+        }
+
+        if (editingUpcomingTask) {
+          // If editing and date changed, remove from old date
+          if (editingUpcomingTask.dateKey !== dateVal && state.days[editingUpcomingTask.dateKey]) {
+            const oldDay = state.days[editingUpcomingTask.dateKey];
+            oldDay.slots = oldDay.slots.filter(s => s.id !== editingUpcomingTask.slotId);
+            saveStorage(editingUpcomingTask.dateKey);
+          }
+
+          // Update existing or add to new date
+          const existingSlot = dayData.slots.find(s => s.id === editingUpcomingTask.slotId);
+          if (existingSlot) {
+            existingSlot.start = startVal;
+            existingSlot.end = endVal;
+            existingSlot.taskText = taskVal;
+            existingSlot.text = taskVal;
+          } else {
+            dayData.slots.push({
+              id: editingUpcomingTask.slotId || ('slot-' + Date.now()),
+              start: startVal,
+              end: endVal,
+              taskText: taskVal,
+              text: taskVal,
+              status: 'NONE',
+              markedAt: null,
+            });
+          }
+        } else {
+          // Create new task slot
+          const newSlotId = 'slot-' + Date.now();
+          dayData.slots.push({
+            id: newSlotId,
+            start: startVal,
+            end: endVal,
+            taskText: taskVal,
+            text: taskVal,
+            status: 'NONE',
+            markedAt: null,
+          });
+        }
+
+        // Sort slots chronologically
+        dayData.slots.sort((a, b) => (a.start || 0) - (b.start || 0));
+
+        // Save immediately
+        saveStorage(dateVal);
+        editingUpcomingTask = null;
+
+        // Reload fresh upcoming work view
+        await loadAndShowActivity('upcoming');
+      } catch (err) {
+        console.error('Error saving upcoming work:', err);
+        formError.textContent = 'Could not save work. Please try again.';
+        formError.style.display = 'block';
+      } finally {
+        isUpcomingSaving = false;
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Work';
+      }
+    });
+
+    actionsRow.appendChild(saveBtn);
+
+    if (editingUpcomingTask) {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'btn-cancel-edit-upcoming';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => {
+        editingUpcomingTask = null;
+        renderUpcomingWorkSection(upcomingItems);
+      });
+      actionsRow.appendChild(cancelBtn);
+    }
+
+    formCard.appendChild(actionsRow);
+    activityPanelContent.appendChild(formCard);
+
+    // --- 2. Scheduled Tasks List Section ---
+    const listSection = document.createElement('div');
+    listSection.className = 'upcoming-tasks-list-section';
+
+    if (!upcomingItems || upcomingItems.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'activity-panel-message';
+      p.textContent = "No upcoming work scheduled.";
+      listSection.appendChild(p);
+      activityPanelContent.appendChild(listSection);
+      return;
+    }
+
+    const grid = document.createElement('ul');
+    grid.className = 'home-tiles-grid';
+
+    upcomingItems.forEach(slotItem => {
+      const li = document.createElement('li');
+      li.className = 'home-tile-card';
+      li.tabIndex = 0;
+      li.setAttribute('role', 'region');
+      li.setAttribute('aria-label', `Scheduled work: ${slotItem.taskText || 'task'} on ${slotItem.dateKey}`);
+
+      // Scheduled Date
+      const dateEl = document.createElement('div');
+      dateEl.className = 'home-tile-date';
+      dateEl.style.fontSize = '0.85rem';
+      dateEl.style.fontWeight = '700';
+      dateEl.style.color = 'var(--slate-700)';
+      const dObj = parseLocalDateKey(slotItem.dateKey);
+      dateEl.textContent = formatFullDisplayDate(dObj);
+      li.appendChild(dateEl);
+
+      // Work / Task Name
+      const taskDiv = document.createElement('div');
+      taskDiv.className = 'home-tile-task';
+      taskDiv.textContent = slotItem.taskText || 'No task written';
+      li.appendChild(taskDiv);
+
+      // Starting Time and Finished By Time
+      const timeSpan = document.createElement('div');
+      timeSpan.className = 'home-tile-time';
+      timeSpan.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+      li.appendChild(timeSpan);
+
+      // Edit / Delete Actions Row
+      const cardActions = document.createElement('div');
+      cardActions.className = 'upcoming-card-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn-tile-action btn-tile-edit';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        editingUpcomingTask = {
+          slotId: slotItem.slot.id,
+          dateKey: slotItem.dateKey,
+          startMinutes: slotItem.startMinutes,
+          endMinutes: slotItem.endMinutes,
+          taskText: slotItem.taskText,
+        };
+        renderUpcomingWorkSection(upcomingItems);
+        formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'btn-tile-action btn-tile-delete';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete scheduled work "${slotItem.taskText || 'task'}" on ${slotItem.dateKey}?`)) {
+          const dayData = state.days[slotItem.dateKey];
+          if (dayData && Array.isArray(dayData.slots)) {
+            dayData.slots = dayData.slots.filter(s => s.id !== slotItem.slot.id);
+            saveStorage(slotItem.dateKey);
+            loadAndShowActivity('upcoming');
+          }
+        }
+      });
+
+      cardActions.appendChild(editBtn);
+      cardActions.appendChild(deleteBtn);
+      li.appendChild(cardActions);
+
+      grid.appendChild(li);
+    });
+
+    listSection.appendChild(grid);
+    activityPanelContent.appendChild(listSection);
+  }
+
+  async function loadAndShowActivity(tab) {
+    currentActivityTab = tab;
+    setActivityMenuOpen(false);
+
+    if (tab === 'today') {
+      // Open separate page "Today's Work Summary"
+      switchView('todaySummary');
+      if (todaySummaryContent) {
+        todaySummaryContent.innerHTML = '<p class="activity-panel-message">Loading…</p>';
+      }
+      try {
+        const todayStr = getLocalDateKey(todayDate);
+        // Load latest saved data from Supabase/database
+        if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+          await loadRange(todayStr, todayStr);
+        } else {
+          loadFromLocalStorage();
+        }
+        const todayData = state.days[todayStr];
+        const todaySlots = getValidSlotsForDay(todayData, todayStr);
+        renderTodayScheduleView(todaySlots);
+      } catch (err) {
+        if (todaySummaryContent) {
+          todaySummaryContent.innerHTML = "";
+          const p = document.createElement('p');
+          p.className = 'activity-panel-message';
+          p.textContent = "Could not load today's work summary.";
+          const retry = document.createElement('button');
+          retry.type = 'button';
+          retry.className = 'btn btn-secondary';
+          retry.style.minHeight = '44px';
+          retry.style.marginTop = '8px';
+          retry.textContent = 'Retry';
+          retry.addEventListener('click', () => loadAndShowActivity('today'));
+          todaySummaryContent.appendChild(p);
+          todaySummaryContent.appendChild(retry);
+        }
+      }
+      return;
+    }
+
+    if (activityPanelTitle) {
+      activityPanelTitle.style.display = 'block';
+      activityPanelTitle.textContent =
+        tab === 'previous' ? 'Previous Work' : 'Upcoming Work';
+    }
+
+    if (activityPanelContent) {
+      activityPanelContent.innerHTML = '<p class="activity-panel-message">Loading…</p>';
+    }
+
+    const todayStr = getLocalDateKey(todayDate);
+
+    try {
+      if (tab === 'previous') {
+        // Enforce strictly previous work: do not include today's schedule
+        if (selectedPreviousWorkDateKey >= todayStr) {
+          selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
+        }
+        const selObj = parseLocalDateKey(selectedPreviousWorkDateKey);
+        const fromDateObj = addDays(selObj, -29);
+        const fromKey = getLocalDateKey(fromDateObj);
+        const toKey = selectedPreviousWorkDateKey;
+
+        await loadRange(fromKey, toKey);
+
+        const daysList = [];
+        // Walk backwards from toKey to fromKey (29 days plus selected date = 30 days total)
+        for (let offset = 0; offset >= -29; offset--) {
+          const dKey = getLocalDateKey(addDays(selObj, offset));
+          if (dKey >= todayStr) continue; // strictly exclude today
+          const dayData = state.days[dKey];
+          const slots = getValidSlotsForDay(dayData, dKey);
+          if (slots.length > 0) {
+            daysList.push({
+              dateKey: dKey,
+              slots,
+            });
+          }
+        }
+
+        renderPreviousWork30Days(daysList, fromKey, toKey);
+      } else if (tab === 'upcoming') {
+        await loadAllUpcomingWork();
+
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+
+        const items = [];
+        // Future dates (> todayStr), plus today's slots that start later than current time
+        const sortedDayKeys = Object.keys(state.days)
+          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= todayStr)
+          .sort((a, b) => a.localeCompare(b)); // chronological by date
+
+        sortedDayKeys.forEach(dKey => {
+          const day = state.days[dKey];
+          if (day && Array.isArray(day.slots)) {
+            day.slots.forEach((s, idx) => {
+              const sMin = getEffectiveSlotStart(day, idx);
+              const eMin = typeof s.end === "number" ? s.end : null;
+              const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+              const status = s.status || "NONE";
+
+              // Do not display empty or unsaved work slots as scheduled tasks
+              if (eMin !== null && !isNaN(eMin) && sMin !== null && !isNaN(sMin) && text !== "") {
+                if (dKey === todayStr) {
+                  // If it's today, only include future slots starting later than current time
+                  if (sMin > currentMins) {
+                    items.push({
+                      dateKey: dKey,
+                      slot: s,
+                      startMinutes: sMin,
+                      endMinutes: eMin,
+                      taskText: text,
+                      status,
+                      markedAt: s.markedAt || null,
+                    });
+                  }
+                } else {
+                  items.push({
+                    dateKey: dKey,
+                    slot: s,
+                    startMinutes: sMin,
+                    endMinutes: eMin,
+                    taskText: text,
+                    status,
+                    markedAt: s.markedAt || null,
+                  });
+                }
+              }
+            });
+          }
+        });
+
+        // Sort upcoming work by date and starting time
+        items.sort((a, b) => {
+          if (a.dateKey !== b.dateKey) {
+            return a.dateKey.localeCompare(b.dateKey);
+          }
+          return a.startMinutes - b.startMinutes;
+        });
+
+        renderUpcomingWorkSection(items);
+      }
+    } catch (err) {
+      if (activityPanelContent) {
+        activityPanelContent.innerHTML = "";
+        const p = document.createElement('p');
+        p.className = 'activity-panel-message';
+        p.textContent = "Could not load your work.";
+
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn btn-secondary';
+        retry.style.minHeight = '44px';
+        retry.style.marginTop = '8px';
+        retry.textContent = 'Retry';
+        retry.addEventListener('click', () => loadAndShowActivity(tab));
+
+        activityPanelContent.appendChild(p);
+        activityPanelContent.appendChild(retry);
+      }
+    }
+  }
+
+  if (activityDropdownMenu) {
+    activityDropdownMenu.querySelectorAll('.activity-menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const tab = item.getAttribute('data-tab');
+        loadAndShowActivity(tab);
+      });
+    });
+  }
+
+  async function renderHomeView() {
+    updateHomeProverb();
+    // Reload user's saved plans every time Home opens
+    try {
+      await loadPlans();
+    } catch (e) {
+      console.warn("Failed to refresh plans on Home open", e);
+    }
+    checkInAppReminders();
+
+    if (currentActivityTab) {
+      loadAndShowActivity(currentActivityTab);
+    } else {
+      if (activityPanelTitle) activityPanelTitle.style.display = 'none';
+      if (activityPanelContent) {
+        activityPanelContent.innerHTML = '<p class="activity-panel-message">Choose an activity to view.</p>';
+      }
+    }
+  }
+
+  if (btnHomeNext) {
+    btnHomeNext.addEventListener('click', () => {
+      selectedDateKey = getLocalDateKey(todayDate);
+      initSettingsView();
+      switchView('settings');
+      if (startInput) startInput.focus();
+    });
+  }
+
+  if (summaryToHomeBtn) {
+    summaryToHomeBtn.addEventListener('click', async () => {
+      switchView('home');
+      await renderHomeView();
+    });
+  }
+
+  if (btnTodaySummaryHome) {
+    btnTodaySummaryHome.addEventListener('click', async () => {
+      switchView('home');
+      await renderHomeView();
+    });
+  }
+
+  // --- IN-APP REMINDER SYSTEM ---
+  let dismissedReminderSlotIds = new Set();
+
+  async function checkInAppReminders() {
+    if (!appReminderBanner || !currentUserId || currentUserId === "anonymous") return;
+
+    const todayStr = getLocalDateKey(todayDate);
+    // Ensure today data is loaded
+    if (!state.days[todayStr]) {
+      try {
+        await loadRange(todayStr, todayStr);
+      } catch (e) {
+        // Ignore
+      }
+    }
+
+    const todayData = state.days[todayStr];
+    if (!todayData || !Array.isArray(todayData.slots)) {
+      appReminderBanner.style.display = "none";
+      return;
+    }
+
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    let matchingSlot = null;
+    for (let idx = 0; idx < todayData.slots.length; idx++) {
+      const slot = todayData.slots[idx];
+      const sStart = getEffectiveSlotStart(todayData, idx);
+      const sEnd = typeof slot.end === "number" ? slot.end : null;
+      const taskText = (typeof slot.taskText === "string" ? slot.taskText : (slot.text || "")).trim();
+      const status = slot.status || "NONE";
+
+      if (
+        sEnd !== null &&
+        sStart <= currentMins &&
+        currentMins < sEnd &&
+        taskText !== "" &&
+        status !== "COMPLETED"
+      ) {
+        const slotKey = todayStr + ":" + (slot.id || idx);
+        if (!dismissedReminderSlotIds.has(slotKey)) {
+          matchingSlot = {
+            slot,
+            slotKey,
+            start: sStart,
+            end: sEnd,
+            taskText,
+          };
+          break; // earliest matching slot
+        }
+      }
+    }
+
+    if (matchingSlot) {
+      if (reminderBannerTask) {
+        reminderBannerTask.textContent = `Task: ${matchingSlot.taskText}`;
+      }
+      if (reminderBannerTiming) {
+        reminderBannerTiming.textContent = `Scheduled: ${formatMinutesTo12Hour(matchingSlot.start)} - ${formatMinutesTo12Hour(matchingSlot.end)}`;
+      }
+      appReminderBanner.style.display = "flex";
+
+      if (reminderDismissBtn) {
+        reminderDismissBtn.onclick = () => {
+          dismissedReminderSlotIds.add(matchingSlot.slotKey);
+          appReminderBanner.style.display = "none";
+        };
+      }
+    } else {
+      appReminderBanner.style.display = "none";
+    }
+  }
+
+  // Check reminders every 30 seconds & on visibilitychange
+  setInterval(checkInAppReminders, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkInAppReminders();
+    }
+  });
 
   // --- VIEW SWITCHING ---
   function clearSummarySaveMessage() {
@@ -959,14 +2181,60 @@
       }
     }
 
-    // 2. End time: empty for new slot, never pre-filled
-    slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? formatMinutesTo12Hour(slot.end) : "";
+    // Populate Finished By dropdown options
+    populateFinishedByDropdown(slot, effectiveStart, dayData.endMinutes);
 
     // 3. Work for this slot
     slotTaskInput.value = slot.taskText || slot.text || "";
 
     // Update validation and buttons state
     updateSlotValidationUI();
+  }
+
+  function populateFinishedByDropdown(slot, startMinutes, dayEndMinutes) {
+    if (!slotEndSelect) return;
+    slotEndSelect.innerHTML = '<option value="">Select time</option>';
+
+    const effectiveEnd = (typeof dayEndMinutes === "number" && !isNaN(dayEndMinutes)) ? dayEndMinutes : MAX_WORK_TIME;
+    const minEnd = startMinutes + 5;
+
+    // Generate 5-minute multiples from minEnd rounded up to nearest 5
+    const firstOptionTime = Math.ceil(minEnd / 5) * 5;
+    const standardTimes = new Set();
+
+    for (let t = firstOptionTime; t <= effectiveEnd; t += 5) {
+      standardTimes.add(t);
+      const opt = document.createElement('option');
+      opt.value = String(t);
+      opt.textContent = formatMinutesTo12Hour(t);
+      slotEndSelect.appendChild(opt);
+    }
+
+    // A saved Finished By that is not a multiple of 5 (older data) is added as an extra option and shown selected
+    const savedEnd = (typeof slot.end === "number" && !isNaN(slot.end)) ? slot.end : null;
+    if (savedEnd !== null) {
+      if (!standardTimes.has(savedEnd)) {
+        const extraOpt = document.createElement('option');
+        extraOpt.value = String(savedEnd);
+        extraOpt.textContent = formatMinutesTo12Hour(savedEnd);
+        // Insert in chronological order or append
+        let inserted = false;
+        const opts = Array.from(slotEndSelect.options);
+        for (let i = 1; i < opts.length; i++) {
+          if (parseInt(opts[i].value, 10) > savedEnd) {
+            slotEndSelect.insertBefore(extraOpt, opts[i]);
+            inserted = true;
+            break;
+          }
+        }
+        if (!inserted) {
+          slotEndSelect.appendChild(extraOpt);
+        }
+      }
+      slotEndSelect.value = String(savedEnd);
+    } else {
+      slotEndSelect.value = "";
+    }
   }
 
   function updateSlotValidationUI(showErrorAlways = false) {
@@ -984,8 +2252,8 @@
       dayData.endMinutes
     );
 
-    const hasTypedEnd = Boolean(slotEndTimeInput.value);
-    const isEndValid = Boolean(hasTypedEnd && !error);
+    const hasChosenEnd = Boolean(slotEndSelect.value);
+    const isEndValid = Boolean(hasChosenEnd && !error);
 
     // Next is disabled until the slot is valid
     if (slotNextBtn) {
@@ -997,7 +2265,7 @@
       slotEndLastHint.style.display = isLastSlot ? "block" : "none";
     }
 
-    if (error && (showErrorAlways || hasTypedEnd)) {
+    if (error && (showErrorAlways || hasChosenEnd)) {
       slotRulesMessage.textContent = error;
       slotRulesMessage.style.display = "block";
     } else {
@@ -1045,7 +2313,7 @@
         if (dayData && dayData.slots[durationChangeConfirm.slotIndex]) {
           const slot = dayData.slots[durationChangeConfirm.slotIndex];
           slot.end = durationChangeConfirm.savedEndMinutes;
-          slotEndTimeInput.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? formatMinutesTo12Hour(slot.end) : "";
+          slotEndSelect.value = (typeof slot.end === "number" && !isNaN(slot.end)) ? String(slot.end) : "";
           updateSlotValidationUI();
         }
       }
@@ -1070,48 +2338,13 @@
     });
   }
 
-  function handleSlotEndTimeBlur() {
-    if (!slotEndTimeInput) return;
-    const val = slotEndTimeInput.value.trim();
-    if (!val) return;
-    const parsed = parseFlexibleTime(val);
-    if (!parsed.error && parsed.minutes !== null) {
-      slotEndTimeInput.value = formatMinutesTo12Hour(parsed.minutes);
-    }
-  }
-
-  slotEndTimeInput.addEventListener('blur', handleSlotEndTimeBlur);
-  slotEndTimeInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      handleSlotEndTimeBlur();
-      slotEndTimeInput.blur();
-    }
-  });
-
-  slotEndTimeInput.addEventListener('input', () => {
+  slotEndSelect.addEventListener('change', () => {
     const dayData = getCurrentDayData();
     if (!dayData || !dayData.slots[currentSlotIndex]) return;
 
-    const val = slotEndTimeInput.value.trim();
+    const val = slotEndSelect.value;
+    const endMinutes = val ? parseInt(val, 10) : null;
     const slot = dayData.slots[currentSlotIndex];
-
-    if (!val) {
-      slot.end = null;
-      slot.invalidFormat = false;
-      updateSlotValidationUI();
-      return;
-    }
-
-    const parsed = parseFlexibleTime(val);
-    if (parsed.error === 'INVALID') {
-      slot.end = null;
-      slot.invalidFormat = true;
-      updateSlotValidationUI();
-      return;
-    }
-
-    slot.invalidFormat = false;
-    const endMinutes = parsed.minutes;
 
     const laterSlotsExist = dayData.slots.length > currentSlotIndex + 1;
     if (laterSlotsExist && endMinutes !== null) {
@@ -1204,7 +2437,6 @@
       cleanupTrailingEmptySlots(dayData);
       saveStorage(selectedDateKey);
       renderSummaryView();
-      showSaveSuccessMessage();
       switchView('summary');
       return;
     }
@@ -1236,6 +2468,42 @@
       renderSlotPage();
     }
   });
+
+  function formatMarkedAtMessage(status, markedAt, planDateKey) {
+    if (!status || status === "NONE") {
+      return { text: "Not marked yet", muted: true };
+    }
+    if (!markedAt) {
+      if (status === "COMPLETED") {
+        return { text: "Marked Completed (time not recorded)", muted: false };
+      } else {
+        return { text: "Marked Not Completed (time not recorded)", muted: false };
+      }
+    }
+
+    const markDate = new Date(markedAt);
+    if (isNaN(markDate.getTime())) {
+      return {
+        text: status === "COMPLETED" ? "Marked Completed (time not recorded)" : "Marked Not Completed (time not recorded)",
+        muted: false
+      };
+    }
+
+    const markDayKey = getLocalDateKey(markDate);
+    const timePart = formatMinutesTo12Hour(markDate.getHours() * 60 + markDate.getMinutes());
+
+    const isDifferentDay = markDayKey !== planDateKey;
+    const prefix = status === "COMPLETED" ? "✓ Marked Completed" : "✗ Marked Not Completed";
+
+    if (isDifferentDay) {
+      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const datePart = `${days[markDate.getDay()]}, ${markDate.getDate()} ${months[markDate.getMonth()]}`;
+      return { text: `${prefix} on ${datePart} at ${timePart}`, muted: false };
+    }
+
+    return { text: `${prefix} at ${timePart}`, muted: false };
+  }
 
   // --- SUMMARY VIEW LOGIC ---
   function renderSummaryView() {
@@ -1343,41 +2611,7 @@
       const markMessageEl = document.createElement('div');
       markMessageEl.style.cssText = "font-size: 0.82rem; font-weight: 600; margin-top: 6px; width: 100%;";
 
-      function formatMarkedAtMessage(status, markedAt, planDateKey) {
-        if (!status || status === "NONE") {
-          return { text: "Not marked yet", muted: true };
-        }
-        if (!markedAt) {
-          if (status === "COMPLETED") {
-            return { text: "Marked Completed (time not recorded)", muted: false };
-          } else {
-            return { text: "Marked Not Completed (time not recorded)", muted: false };
-          }
-        }
-
-        const markDate = new Date(markedAt);
-        if (isNaN(markDate.getTime())) {
-          return {
-            text: status === "COMPLETED" ? "Marked Completed (time not recorded)" : "Marked Not Completed (time not recorded)",
-            muted: false
-          };
-        }
-
-        const markDayKey = getLocalDateKey(markDate);
-        const timePart = formatMinutesTo12Hour(markDate.getHours() * 60 + markDate.getMinutes());
-
-        const isDifferentDay = markDayKey !== planDateKey;
-        const prefix = status === "COMPLETED" ? "✓ Marked Completed" : "✗ Marked Not Completed";
-
-        if (isDifferentDay) {
-          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          const datePart = `${days[markDate.getDay()]}, ${markDate.getDate()} ${months[markDate.getMonth()]}`;
-          return { text: `${prefix} on ${datePart} at ${timePart}`, muted: false };
-        }
-
-        return { text: `${prefix} at ${timePart}`, muted: false };
-      }
+      // formatMarkedAtMessage is declared in outer scope
 
       function updateSlotCardButtons() {
         const currentStatus = slot.status || "NONE";
@@ -1402,7 +2636,7 @@
           slot.markedAt = null;
         } else {
           slot.status = "COMPLETED";
-          slot.markedAt = new Date().toISOString();
+          slot.markedAt = getIsoTimestamp();
         }
         saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
@@ -1417,7 +2651,7 @@
           slot.markedAt = null;
         } else {
           slot.status = "NOT_COMPLETED";
-          slot.markedAt = new Date().toISOString();
+          slot.markedAt = getIsoTimestamp();
         }
         saveStorage(selectedDateKey); // Immediate save
         updateSlotCardButtons();
@@ -1601,15 +2835,13 @@
   }
 
   function showSaveSuccessMessage() {
-    const selectedObj = parseLocalDateKey(selectedDateKey);
-    const todayStr = getLocalDateKey(todayDate);
-    const isToday = selectedDateKey === todayStr;
+    // Show ONE green message "Saved Successfully!" with a check mark above the Save button
+    if (summaryFinishMessage) {
+      summaryFinishMessage.innerHTML = "";
+      summaryFinishMessage.className = "";
+      summaryFinishMessage.style.display = "none";
+    }
 
-    let text = isToday
-      ? "Today’s work has been saved successfully."
-      : `Work for ${formatShortDisplayDate(selectedObj)} has been saved successfully.`;
-
-    // Render message in summarySaveMessage (above Save button)
     if (summarySaveMessage) {
       summarySaveMessage.innerHTML = "";
       summarySaveMessage.className = "save-message-box save-message-success";
@@ -1621,28 +2853,10 @@
       checkIcon.textContent = "✓";
 
       const msgSpan = document.createElement('span');
-      msgSpan.textContent = text;
+      msgSpan.textContent = "Saved Successfully!";
 
       summarySaveMessage.appendChild(checkIcon);
       summarySaveMessage.appendChild(msgSpan);
-    }
-
-    // Also render prominent message in summaryFinishMessage (at top of summary cards)
-    if (summaryFinishMessage) {
-      summaryFinishMessage.innerHTML = "";
-      summaryFinishMessage.className = "save-message-box save-message-success";
-      summaryFinishMessage.style.display = "flex";
-
-      const checkIconTop = document.createElement('span');
-      checkIconTop.setAttribute('aria-hidden', 'true');
-      checkIconTop.style.marginRight = "8px";
-      checkIconTop.textContent = "✓";
-
-      const msgSpanTop = document.createElement('span');
-      msgSpanTop.textContent = text;
-
-      summaryFinishMessage.appendChild(checkIconTop);
-      summaryFinishMessage.appendChild(msgSpanTop);
     }
   }
 
@@ -1678,7 +2892,7 @@
     }
 
     try {
-      const nowIso = new Date().toISOString();
+      const nowIso = getIsoTimestamp();
       dayData.savedAt = nowIso;
 
       // 1. Save to local storage under key including signed-in user id
@@ -1822,7 +3036,7 @@
   });
 
   // Dialog backdrop close listeners
-  [newDayDialog, settingsConfirmDialog, durationConfirmDialog, calendarDialog].forEach((diag) => {
+  [newDayDialog, settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog].filter(Boolean).forEach((diag) => {
     diag.addEventListener('click', (e) => {
       const rect = diag.getBoundingClientRect();
       const isInDialog =
@@ -1883,10 +3097,10 @@
 
       document.documentElement.classList.add('auth-ready');
 
-      // PART 1: After sign-in (and when a signed-in user opens the site), open the first page with TODAY selected.
+      // A signed-in user who opens the site lands on Home (My Work Board)
       selectedDateKey = getLocalDateKey(todayDate);
-      initSettingsView();
-      switchView('settings');
+      switchView('home');
+      await renderHomeView();
     } catch (e) {
       console.error('Auth verification error:', e);
       window.location.replace('login.html');
