@@ -1817,8 +1817,14 @@
     });
   }
 
-  async function handleGoToHome() {
+  async function handleGoToHome(e) {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     flushPendingDebouncedSave();
+
+    // Reset currentActivityTab so Home shows the default activity selection clean
+    currentActivityTab = null;
 
     // If leaving a slot page, perform the exact cleanup as slot back button (clean up new empty slot)
     const dayData = getCurrentDayData();
@@ -1848,6 +1854,14 @@
   if (btnTopMyWorkBoard) {
     btnTopMyWorkBoard.addEventListener('click', handleGoToHome);
   }
+
+  // Also bind via document-level delegation to guarantee any button with id="btn-top-my-work-board" or class="btn-top-board" triggers handleGoToHome
+  document.addEventListener('click', (e) => {
+    const target = e.target && e.target.closest ? (e.target.closest('#btn-top-my-work-board') || e.target.closest('.btn-top-board') || e.target.closest('#prev-summary-back-btn')) : null;
+    if (target) {
+      handleGoToHome(e);
+    }
+  });
 
   if (prevSummaryBackBtn) {
     prevSummaryBackBtn.addEventListener('click', handleGoToHome);
