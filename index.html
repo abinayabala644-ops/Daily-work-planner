@@ -1833,6 +1833,96 @@
       background: #fee2e2;
     }
 
+    /* Single summary tile styles for date detail view */
+    .date-summary-tile {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 14px;
+      padding: 22px 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    .date-summary-tile-header {
+      border-bottom: 2px solid var(--slate-100);
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+    .date-summary-tile-date {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin: 0 0 4px 0;
+    }
+    .date-summary-tile-count {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--slate-500);
+      margin: 0;
+    }
+    .date-summary-activities-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .date-summary-activity-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-left: 4px solid var(--slate-400);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .date-summary-activity-item.comp {
+      border-left-color: #059669;
+      background: #f0fdf4;
+    }
+    .date-summary-activity-item.not-comp {
+      border-left-color: #e11d48;
+      background: #fef2f2;
+    }
+    .date-summary-activity-item.upcoming-item {
+      border-left-color: #2563eb;
+      background: #f8fafc;
+    }
+    .date-summary-activity-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .date-summary-activity-desc {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      word-break: break-word;
+    }
+    .date-summary-activity-time {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: var(--slate-700);
+      white-space: nowrap;
+    }
+    .date-summary-activity-status {
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .date-summary-activity-status.comp {
+      color: #047857;
+    }
+    .date-summary-activity-status.not-comp {
+      color: #b91c1c;
+    }
+    .date-summary-activity-status.unmarked {
+      color: var(--slate-600);
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
@@ -1918,6 +2008,46 @@
       </div>
 
       <div id="prev-summary-content" style="margin-top: 18px;" aria-live="polite">
+        <!-- Loaded dynamically in app.js -->
+      </div>
+    </div>
+
+    <!-- SEPARATE SCREEN: PREVIOUS WORK DATE SUMMARY -->
+    <div id="view-prev-date-summary" class="card views">
+      <div class="header-row" style="margin-bottom: 16px;">
+        <button type="button" id="prev-date-summary-back-btn" class="btn btn-secondary">
+          &larr; Back
+        </button>
+      </div>
+
+      <div class="header-row">
+        <div>
+          <h1 id="prev-date-summary-title" class="header-title" tabindex="-1">Previous Work Date Summary</h1>
+          <p id="prev-date-summary-subtitle" class="header-subtitle">Summary for selected date</p>
+        </div>
+      </div>
+
+      <div id="prev-date-summary-content" style="margin-top: 18px;" aria-live="polite">
+        <!-- Loaded dynamically in app.js -->
+      </div>
+    </div>
+
+    <!-- SEPARATE SCREEN: UPCOMING WORK DATE SUMMARY -->
+    <div id="view-upcoming-date-summary" class="card views">
+      <div class="header-row" style="margin-bottom: 16px;">
+        <button type="button" id="upcoming-date-summary-back-btn" class="btn btn-secondary">
+          &larr; Back
+        </button>
+      </div>
+
+      <div class="header-row">
+        <div>
+          <h1 id="upcoming-date-summary-title" class="header-title" tabindex="-1">Upcoming Work Date Summary</h1>
+          <p id="upcoming-date-summary-subtitle" class="header-subtitle">Upcoming work for selected date</p>
+        </div>
+      </div>
+
+      <div id="upcoming-date-summary-content" style="margin-top: 18px;" aria-live="polite">
         <!-- Loaded dynamically in app.js -->
       </div>
     </div>
