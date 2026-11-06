@@ -1065,7 +1065,7 @@
     return validSlots;
   }
 
-  function renderPreviousWork30Days(daysList, fromKey, toKey) {
+  function renderPreviousWork7Days(daysList, fromKey, toKey) {
     if (!prevSummaryContent) return;
     prevSummaryContent.innerHTML = "";
 
@@ -1102,20 +1102,20 @@
     rangeInfo.className = 'prev-work-range-info';
     const fromObj = parseLocalDateKey(fromKey);
     const toObj = parseLocalDateKey(toKey);
-    rangeInfo.textContent = `Showing previous 29 calendar days plus selected date (30 days total: ${formatShortDisplayDate(fromObj)} – ${formatShortDisplayDate(toObj)})`;
+    rangeInfo.textContent = `Showing previous 6 calendar days plus selected date (7 days total: ${formatShortDisplayDate(fromObj)} – ${formatShortDisplayDate(toObj)})`;
 
     toolbar.appendChild(dateLabel);
     toolbar.appendChild(dateInput);
     toolbar.appendChild(rangeInfo);
     prevSummaryContent.appendChild(toolbar);
 
-    // If the 30 days have no valid work: show only "No previous work found in these 30 days."
+    // If the 7 days have no valid work: show only "No previous work found in these 7 days."
     if (!daysList || daysList.length === 0) {
       const emptyMsg = document.createElement('p');
       emptyMsg.className = 'activity-panel-message';
       emptyMsg.style.textAlign = 'left';
       emptyMsg.style.padding = '16px 0';
-      emptyMsg.textContent = "No previous work found in these 30 days.";
+      emptyMsg.textContent = "No previous work found in these 7 days.";
       prevSummaryContent.appendChild(emptyMsg);
       return;
     }
@@ -1627,11 +1627,11 @@
           selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
         }
         const selObj = parseLocalDateKey(selectedPreviousWorkDateKey);
-        const fromDateObj = addDays(selObj, -29);
+        const fromDateObj = addDays(selObj, -6);
         const fromKey = getLocalDateKey(fromDateObj);
         const toKey = selectedPreviousWorkDateKey;
 
-        // Load all 30 days in one range request (reuses loadRange with pages of 1000 rows)
+        // Load all 7 days in one range request (reuses loadRange with pages of 1000 rows)
         if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
           await loadRange(fromKey, toKey);
         } else {
@@ -1639,8 +1639,8 @@
         }
 
         const daysList = [];
-        // Walk backwards from toKey to fromKey (29 days plus selected date = 30 days total)
-        for (let offset = 0; offset >= -29; offset--) {
+        // Walk backwards from toKey to fromKey (6 previous days plus selected date = 7 days total)
+        for (let offset = 0; offset >= -6; offset--) {
           const dKey = getLocalDateKey(addDays(selObj, offset));
           if (dKey >= todayStr) continue; // strictly exclude today
           const dayData = state.days[dKey];
@@ -1654,7 +1654,7 @@
           }
         }
 
-        renderPreviousWork30Days(daysList, fromKey, toKey);
+        renderPreviousWork7Days(daysList, fromKey, toKey);
       } catch (err) {
         if (prevSummaryContent) {
           prevSummaryContent.innerHTML = "";
