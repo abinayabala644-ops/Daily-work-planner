@@ -117,6 +117,7 @@
   const btnHomeNext = document.getElementById('btn-home-next');
 
   // Previous Work Summary Screen Elements
+  const prevSummaryBackBtn = document.getElementById('prev-summary-back-btn');
   const prevSummaryContent = document.getElementById('prev-summary-content');
 
   // Home Page Elements
@@ -1846,6 +1847,10 @@
 
   if (btnTopMyWorkBoard) {
     btnTopMyWorkBoard.addEventListener('click', handleGoToHome);
+  }
+
+  if (prevSummaryBackBtn) {
+    prevSummaryBackBtn.addEventListener('click', handleGoToHome);
   }
 
   // --- IN-APP REMINDER SYSTEM ---
