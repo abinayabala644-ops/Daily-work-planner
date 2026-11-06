@@ -107,6 +107,8 @@
   const views = {
     home: document.getElementById('view-home'),
     prevSummary: document.getElementById('view-prev-summary'),
+    prevDateSummary: document.getElementById('view-prev-date-summary'),
+    upcomingDateSummary: document.getElementById('view-upcoming-date-summary'),
     settings: document.getElementById('view-settings'),
     slot: document.getElementById('view-slot'),
     summary: document.getElementById('view-summary'),
@@ -119,6 +121,18 @@
   // Previous Work Summary Screen Elements
   const prevSummaryNextBtn = document.getElementById('prev-summary-next-btn');
   const prevSummaryContent = document.getElementById('prev-summary-content');
+
+  // Previous Work Date Summary Screen Elements
+  const prevDateSummaryBackBtn = document.getElementById('prev-date-summary-back-btn');
+  const prevDateSummaryTitle = document.getElementById('prev-date-summary-title');
+  const prevDateSummarySubtitle = document.getElementById('prev-date-summary-subtitle');
+  const prevDateSummaryContent = document.getElementById('prev-date-summary-content');
+
+  // Upcoming Work Date Summary Screen Elements
+  const upcomingDateSummaryBackBtn = document.getElementById('upcoming-date-summary-back-btn');
+  const upcomingDateSummaryTitle = document.getElementById('upcoming-date-summary-title');
+  const upcomingDateSummarySubtitle = document.getElementById('upcoming-date-summary-subtitle');
+  const upcomingDateSummaryContent = document.getElementById('upcoming-date-summary-content');
 
   // Home Page Elements
   const homeDailyProverb = document.getElementById('home-daily-proverb');
@@ -1066,6 +1080,9 @@
     return validSlots;
   }
 
+  let activePreviousSummaryDateKey = null;
+  let activeUpcomingSummaryDateKey = null;
+
   function renderPreviousWork7Days(daysList, fromKey, toKey) {
     if (!prevSummaryContent) return;
     prevSummaryContent.innerHTML = "";
@@ -1121,22 +1138,11 @@
       return;
     }
 
-    // 2. "Jump to a date" row of buttons
+    // 2. Row of date buttons (No "All dates" button - click any date button navigates to separate date summary page)
     const jumpRow = document.createElement('div');
     jumpRow.className = 'prev-work-jump-row';
     jumpRow.setAttribute('role', 'group');
-    jumpRow.setAttribute('aria-label', 'Jump to a date');
-
-    let activeFilterDate = 'ALL'; // 'ALL' or a specific dateKey
-
-    const allDatesBtn = document.createElement('button');
-    allDatesBtn.type = 'button';
-    allDatesBtn.className = 'btn-jump-date';
-    allDatesBtn.setAttribute('aria-pressed', 'true');
-    allDatesBtn.textContent = 'All dates';
-    jumpRow.appendChild(allDatesBtn);
-
-    const dateButtons = [];
+    jumpRow.setAttribute('aria-label', 'Available dates');
 
     daysList.forEach(dayItem => {
       const dObj = parseLocalDateKey(dayItem.dateKey);
@@ -1147,113 +1153,98 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn-jump-date';
-      btn.setAttribute('aria-pressed', 'false');
+      const isSelected = activePreviousSummaryDateKey === dayItem.dateKey;
+      btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
       btn.textContent = `${shortLabel} - ${dayItem.slots.length}`;
       btn.dataset.dateKey = dayItem.dateKey;
+      btn.addEventListener('click', () => {
+        activePreviousSummaryDateKey = dayItem.dateKey;
+        openPreviousWorkDateSummary(dayItem);
+      });
       jumpRow.appendChild(btn);
-      dateButtons.push(btn);
     });
 
     prevSummaryContent.appendChild(jumpRow);
+  }
 
-    // 3. Results area
-    const resultsArea = document.createElement('div');
-    resultsArea.className = 'prev-work-results-area';
-    resultsArea.setAttribute('aria-live', 'polite');
+  function openPreviousWorkDateSummary(dayItem) {
+    if (!prevDateSummaryContent) return;
+    prevDateSummaryContent.innerHTML = "";
 
-    const daySectionsMap = {};
-
-    daysList.forEach(dayItem => {
-      const dayWrapper = document.createElement('section');
-      dayWrapper.className = 'home-day-section';
-      dayWrapper.dataset.dateKey = dayItem.dateKey;
-
-      const dHeader = document.createElement('div');
-      dHeader.className = 'home-day-header';
-
-      const dTitle = document.createElement('h2');
-      dTitle.className = 'home-day-title';
-      dTitle.tabIndex = -1;
-      dTitle.textContent = formatDayHeadingWithDate(dayItem.dateKey);
-
-      const dCount = document.createElement('span');
-      dCount.className = 'home-day-count';
-      dCount.style.fontSize = '0.9rem';
-      dCount.style.fontWeight = '600';
-      dCount.style.color = 'var(--slate-500)';
-      dCount.textContent = `${dayItem.slots.length} ${dayItem.slots.length === 1 ? 'slot' : 'slots'}`;
-
-      dHeader.appendChild(dTitle);
-      dHeader.appendChild(dCount);
-      dayWrapper.appendChild(dHeader);
-
-      // One-line day total: "2 Completed, 1 Not Completed, 0 Not marked yet"
-      const compCount = dayItem.slots.filter(s => s.status === 'COMPLETED').length;
-      const notCompCount = dayItem.slots.filter(s => s.status === 'NOT_COMPLETED').length;
-      const unmarkedCount = dayItem.slots.filter(s => s.status !== 'COMPLETED' && s.status !== 'NOT_COMPLETED').length;
-
-      const dTotals = document.createElement('p');
-      dTotals.className = 'home-day-total-info';
-      dTotals.textContent = `${compCount} Completed, ${notCompCount} Not Completed, ${unmarkedCount} Not marked yet`;
-      dayWrapper.appendChild(dTotals);
-
-      // Slots in time order as tiles
-      const dGrid = document.createElement('ul');
-      dGrid.className = 'home-tiles-grid';
-      dayItem.slots.forEach(slotItem => {
-        dGrid.appendChild(createSlotTileElement(slotItem, true));
-      });
-      dayWrapper.appendChild(dGrid);
-
-      resultsArea.appendChild(dayWrapper);
-      daySectionsMap[dayItem.dateKey] = {
-        wrapper: dayWrapper,
-        heading: dTitle,
-      };
-    });
-
-    prevSummaryContent.appendChild(resultsArea);
-
-    // Interactive filter behavior
-    function updateDateSelection(targetKey) {
-      activeFilterDate = targetKey;
-      allDatesBtn.setAttribute('aria-pressed', String(targetKey === 'ALL'));
-      dateButtons.forEach(b => {
-        b.setAttribute('aria-pressed', String(b.dataset.dateKey === targetKey));
-      });
-
-      daysList.forEach(dayItem => {
-        const sec = daySectionsMap[dayItem.dateKey];
-        if (sec) {
-          if (targetKey === 'ALL' || targetKey === dayItem.dateKey) {
-            sec.wrapper.style.display = 'block';
-          } else {
-            sec.wrapper.style.display = 'none';
-          }
-        }
-      });
-
-      if (targetKey !== 'ALL' && daySectionsMap[targetKey]) {
-        daySectionsMap[targetKey].heading.focus();
-      }
+    const dObj = parseLocalDateKey(dayItem.dateKey);
+    const fullDateText = formatFullDisplayDate(dObj);
+    if (prevDateSummaryTitle) {
+      prevDateSummaryTitle.textContent = "Previous Work Date Summary";
+    }
+    if (prevDateSummarySubtitle) {
+      prevDateSummarySubtitle.textContent = `All activities for ${fullDateText}`;
     }
 
-    allDatesBtn.addEventListener('click', () => {
-      updateDateSelection('ALL');
+    // ONE clean, professional summary tile containing all work activities together
+    const tile = document.createElement('div');
+    tile.className = 'date-summary-tile';
+
+    const tileHeader = document.createElement('div');
+    tileHeader.className = 'date-summary-tile-header';
+
+    const dateHeading = document.createElement('h2');
+    dateHeading.className = 'date-summary-tile-date';
+    dateHeading.textContent = fullDateText;
+    tileHeader.appendChild(dateHeading);
+
+    const compCount = dayItem.slots.filter(s => s.status === 'COMPLETED').length;
+    const notCompCount = dayItem.slots.filter(s => s.status === 'NOT_COMPLETED').length;
+    const unmarkedCount = dayItem.slots.filter(s => s.status !== 'COMPLETED' && s.status !== 'NOT_COMPLETED').length;
+
+    const countP = document.createElement('p');
+    countP.className = 'date-summary-tile-count';
+    countP.textContent = `${dayItem.slots.length} ${dayItem.slots.length === 1 ? 'activity' : 'activities'} (${compCount} Completed, ${notCompCount} Not Completed, ${unmarkedCount} Not marked yet)`;
+    tileHeader.appendChild(countP);
+    tile.appendChild(tileHeader);
+
+    // List of all work activities within the single summary tile
+    const list = document.createElement('ul');
+    list.className = 'date-summary-activities-list';
+
+    dayItem.slots.forEach(slotItem => {
+      const li = document.createElement('li');
+      const statusClass = slotItem.status === 'COMPLETED' ? 'comp' : (slotItem.status === 'NOT_COMPLETED' ? 'not-comp' : 'unmarked');
+      li.className = 'date-summary-activity-item ' + statusClass;
+
+      const mainRow = document.createElement('div');
+      mainRow.className = 'date-summary-activity-main';
+
+      const desc = document.createElement('span');
+      desc.className = 'date-summary-activity-desc';
+      desc.textContent = slotItem.taskText || 'No task written';
+      mainRow.appendChild(desc);
+
+      const time = document.createElement('span');
+      time.className = 'date-summary-activity-time';
+      time.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+      mainRow.appendChild(time);
+      li.appendChild(mainRow);
+
+      const statusRow = document.createElement('div');
+      statusRow.className = 'date-summary-activity-status ' + statusClass;
+      const emoji = slotItem.status === 'COMPLETED' ? '✓ ' : (slotItem.status === 'NOT_COMPLETED' ? '✗ ' : '⏳ ');
+      const label = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : 'Not marked yet');
+      statusRow.textContent = `Status: ${emoji}${label}`;
+      li.appendChild(statusRow);
+
+      list.appendChild(li);
     });
 
-    dateButtons.forEach(b => {
-      b.addEventListener('click', () => {
-        updateDateSelection(b.dataset.dateKey);
-      });
-    });
+    tile.appendChild(list);
+    prevDateSummaryContent.appendChild(tile);
+
+    switchView('prevDateSummary');
   }
 
   function renderUpcomingWorkSection(upcomingItems) {
     if (!activityPanelContent) return;
     activityPanelContent.innerHTML = "";
 
-    const todayStr = getLocalDateKey(todayDate);
     const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
 
     // --- 1. Scheduling Form Card ---
@@ -1510,7 +1501,7 @@
     formCard.appendChild(actionsRow);
     activityPanelContent.appendChild(formCard);
 
-    // --- 2. Scheduled Tasks List Section ---
+    // --- 2. Scheduled Tasks Section (Grouped by Date into Date Buttons) ---
     const listSection = document.createElement('div');
     listSection.className = 'upcoming-tasks-list-section';
 
@@ -1523,84 +1514,118 @@
       return;
     }
 
-    const grid = document.createElement('ul');
-    grid.className = 'home-tiles-grid';
-
-    upcomingItems.forEach(slotItem => {
-      const li = document.createElement('li');
-      li.className = 'home-tile-card';
-      li.tabIndex = 0;
-      li.setAttribute('role', 'region');
-      li.setAttribute('aria-label', `Scheduled work: ${slotItem.taskText || 'task'} on ${slotItem.dateKey}`);
-
-      // Scheduled Date
-      const dateEl = document.createElement('div');
-      dateEl.className = 'home-tile-date';
-      dateEl.style.fontSize = '0.85rem';
-      dateEl.style.fontWeight = '700';
-      dateEl.style.color = 'var(--slate-700)';
-      const dObj = parseLocalDateKey(slotItem.dateKey);
-      dateEl.textContent = formatFullDisplayDate(dObj);
-      li.appendChild(dateEl);
-
-      // Work / Task Name
-      const taskDiv = document.createElement('div');
-      taskDiv.className = 'home-tile-task';
-      taskDiv.textContent = slotItem.taskText || 'No task written';
-      li.appendChild(taskDiv);
-
-      // Starting Time and Finished By Time
-      const timeSpan = document.createElement('div');
-      timeSpan.className = 'home-tile-time';
-      timeSpan.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
-      li.appendChild(timeSpan);
-
-      // Edit / Delete Actions Row
-      const cardActions = document.createElement('div');
-      cardActions.className = 'upcoming-card-actions';
-
-      const editBtn = document.createElement('button');
-      editBtn.type = 'button';
-      editBtn.className = 'btn-tile-action btn-tile-edit';
-      editBtn.textContent = 'Edit';
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        editingUpcomingTask = {
-          slotId: slotItem.slot.id,
-          dateKey: slotItem.dateKey,
-          startMinutes: slotItem.startMinutes,
-          endMinutes: slotItem.endMinutes,
-          taskText: slotItem.taskText,
-        };
-        renderUpcomingWorkSection(upcomingItems);
-        formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.type = 'button';
-      deleteBtn.className = 'btn-tile-action btn-tile-delete';
-      deleteBtn.textContent = 'Delete';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (confirm(`Delete scheduled work "${slotItem.taskText || 'task'}" on ${slotItem.dateKey}?`)) {
-          const dayData = state.days[slotItem.dateKey];
-          if (dayData && Array.isArray(dayData.slots)) {
-            dayData.slots = dayData.slots.filter(s => s.id !== slotItem.slot.id);
-            saveStorage(slotItem.dateKey);
-            loadAndShowActivity('upcoming');
-          }
-        }
-      });
-
-      cardActions.appendChild(editBtn);
-      cardActions.appendChild(deleteBtn);
-      li.appendChild(cardActions);
-
-      grid.appendChild(li);
+    // Group upcoming items by date
+    const groupsByDate = {};
+    upcomingItems.forEach(item => {
+      if (!groupsByDate[item.dateKey]) {
+        groupsByDate[item.dateKey] = [];
+      }
+      groupsByDate[item.dateKey].push(item);
     });
 
-    listSection.appendChild(grid);
+    const dateKeys = Object.keys(groupsByDate).sort((a, b) => a.localeCompare(b));
+
+    const dateButtonsRow = document.createElement('div');
+    dateButtonsRow.className = 'prev-work-jump-row';
+    dateButtonsRow.style.marginTop = '16px';
+    dateButtonsRow.setAttribute('role', 'group');
+    dateButtonsRow.setAttribute('aria-label', 'Upcoming work dates');
+
+    dateKeys.forEach(dKey => {
+      const itemsForDay = groupsByDate[dKey];
+      const dObj = parseLocalDateKey(dKey);
+      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const shortLabel = `${days[dObj.getDay()]} ${dObj.getDate()} ${months[dObj.getMonth()]}`;
+
+      // Calculate timing range for button display
+      let timingsSummary = "";
+      if (itemsForDay.length === 1) {
+        timingsSummary = `${formatMinutesTo12Hour(itemsForDay[0].startMinutes)} - ${formatMinutesTo12Hour(itemsForDay[0].endMinutes)}`;
+      } else {
+        const minStart = Math.min(...itemsForDay.map(i => i.startMinutes));
+        const maxEnd = Math.max(...itemsForDay.map(i => i.endMinutes));
+        timingsSummary = `${formatMinutesTo12Hour(minStart)} - ${formatMinutesTo12Hour(maxEnd)}`;
+      }
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-jump-date';
+      const isSelected = activeUpcomingSummaryDateKey === dKey;
+      btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+      btn.textContent = `${shortLabel} (${timingsSummary})`;
+      btn.dataset.dateKey = dKey;
+      btn.addEventListener('click', () => {
+        activeUpcomingSummaryDateKey = dKey;
+        openUpcomingWorkDateSummary(dKey, itemsForDay);
+      });
+      dateButtonsRow.appendChild(btn);
+    });
+
+    listSection.appendChild(dateButtonsRow);
     activityPanelContent.appendChild(listSection);
+  }
+
+  function openUpcomingWorkDateSummary(dateKey, itemsForDay) {
+    if (!upcomingDateSummaryContent) return;
+    upcomingDateSummaryContent.innerHTML = "";
+
+    const dObj = parseLocalDateKey(dateKey);
+    const fullDateText = formatFullDisplayDate(dObj);
+    if (upcomingDateSummaryTitle) {
+      upcomingDateSummaryTitle.textContent = "Upcoming Work Date Summary";
+    }
+    if (upcomingDateSummarySubtitle) {
+      upcomingDateSummarySubtitle.textContent = `All scheduled work for ${fullDateText}`;
+    }
+
+    // ONE simple, professional summary tile containing all upcoming work activities together
+    const tile = document.createElement('div');
+    tile.className = 'date-summary-tile';
+
+    const tileHeader = document.createElement('div');
+    tileHeader.className = 'date-summary-tile-header';
+
+    const dateHeading = document.createElement('h2');
+    dateHeading.className = 'date-summary-tile-date';
+    dateHeading.textContent = fullDateText;
+    tileHeader.appendChild(dateHeading);
+
+    const countP = document.createElement('p');
+    countP.className = 'date-summary-tile-count';
+    countP.textContent = `${itemsForDay.length} upcoming ${itemsForDay.length === 1 ? 'task' : 'tasks'} scheduled`;
+    tileHeader.appendChild(countP);
+    tile.appendChild(tileHeader);
+
+    // List of all upcoming work activities within the single summary tile
+    const list = document.createElement('ul');
+    list.className = 'date-summary-activities-list';
+
+    itemsForDay.forEach(slotItem => {
+      const li = document.createElement('li');
+      li.className = 'date-summary-activity-item upcoming-item';
+
+      const mainRow = document.createElement('div');
+      mainRow.className = 'date-summary-activity-main';
+
+      const desc = document.createElement('span');
+      desc.className = 'date-summary-activity-desc';
+      desc.textContent = slotItem.taskText || 'No task written';
+      mainRow.appendChild(desc);
+
+      const time = document.createElement('span');
+      time.className = 'date-summary-activity-time';
+      time.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+      mainRow.appendChild(time);
+      li.appendChild(mainRow);
+
+      list.appendChild(li);
+    });
+
+    tile.appendChild(list);
+    upcomingDateSummaryContent.appendChild(tile);
+
+    switchView('upcomingDateSummary');
   }
 
   async function loadAndShowActivity(tab) {
@@ -1869,6 +1894,22 @@
       initSettingsView();
       switchView('settings');
       if (startInput) startInput.focus();
+    });
+  }
+
+  // Previous Work Date Summary Back button -> return to Previous Work Summary page preserving 7-day view & selection
+  if (prevDateSummaryBackBtn) {
+    prevDateSummaryBackBtn.addEventListener('click', () => {
+      switchView('prevSummary');
+      loadAndShowActivity('previous');
+    });
+  }
+
+  // Upcoming Work Date Summary Back button -> return to Upcoming Work page preserving calendar-week view & selection
+  if (upcomingDateSummaryBackBtn) {
+    upcomingDateSummaryBackBtn.addEventListener('click', () => {
+      switchView('home');
+      loadAndShowActivity('upcoming');
     });
   }
 
