@@ -106,11 +106,19 @@
   // DOM Views
   const views = {
     home: document.getElementById('view-home'),
-    todaySummary: document.getElementById('view-today-summary'),
+    prevSummary: document.getElementById('view-prev-summary'),
     settings: document.getElementById('view-settings'),
     slot: document.getElementById('view-slot'),
     summary: document.getElementById('view-summary'),
   };
+
+  // Top Bar Navigation Elements
+  const btnTopMyWorkBoard = document.getElementById('btn-top-my-work-board');
+  const btnHomeNext = document.getElementById('btn-home-next');
+
+  // Previous Work Summary Screen Elements
+  const prevSummaryNextBtn = document.getElementById('prev-summary-next-btn');
+  const prevSummaryContent = document.getElementById('prev-summary-content');
 
   // Home Page Elements
   const homeDailyProverb = document.getElementById('home-daily-proverb');
@@ -119,14 +127,6 @@
   const activityDropdownMenu = document.getElementById('activity-dropdown-menu');
   const activityPanelTitle = document.getElementById('activity-panel-title');
   const activityPanelContent = document.getElementById('activity-panel-content');
-  const btnHomeNext = document.getElementById('btn-home-next');
-
-  // Today's Work Summary Page Elements
-  const btnTodaySummaryHome = document.getElementById('btn-today-summary-home');
-  const todaySummaryContent = document.getElementById('today-summary-content');
-
-  // Summary to Home Button
-  const summaryToHomeBtn = document.getElementById('summary-to-home-btn');
 
   // In-app Reminder Banner Elements
   const appReminderBanner = document.getElementById('app-reminder-banner');
@@ -496,28 +496,53 @@
       return;
     }
     try {
-      const { data, error } = await supabaseClient
-        .from('planner_days')
-        .select('day, start_min, end_min, slots, saved_at')
-        .eq('user_id', currentUserId)
-        .gte('day', fromKey)
-        .lte('day', toKey);
+      const pageSize = 1000;
+      let page = 0;
+      let keepFetching = true;
 
-      if (!error && Array.isArray(data)) {
-        data.forEach((row) => {
-          if (row && typeof row.day === "string") {
-            const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
-            const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-            state.days[row.day] = {
-              startMinutes: sMin,
-              endMinutes: eMin,
-              slots: sanitizeSlots(row.slots, sMin),
-              savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-            };
+      while (keepFetching) {
+        const fromIdx = page * pageSize;
+        const toIdx = (page + 1) * pageSize - 1;
+
+        const { data, error } = await supabaseClient
+          .from('planner_days')
+          .select('day, start_min, end_min, slots, saved_at')
+          .eq('user_id', currentUserId)
+          .gte('day', fromKey)
+          .lte('day', toKey)
+          .order('day', { ascending: false })
+          .range(fromIdx, toIdx);
+
+        if (error) {
+          console.warn("loadRange error:", error);
+          throw error;
+        }
+
+        if (Array.isArray(data)) {
+          data.forEach((row) => {
+            if (row && typeof row.day === "string") {
+              const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+              const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
+              state.days[row.day] = {
+                startMinutes: sMin,
+                endMinutes: eMin,
+                slots: sanitizeSlots(row.slots, sMin),
+                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
+              };
+            }
+          });
+
+          if (data.length < pageSize) {
+            keepFetching = false;
+          } else {
+            page++;
           }
-        });
-        saveToLocalStorage();
+        } else {
+          keepFetching = false;
+        }
       }
+
+      saveToLocalStorage();
     } catch (err) {
       console.warn("loadRange error:", err);
       throw err;
@@ -1041,11 +1066,11 @@
     return validSlots;
   }
 
-  function renderPreviousWork30Days(daysList, fromKey, toKey) {
-    if (!activityPanelContent) return;
-    activityPanelContent.innerHTML = "";
+  function renderPreviousWork7Days(daysList, fromKey, toKey) {
+    if (!prevSummaryContent) return;
+    prevSummaryContent.innerHTML = "";
 
-    // Toolbar with calendar icon and date selector
+    // 1. Toolbar with calendar icon and date selector
     const toolbar = document.createElement('div');
     toolbar.className = 'prev-work-toolbar';
 
@@ -1078,34 +1103,101 @@
     rangeInfo.className = 'prev-work-range-info';
     const fromObj = parseLocalDateKey(fromKey);
     const toObj = parseLocalDateKey(toKey);
-    rangeInfo.textContent = `Showing previous 29 calendar days plus selected date (30 days total: ${formatShortDisplayDate(fromObj)} – ${formatShortDisplayDate(toObj)})`;
+    rangeInfo.textContent = `Showing previous 6 calendar days plus selected date (7 days total: ${formatShortDisplayDate(fromObj)} – ${formatShortDisplayDate(toObj)})`;
 
     toolbar.appendChild(dateLabel);
     toolbar.appendChild(dateInput);
     toolbar.appendChild(rangeInfo);
-    activityPanelContent.appendChild(toolbar);
+    prevSummaryContent.appendChild(toolbar);
 
+    // If the 7 days have no valid work: show only "No previous work found in these 7 days."
     if (!daysList || daysList.length === 0) {
       const emptyMsg = document.createElement('p');
       emptyMsg.className = 'activity-panel-message';
-      emptyMsg.textContent = "You have not added any work yet.";
-      activityPanelContent.appendChild(emptyMsg);
+      emptyMsg.style.textAlign = 'left';
+      emptyMsg.style.padding = '16px 0';
+      emptyMsg.textContent = "No previous work found in these 7 days.";
+      prevSummaryContent.appendChild(emptyMsg);
       return;
     }
 
-    // Render each day's activities in separate individual tiles / cards
+    // 2. "Jump to a date" row of buttons
+    const jumpRow = document.createElement('div');
+    jumpRow.className = 'prev-work-jump-row';
+    jumpRow.setAttribute('role', 'group');
+    jumpRow.setAttribute('aria-label', 'Jump to a date');
+
+    let activeFilterDate = 'ALL'; // 'ALL' or a specific dateKey
+
+    const allDatesBtn = document.createElement('button');
+    allDatesBtn.type = 'button';
+    allDatesBtn.className = 'btn-jump-date';
+    allDatesBtn.setAttribute('aria-pressed', 'true');
+    allDatesBtn.textContent = 'All dates';
+    jumpRow.appendChild(allDatesBtn);
+
+    const dateButtons = [];
+
     daysList.forEach(dayItem => {
-      const dayWrapper = document.createElement('div');
+      const dObj = parseLocalDateKey(dayItem.dateKey);
+      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const shortLabel = `${days[dObj.getDay()]} ${dObj.getDate()} ${months[dObj.getMonth()]}`;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-jump-date';
+      btn.setAttribute('aria-pressed', 'false');
+      btn.textContent = `${shortLabel} - ${dayItem.slots.length}`;
+      btn.dataset.dateKey = dayItem.dateKey;
+      jumpRow.appendChild(btn);
+      dateButtons.push(btn);
+    });
+
+    prevSummaryContent.appendChild(jumpRow);
+
+    // 3. Results area
+    const resultsArea = document.createElement('div');
+    resultsArea.className = 'prev-work-results-area';
+    resultsArea.setAttribute('aria-live', 'polite');
+
+    const daySectionsMap = {};
+
+    daysList.forEach(dayItem => {
+      const dayWrapper = document.createElement('section');
       dayWrapper.className = 'home-day-section';
+      dayWrapper.dataset.dateKey = dayItem.dateKey;
 
       const dHeader = document.createElement('div');
       dHeader.className = 'home-day-header';
-      const dTitle = document.createElement('h3');
+
+      const dTitle = document.createElement('h2');
       dTitle.className = 'home-day-title';
+      dTitle.tabIndex = -1;
       dTitle.textContent = formatDayHeadingWithDate(dayItem.dateKey);
+
+      const dCount = document.createElement('span');
+      dCount.className = 'home-day-count';
+      dCount.style.fontSize = '0.9rem';
+      dCount.style.fontWeight = '600';
+      dCount.style.color = 'var(--slate-500)';
+      dCount.textContent = `${dayItem.slots.length} ${dayItem.slots.length === 1 ? 'slot' : 'slots'}`;
+
       dHeader.appendChild(dTitle);
+      dHeader.appendChild(dCount);
       dayWrapper.appendChild(dHeader);
 
+      // One-line day total: "2 Completed, 1 Not Completed, 0 Not marked yet"
+      const compCount = dayItem.slots.filter(s => s.status === 'COMPLETED').length;
+      const notCompCount = dayItem.slots.filter(s => s.status === 'NOT_COMPLETED').length;
+      const unmarkedCount = dayItem.slots.filter(s => s.status !== 'COMPLETED' && s.status !== 'NOT_COMPLETED').length;
+
+      const dTotals = document.createElement('p');
+      dTotals.className = 'home-day-total-info';
+      dTotals.textContent = `${compCount} Completed, ${notCompCount} Not Completed, ${unmarkedCount} Not marked yet`;
+      dayWrapper.appendChild(dTotals);
+
+      // Slots in time order as tiles
       const dGrid = document.createElement('ul');
       dGrid.className = 'home-tiles-grid';
       dayItem.slots.forEach(slotItem => {
@@ -1113,78 +1205,48 @@
       });
       dayWrapper.appendChild(dGrid);
 
-      activityPanelContent.appendChild(dayWrapper);
+      resultsArea.appendChild(dayWrapper);
+      daySectionsMap[dayItem.dateKey] = {
+        wrapper: dayWrapper,
+        heading: dTitle,
+      };
     });
-  }
 
-  function renderTodayScheduleView(todaySlots) {
-    // Also render inside home activityPanelContent if currently viewed there
-    if (activityPanelContent && currentActivityTab === 'today') {
-      activityPanelContent.innerHTML = "";
-      const section = document.createElement('section');
-      section.className = 'home-day-section';
+    prevSummaryContent.appendChild(resultsArea);
 
-      const dHeader = document.createElement('div');
-      dHeader.className = 'home-day-header';
-      const dTitle = document.createElement('h3');
-      dTitle.className = 'home-day-title';
-      dTitle.textContent = `Today - ${formatFullDisplayDate(todayDate)}`;
-      dHeader.appendChild(dTitle);
-      section.appendChild(dHeader);
+    // Interactive filter behavior
+    function updateDateSelection(targetKey) {
+      activeFilterDate = targetKey;
+      allDatesBtn.setAttribute('aria-pressed', String(targetKey === 'ALL'));
+      dateButtons.forEach(b => {
+        b.setAttribute('aria-pressed', String(b.dataset.dateKey === targetKey));
+      });
 
-      if (!todaySlots || todaySlots.length === 0) {
-        const emptyMsg = document.createElement('p');
-        emptyMsg.className = 'activity-panel-message';
-        emptyMsg.style.textAlign = 'left';
-        emptyMsg.style.padding = '12px 0';
-        emptyMsg.textContent = "No work scheduled for today.";
-        section.appendChild(emptyMsg);
-      } else {
-        const grid = document.createElement('ul');
-        grid.className = 'home-tiles-grid';
-        todaySlots.forEach(slotItem => {
-          grid.appendChild(createSlotTileElement(slotItem, true));
-        });
-        section.appendChild(grid);
+      daysList.forEach(dayItem => {
+        const sec = daySectionsMap[dayItem.dateKey];
+        if (sec) {
+          if (targetKey === 'ALL' || targetKey === dayItem.dateKey) {
+            sec.wrapper.style.display = 'block';
+          } else {
+            sec.wrapper.style.display = 'none';
+          }
+        }
+      });
+
+      if (targetKey !== 'ALL' && daySectionsMap[targetKey]) {
+        daySectionsMap[targetKey].heading.focus();
       }
-
-      activityPanelContent.appendChild(section);
     }
 
-    // Render inside dedicated "Today's Work Summary" page
-    if (todaySummaryContent) {
-      todaySummaryContent.innerHTML = "";
+    allDatesBtn.addEventListener('click', () => {
+      updateDateSelection('ALL');
+    });
 
-      const section = document.createElement('section');
-      section.className = 'home-day-section';
-      section.style.marginTop = '0';
-
-      const dHeader = document.createElement('div');
-      dHeader.className = 'home-day-header';
-      const dTitle = document.createElement('h3');
-      dTitle.className = 'home-day-title';
-      dTitle.textContent = `Today - ${formatFullDisplayDate(todayDate)}`;
-      dHeader.appendChild(dTitle);
-      section.appendChild(dHeader);
-
-      if (!todaySlots || todaySlots.length === 0) {
-        const emptyMsg = document.createElement('p');
-        emptyMsg.className = 'activity-panel-message';
-        emptyMsg.style.textAlign = 'left';
-        emptyMsg.style.padding = '16px 0';
-        emptyMsg.textContent = "No work scheduled for today.";
-        section.appendChild(emptyMsg);
-      } else {
-        const grid = document.createElement('ul');
-        grid.className = 'home-tiles-grid';
-        todaySlots.forEach(slotItem => {
-          grid.appendChild(createSlotTileElement(slotItem, true));
-        });
-        section.appendChild(grid);
-      }
-
-      todaySummaryContent.appendChild(section);
-    }
+    dateButtons.forEach(b => {
+      b.addEventListener('click', () => {
+        updateDateSelection(b.dataset.dateKey);
+      });
+    });
   }
 
   function renderUpcomingWorkSection(upcomingItems) {
@@ -1455,7 +1517,7 @@
     if (!upcomingItems || upcomingItems.length === 0) {
       const p = document.createElement('p');
       p.className = 'activity-panel-message';
-      p.textContent = "No upcoming work scheduled.";
+      p.textContent = "No upcoming work scheduled for this week.";
       listSection.appendChild(p);
       activityPanelContent.appendChild(listSection);
       return;
@@ -1546,37 +1608,71 @@
     setActivityMenuOpen(false);
 
     if (tab === 'today') {
-      // Open separate page "Today's Work Summary"
-      switchView('todaySummary');
-      if (todaySummaryContent) {
-        todaySummaryContent.innerHTML = '<p class="activity-panel-message">Loading…</p>';
+      // CHANGE 3: Choosing "Today Schedule" opens the existing Summary page for TODAY
+      const todayStr = getLocalDateKey(todayDate);
+      handleSelectDate(todayStr);
+      return;
+    }
+
+    if (tab === 'previous') {
+      // CHANGE 1: Choosing "Previous Work" opens ONE screen titled "Previous Work Summary"
+      switchView('prevSummary');
+      if (prevSummaryContent) {
+        prevSummaryContent.innerHTML = '<p class="activity-panel-message">Loading…</p>';
       }
+
+      const todayStr = getLocalDateKey(todayDate);
       try {
-        const todayStr = getLocalDateKey(todayDate);
-        // Load latest saved data from Supabase/database
+        // Enforce strictly previous work: do not include today's schedule
+        if (selectedPreviousWorkDateKey >= todayStr) {
+          selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
+        }
+        const selObj = parseLocalDateKey(selectedPreviousWorkDateKey);
+        const fromDateObj = addDays(selObj, -6);
+        const fromKey = getLocalDateKey(fromDateObj);
+        const toKey = selectedPreviousWorkDateKey;
+
+        // Load all 7 days in one range request (reuses loadRange with pages of 1000 rows)
         if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
-          await loadRange(todayStr, todayStr);
+          await loadRange(fromKey, toKey);
         } else {
           loadFromLocalStorage();
         }
-        const todayData = state.days[todayStr];
-        const todaySlots = getValidSlotsForDay(todayData, todayStr);
-        renderTodayScheduleView(todaySlots);
+
+        const daysList = [];
+        // Walk backwards from toKey to fromKey (6 previous days plus selected date = 7 days total)
+        for (let offset = 0; offset >= -6; offset--) {
+          const dKey = getLocalDateKey(addDays(selObj, offset));
+          if (dKey >= todayStr) continue; // strictly exclude today
+          const dayData = state.days[dKey];
+          const slots = getValidSlotsForDay(dayData, dKey);
+          // Only dates with at least one valid slot (valid start and end time) are listed
+          if (slots.length > 0) {
+            daysList.push({
+              dateKey: dKey,
+              slots,
+            });
+          }
+        }
+
+        renderPreviousWork7Days(daysList, fromKey, toKey);
       } catch (err) {
-        if (todaySummaryContent) {
-          todaySummaryContent.innerHTML = "";
+        if (prevSummaryContent) {
+          prevSummaryContent.innerHTML = "";
           const p = document.createElement('p');
           p.className = 'activity-panel-message';
-          p.textContent = "Could not load today's work summary.";
+          p.textContent = "Could not load your work.";
+
           const retry = document.createElement('button');
           retry.type = 'button';
           retry.className = 'btn btn-secondary';
           retry.style.minHeight = '44px';
           retry.style.marginTop = '8px';
           retry.textContent = 'Retry';
-          retry.addEventListener('click', () => loadAndShowActivity('today'));
-          todaySummaryContent.appendChild(p);
-          todaySummaryContent.appendChild(retry);
+          retry.addEventListener('click', () => loadAndShowActivity('previous'));
+
+          prevSummaryContent.appendChild(p);
+          prevSummaryContent.appendChild(retry);
         }
       }
       return;
@@ -1584,8 +1680,7 @@
 
     if (activityPanelTitle) {
       activityPanelTitle.style.display = 'block';
-      activityPanelTitle.textContent =
-        tab === 'previous' ? 'Previous Work' : 'Upcoming Work';
+      activityPanelTitle.textContent = 'Upcoming Work';
     }
 
     if (activityPanelContent) {
@@ -1595,44 +1690,22 @@
     const todayStr = getLocalDateKey(todayDate);
 
     try {
-      if (tab === 'previous') {
-        // Enforce strictly previous work: do not include today's schedule
-        if (selectedPreviousWorkDateKey >= todayStr) {
-          selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
-        }
-        const selObj = parseLocalDateKey(selectedPreviousWorkDateKey);
-        const fromDateObj = addDays(selObj, -29);
-        const fromKey = getLocalDateKey(fromDateObj);
-        const toKey = selectedPreviousWorkDateKey;
-
-        await loadRange(fromKey, toKey);
-
-        const daysList = [];
-        // Walk backwards from toKey to fromKey (29 days plus selected date = 30 days total)
-        for (let offset = 0; offset >= -29; offset--) {
-          const dKey = getLocalDateKey(addDays(selObj, offset));
-          if (dKey >= todayStr) continue; // strictly exclude today
-          const dayData = state.days[dKey];
-          const slots = getValidSlotsForDay(dayData, dKey);
-          if (slots.length > 0) {
-            daysList.push({
-              dateKey: dKey,
-              slots,
-            });
-          }
-        }
-
-        renderPreviousWork30Days(daysList, fromKey, toKey);
-      } else if (tab === 'upcoming') {
+      if (tab === 'upcoming') {
         await loadAllUpcomingWork();
 
         const now = new Date();
         const currentMins = now.getHours() * 60 + now.getMinutes();
 
+        // Calculate end of the current calendar week (Sunday)
+        const currentDayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+        const daysUntilSunday = (7 - currentDayOfWeek) % 7;
+        const endOfWeekDateObj = addDays(now, daysUntilSunday);
+        const endOfWeekStr = getLocalDateKey(endOfWeekDateObj);
+
         const items = [];
-        // Future dates (> todayStr), plus today's slots that start later than current time
+        // Scheduled work from today's date until the end of the current calendar week (Sunday)
         const sortedDayKeys = Object.keys(state.days)
-          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= todayStr)
+          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= todayStr && k <= endOfWeekStr)
           .sort((a, b) => a.localeCompare(b)); // chronological by date
 
         sortedDayKeys.forEach(dKey => {
@@ -1744,17 +1817,58 @@
     });
   }
 
-  if (summaryToHomeBtn) {
-    summaryToHomeBtn.addEventListener('click', async () => {
-      switchView('home');
-      await renderHomeView();
-    });
+  async function handleGoToHome(e) {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    flushPendingDebouncedSave();
+
+    // Reset currentActivityTab so Home shows the default activity selection clean
+    currentActivityTab = null;
+
+    // If leaving a slot page, perform the exact cleanup as slot back button (clean up new empty slot)
+    const dayData = getCurrentDayData();
+    if (dayData && Array.isArray(dayData.slots) && typeof currentSlotIndex === "number" && dayData.slots[currentSlotIndex]) {
+      if (isSlotEmpty(dayData.slots[currentSlotIndex])) {
+        dayData.slots.splice(currentSlotIndex, 1);
+        if (dayData.slots.length === 0) {
+          dayData.slots = [
+            {
+              id: "slot-1",
+              start: dayData.startMinutes,
+              end: null,
+              taskText: "",
+              status: "NONE",
+              markedAt: null,
+            },
+          ];
+        }
+        saveStorage(selectedDateKey);
+      }
+    }
+
+    switchView('home');
+    await renderHomeView();
   }
 
-  if (btnTodaySummaryHome) {
-    btnTodaySummaryHome.addEventListener('click', async () => {
-      switchView('home');
-      await renderHomeView();
+  if (btnTopMyWorkBoard) {
+    btnTopMyWorkBoard.addEventListener('click', handleGoToHome);
+  }
+
+  // Also bind via document-level delegation to guarantee any button with id="btn-top-my-work-board" or class="btn-top-board" triggers handleGoToHome
+  document.addEventListener('click', (e) => {
+    const target = e.target && e.target.closest ? (e.target.closest('#btn-top-my-work-board') || e.target.closest('.btn-top-board')) : null;
+    if (target) {
+      handleGoToHome(e);
+    }
+  });
+
+  if (prevSummaryNextBtn) {
+    prevSummaryNextBtn.addEventListener('click', () => {
+      selectedDateKey = getLocalDateKey(todayDate);
+      initSettingsView();
+      switchView('settings');
+      if (startInput) startInput.focus();
     });
   }
 
@@ -1859,8 +1973,21 @@
       clearSummarySaveMessage();
     }
     Object.keys(views).forEach((name) => {
-      views[name].classList.toggle('active', name === viewName);
+      if (views[name]) {
+        views[name].classList.toggle('active', name === viewName);
+      }
     });
+
+    // Toggle visibility of top bar controls depending on screen
+    if (btnTopMyWorkBoard) {
+      // Show on all signed-in screens except Home
+      btnTopMyWorkBoard.style.display = viewName === 'home' ? 'none' : 'inline-flex';
+    }
+    if (btnHomeNext) {
+      // Home Next button in the top bar is only displayed on Home
+      btnHomeNext.style.display = viewName === 'home' ? 'inline-flex' : 'none';
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
