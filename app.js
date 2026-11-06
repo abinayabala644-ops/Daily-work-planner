@@ -1842,14 +1842,6 @@
     btnTopMyWorkBoard.addEventListener('click', handleGoToHome);
   }
 
-  if (summaryToHomeBtn) {
-    summaryToHomeBtn.addEventListener('click', handleGoToHome);
-  }
-
-  if (btnTodaySummaryHome) {
-    btnTodaySummaryHome.addEventListener('click', handleGoToHome);
-  }
-
   // --- IN-APP REMINDER SYSTEM ---
   let dismissedReminderSlotIds = new Set();
 
