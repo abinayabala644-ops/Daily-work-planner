@@ -1516,7 +1516,7 @@
     if (!upcomingItems || upcomingItems.length === 0) {
       const p = document.createElement('p');
       p.className = 'activity-panel-message';
-      p.textContent = "No upcoming work scheduled.";
+      p.textContent = "No upcoming work scheduled for this week.";
       listSection.appendChild(p);
       activityPanelContent.appendChild(listSection);
       return;
@@ -1695,10 +1695,16 @@
         const now = new Date();
         const currentMins = now.getHours() * 60 + now.getMinutes();
 
+        // Calculate end of the current calendar week (Sunday)
+        const currentDayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+        const daysUntilSunday = (7 - currentDayOfWeek) % 7;
+        const endOfWeekDateObj = addDays(now, daysUntilSunday);
+        const endOfWeekStr = getLocalDateKey(endOfWeekDateObj);
+
         const items = [];
-        // Future dates (> todayStr), plus today's slots that start later than current time
+        // Scheduled work from today's date until the end of the current calendar week (Sunday)
         const sortedDayKeys = Object.keys(state.days)
-          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= todayStr)
+          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= todayStr && k <= endOfWeekStr)
           .sort((a, b) => a.localeCompare(b)); // chronological by date
 
         sortedDayKeys.forEach(dKey => {
