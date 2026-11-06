@@ -117,7 +117,7 @@
   const btnHomeNext = document.getElementById('btn-home-next');
 
   // Previous Work Summary Screen Elements
-  const prevSummaryBackBtn = document.getElementById('prev-summary-back-btn');
+  const prevSummaryNextBtn = document.getElementById('prev-summary-next-btn');
   const prevSummaryContent = document.getElementById('prev-summary-content');
 
   // Home Page Elements
@@ -1857,14 +1857,19 @@
 
   // Also bind via document-level delegation to guarantee any button with id="btn-top-my-work-board" or class="btn-top-board" triggers handleGoToHome
   document.addEventListener('click', (e) => {
-    const target = e.target && e.target.closest ? (e.target.closest('#btn-top-my-work-board') || e.target.closest('.btn-top-board') || e.target.closest('#prev-summary-back-btn')) : null;
+    const target = e.target && e.target.closest ? (e.target.closest('#btn-top-my-work-board') || e.target.closest('.btn-top-board')) : null;
     if (target) {
       handleGoToHome(e);
     }
   });
 
-  if (prevSummaryBackBtn) {
-    prevSummaryBackBtn.addEventListener('click', handleGoToHome);
+  if (prevSummaryNextBtn) {
+    prevSummaryNextBtn.addEventListener('click', () => {
+      selectedDateKey = getLocalDateKey(todayDate);
+      initSettingsView();
+      switchView('settings');
+      if (startInput) startInput.focus();
+    });
   }
 
   // --- IN-APP REMINDER SYSTEM ---
