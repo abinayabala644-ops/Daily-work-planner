@@ -2405,6 +2405,13 @@
     }
   }
 
+  function isLastSlotOfDay(slot, dayData) {
+    if (!slot || !dayData) return false;
+    const slotEnd = typeof slot.end === "number" ? slot.end : null;
+    const dayEnd = typeof dayData.endMinutes === "number" ? dayData.endMinutes : null;
+    return slotEnd !== null && dayEnd !== null && slotEnd === dayEnd;
+  }
+
   function updateSlotValidationUI(showErrorAlways = false) {
     const dayData = getCurrentDayData();
     if (!dayData) return;
@@ -2422,14 +2429,16 @@
 
     const hasChosenEnd = Boolean(slotEndSelect.value);
     const isEndValid = Boolean(hasChosenEnd && !error);
+    const isLastSlot = isEndValid && isLastSlotOfDay(slot, dayData);
 
-    // Next is disabled until the slot is valid
+    // Forward button is disabled until the slot has a valid Finished By
     if (slotNextBtn) {
       slotNextBtn.disabled = !isEndValid;
+      slotNextBtn.textContent = isLastSlot ? "Finish" : "Next \u2192";
     }
 
-    const isLastSlot = isEndValid && slot.end === dayData.endMinutes;
     if (slotEndLastHint) {
+      slotEndLastHint.textContent = "This is the last slot. Finish opens your summary.";
       slotEndLastHint.style.display = isLastSlot ? "block" : "none";
     }
 
