@@ -136,9 +136,9 @@
 
   // Home Page Elements
   const homeDailyProverb = document.getElementById('home-daily-proverb');
-  const btnActivityMain = document.getElementById('btn-activity-main');
-  const btnActivityArrow = document.getElementById('btn-activity-arrow');
-  const activityDropdownMenu = document.getElementById('activity-dropdown-menu');
+  const btnActivityPrev = document.getElementById('btn-activity-prev');
+  const btnActivityToday = document.getElementById('btn-activity-today');
+  const btnActivityUpcoming = document.getElementById('btn-activity-upcoming');
   const activityPanelTitle = document.getElementById('activity-panel-title');
   const activityPanelSubtitle = document.getElementById('activity-panel-subtitle');
   const activityPanelContent = document.getElementById('activity-panel-content');
@@ -867,7 +867,6 @@
   ];
 
   let currentActivityTab = null; // 'previous' | 'today' | 'upcoming' | null
-  let isActivityMenuOpen = false;
   let selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
 
   if (workDetailCloseBtn && workDetailDialog) {
@@ -918,59 +917,14 @@
     homeDailyProverb.textContent = PROVERBS[proverbIndex];
   }
 
-  function setActivityMenuOpen(open) {
-    isActivityMenuOpen = open;
-    if (btnActivityMain) btnActivityMain.setAttribute('aria-expanded', String(open));
-    if (btnActivityArrow) btnActivityArrow.setAttribute('aria-expanded', String(open));
-    if (activityDropdownMenu) {
-      activityDropdownMenu.style.display = open ? 'flex' : 'none';
-      if (open) {
-        const firstItem = activityDropdownMenu.querySelector('.activity-menu-item');
-        if (firstItem) firstItem.focus();
-      }
+  function updateActivityNavButtonsState(activeTab) {
+    if (btnActivityPrev) {
+      btnActivityPrev.setAttribute('aria-pressed', String(activeTab === 'previous'));
+    }
+    if (btnActivityUpcoming) {
+      btnActivityUpcoming.setAttribute('aria-pressed', String(activeTab === 'upcoming'));
     }
   }
-
-  function toggleActivityMenu() {
-    setActivityMenuOpen(!isActivityMenuOpen);
-  }
-
-  // Keyboard navigation for activity menu
-  if (activityDropdownMenu) {
-    activityDropdownMenu.addEventListener('keydown', (e) => {
-      const items = Array.from(activityDropdownMenu.querySelectorAll('.activity-menu-item'));
-      const currentIndex = items.indexOf(document.activeElement);
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setActivityMenuOpen(false);
-        if (btnActivityMain) btnActivityMain.focus();
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const nextIndex = (currentIndex + 1) % items.length;
-        items[nextIndex].focus();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        const prevIndex = (currentIndex - 1 + items.length) % items.length;
-        items[prevIndex].focus();
-      }
-    });
-  }
-
-  document.addEventListener('click', (e) => {
-    if (!isActivityMenuOpen) return;
-    if (
-      btnActivityMain && btnActivityMain.contains(e.target) ||
-      btnActivityArrow && btnActivityArrow.contains(e.target) ||
-      activityDropdownMenu && activityDropdownMenu.contains(e.target)
-    ) {
-      return;
-    }
-    setActivityMenuOpen(false);
-  });
-
-  if (btnActivityMain) btnActivityMain.addEventListener('click', toggleActivityMenu);
-  if (btnActivityArrow) btnActivityArrow.addEventListener('click', toggleActivityMenu);
 
   function createSlotTileElement(slotItem, includeDate = true, isPlannedContext = false) {
     const li = document.createElement('li');
@@ -1308,7 +1262,7 @@
 
   async function loadAndShowActivity(tab) {
     currentActivityTab = tab;
-    setActivityMenuOpen(false);
+    updateActivityNavButtonsState(tab);
 
     if (tab === 'today') {
       // CHANGE 3: Choosing "Today Schedule" opens the existing Summary page for TODAY
@@ -1512,12 +1466,21 @@
     }
   }
 
-  if (activityDropdownMenu) {
-    activityDropdownMenu.querySelectorAll('.activity-menu-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const tab = item.getAttribute('data-tab');
-        loadAndShowActivity(tab);
-      });
+  if (btnActivityPrev) {
+    btnActivityPrev.addEventListener('click', () => {
+      loadAndShowActivity('previous');
+    });
+  }
+
+  if (btnActivityToday) {
+    btnActivityToday.addEventListener('click', () => {
+      loadAndShowActivity('today');
+    });
+  }
+
+  if (btnActivityUpcoming) {
+    btnActivityUpcoming.addEventListener('click', () => {
+      loadAndShowActivity('upcoming');
     });
   }
 
@@ -1534,9 +1497,10 @@
     if (currentActivityTab) {
       loadAndShowActivity(currentActivityTab);
     } else {
+      updateActivityNavButtonsState(null);
       if (activityPanelTitle) activityPanelTitle.style.display = 'none';
       if (activityPanelContent) {
-        activityPanelContent.innerHTML = '<p class="activity-panel-message">Choose an activity to view.</p>';
+        activityPanelContent.innerHTML = '<p class="activity-panel-message">Choose a button above to view your work.</p>';
       }
     }
   }
