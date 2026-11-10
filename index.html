@@ -1844,6 +1844,57 @@
     .date-summary-activity-status.unmarked {
       color: var(--slate-600);
     }
+
+    /* Upcoming Schedule Planning Screen Styles */
+    .upcoming-sched-form-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 18px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+    .upcoming-sched-slot-badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .upcoming-sched-buttons-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    @media (min-width: 600px) {
+      .upcoming-sched-buttons-row {
+        flex-direction: row;
+      }
+      .upcoming-sched-buttons-row button {
+        flex: 1;
+      }
+    }
+    .upcoming-saved-section {
+      margin-top: 32px;
+      border-top: 2px solid var(--slate-100);
+      padding-top: 24px;
+    }
+    .upcoming-saved-heading {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin: 0 0 16px 0;
+    }
+    .upcoming-saved-jump-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .upcoming-saved-date-view {
+      margin-top: 16px;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
@@ -1930,6 +1981,85 @@
           <div id="activity-panel-content">
             <p class="activity-panel-message">Choose a button above to view your work.</p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEPARATE SCREEN: UPCOMING SCHEDULE (PLAN FUTURE WORK) -->
+    <div id="view-upcoming-schedule" class="card views">
+      <div class="header-row">
+        <div>
+          <h1 id="upcoming-sched-title" class="header-title" tabindex="-1">Upcoming Schedule</h1>
+          <p id="upcoming-sched-subtitle" class="header-subtitle">Plan work for tomorrow or any later date.</p>
+        </div>
+      </div>
+
+      <!-- Planning Form Card -->
+      <div class="upcoming-sched-form-card">
+        <div class="upcoming-sched-slot-badge-row">
+          <span id="upcoming-sched-slot-badge" class="slot-badge" style="font-size: 0.88rem; padding: 4px 12px;">Slot 1</span>
+        </div>
+
+        <!-- a) Choose date -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="upcoming-sched-date-select" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Choose date</label>
+          <select id="upcoming-sched-date-select" class="time-select">
+            <!-- Populated dynamically: Tomorrow up to 365 days -->
+          </select>
+        </div>
+
+        <!-- b) Starting Time & c) Finished By -->
+        <div class="slot-times-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="upcoming-sched-start-select" id="upcoming-sched-start-label" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Starting Time</label>
+            <select id="upcoming-sched-start-select" class="time-select">
+              <option value="">Select time</option>
+            </select>
+            <div id="upcoming-sched-start-readonly" class="time-readonly-display" style="display: none; min-height: 44px; font-size: 16px; width: 100%; align-items: center; padding: 10px 14px; border: 1px solid var(--slate-300); border-radius: 8px; background: var(--slate-100); color: var(--slate-900); font-weight: 700;" tabindex="0" aria-label="Starting Time"></div>
+            <p id="upcoming-sched-start-hint" style="display: none; margin: 4px 0 0 0; font-size: 0.78rem; color: var(--slate-500);"></p>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="upcoming-sched-end-select" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Finished By</label>
+            <select id="upcoming-sched-end-select" class="time-select" disabled>
+              <option value="">Select time</option>
+            </select>
+            <p id="upcoming-sched-end-hint" style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--slate-500);">Choose a Starting Time first.</p>
+          </div>
+        </div>
+
+        <!-- d) Work for this slot -->
+        <div class="form-group" style="margin-top: 16px; margin-bottom: 16px;">
+          <label for="upcoming-sched-task-input" class="form-label">Work for this slot</label>
+          <textarea id="upcoming-sched-task-input" class="textarea-box" placeholder="Type what you plan to do in this slot…"></textarea>
+        </div>
+
+        <!-- Validation / Error Message -->
+        <div id="upcoming-sched-error-msg" class="field-error-text" style="display: none; margin-bottom: 12px; font-size: 0.88rem; font-weight: 600;"></div>
+
+        <!-- Intermediate Slot Saved Feedback Banner -->
+        <div id="upcoming-sched-slot-saved-msg" style="display: none; margin-bottom: 12px; font-size: 0.88rem; font-weight: 700; color: #047857;" role="status" aria-live="polite"></div>
+
+        <!-- Overall Save Success / Error Message Banner -->
+        <div id="upcoming-sched-success-msg" class="save-message-box save-message-success" style="display: none; margin-bottom: 16px;" role="status" aria-live="polite"></div>
+        <div id="upcoming-sched-save-error" class="save-message-box save-message-error" style="display: none; margin-bottom: 16px;" role="alert"></div>
+
+        <!-- e) Two buttons below -->
+        <div class="upcoming-sched-buttons-row">
+          <button type="button" id="upcoming-sched-next-btn" class="btn btn-primary" style="min-height: 44px;" disabled>
+            Next &rarr;
+          </button>
+          <button type="button" id="upcoming-sched-save-btn" class="btn-summary-save" style="min-height: 44px;" disabled>
+            Save Schedule
+          </button>
+        </div>
+      </div>
+
+      <!-- 5. Saved upcoming work on this screen (below the form) -->
+      <div class="upcoming-saved-section">
+        <h2 class="upcoming-saved-heading">Your saved upcoming work</h2>
+        <div id="upcoming-saved-container" aria-live="polite">
+          <!-- Populated dynamically: jump buttons + date heading + slots tiles -->
         </div>
       </div>
     </div>
@@ -2253,6 +2383,18 @@
       <div class="modal-actions">
         <button type="button" id="duration-dialog-cancel" class="btn btn-secondary">Cancel</button>
         <button type="button" id="duration-dialog-continue" class="btn" style="background: var(--rose-600); color: #fff;">Continue</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Native Dialog: Discard Unsaved Upcoming Slot Confirmation -->
+  <dialog id="upcoming-sched-discard-dialog">
+    <div class="modal-box">
+      <h3 class="modal-title">Discard this unsaved slot?</h3>
+      <p class="modal-desc">You have unsaved changes in the current slot. Discarding will clear this slot.</p>
+      <div class="modal-actions">
+        <button type="button" id="upcoming-discard-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="upcoming-discard-confirm-btn" class="btn" style="background: var(--rose-600); color: #fff;">Discard</button>
       </div>
     </div>
   </dialog>

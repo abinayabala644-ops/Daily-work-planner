@@ -106,6 +106,7 @@
   // DOM Views
   const views = {
     home: document.getElementById('view-home'),
+    upcomingSchedule: document.getElementById('view-upcoming-schedule'),
     prevSummary: document.getElementById('view-prev-summary'),
     prevDateSummary: document.getElementById('view-prev-date-summary'),
     upcomingDateSummary: document.getElementById('view-upcoming-date-summary'),
@@ -225,6 +226,28 @@
   const detailMarkRow = document.getElementById('detail-mark-row');
   const detailMarkVal = document.getElementById('detail-mark-val');
   const workDetailCloseBtn = document.getElementById('work-detail-close-btn');
+
+  // Upcoming Schedule Screen Elements
+  const upcomingSchedSlotBadge = document.getElementById('upcoming-sched-slot-badge');
+  const upcomingSchedDateSelect = document.getElementById('upcoming-sched-date-select');
+  const upcomingSchedStartSelect = document.getElementById('upcoming-sched-start-select');
+  const upcomingSchedStartReadonly = document.getElementById('upcoming-sched-start-readonly');
+  const upcomingSchedStartHint = document.getElementById('upcoming-sched-start-hint');
+  const upcomingSchedEndSelect = document.getElementById('upcoming-sched-end-select');
+  const upcomingSchedEndHint = document.getElementById('upcoming-sched-end-hint');
+  const upcomingSchedTaskInput = document.getElementById('upcoming-sched-task-input');
+  const upcomingSchedErrorMsg = document.getElementById('upcoming-sched-error-msg');
+  const upcomingSchedSlotSavedMsg = document.getElementById('upcoming-sched-slot-saved-msg');
+  const upcomingSchedSuccessMsg = document.getElementById('upcoming-sched-success-msg');
+  const upcomingSchedSaveError = document.getElementById('upcoming-sched-save-error');
+  const upcomingSchedNextBtn = document.getElementById('upcoming-sched-next-btn');
+  const upcomingSchedSaveBtn = document.getElementById('upcoming-sched-save-btn');
+  const upcomingSavedContainer = document.getElementById('upcoming-saved-container');
+
+  // Upcoming Schedule Discard Dialog Elements
+  const upcomingSchedDiscardDialog = document.getElementById('upcoming-sched-discard-dialog');
+  const upcomingDiscardCancelBtn = document.getElementById('upcoming-discard-cancel-btn');
+  const upcomingDiscardConfirmBtn = document.getElementById('upcoming-discard-confirm-btn');
 
   // Log out button
   const btnLogout = document.getElementById('btn-logout');
@@ -1466,6 +1489,681 @@
     }
   }
 
+  // --- UPCOMING SCHEDULE (PLAN FUTURE WORK) STATE & HELPERS ---
+  let upcomingPlanDateKey = null;
+  let upcomingPlanSlotNumber = 1;
+  let upcomingPlanPreviousEndMinutes = null; // null for first slot, number for subsequent
+  let upcomingSavedListActiveDateKey = null;
+  let pendingUpcomingDateChangeValue = null;
+
+  function hasUnsavedUpcomingSlot() {
+    if (!views.upcomingSchedule || !views.upcomingSchedule.classList.contains('active')) {
+      return false;
+    }
+    const endVal = upcomingSchedEndSelect ? upcomingSchedEndSelect.value : '';
+    const taskVal = upcomingSchedTaskInput ? upcomingSchedTaskInput.value.trim() : '';
+    return Boolean(endVal || taskVal);
+  }
+
+  function confirmUpcomingDiscard(onConfirm) {
+    if (upcomingSchedDiscardDialog) {
+      const handleConfirm = () => {
+        cleanup();
+        upcomingSchedDiscardDialog.close();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+      const handleCancel = () => {
+        cleanup();
+        upcomingSchedDiscardDialog.close();
+      };
+      const cleanup = () => {
+        if (upcomingDiscardConfirmBtn) upcomingDiscardConfirmBtn.removeEventListener('click', handleConfirm);
+        if (upcomingDiscardCancelBtn) upcomingDiscardCancelBtn.removeEventListener('click', handleCancel);
+        upcomingSchedDiscardDialog.removeEventListener('cancel', handleCancel);
+      };
+
+      if (upcomingDiscardConfirmBtn) upcomingDiscardConfirmBtn.addEventListener('click', handleConfirm);
+      if (upcomingDiscardCancelBtn) upcomingDiscardCancelBtn.addEventListener('click', handleCancel);
+      upcomingSchedDiscardDialog.addEventListener('cancel', handleCancel);
+
+      upcomingSchedDiscardDialog.showModal();
+    } else {
+      if (confirm('Discard this unsaved slot?')) {
+        if (typeof onConfirm === 'function') onConfirm();
+      }
+    }
+  }
+
+  function populateUpcomingDateDropdown() {
+    if (!upcomingSchedDateSelect) return;
+    const currentVal = upcomingSchedDateSelect.value;
+    upcomingSchedDateSelect.innerHTML = '';
+
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // 1 to 365 days from today
+    for (let i = 1; i <= 365; i++) {
+      const dObj = addDays(todayDate, i);
+      const dKey = getLocalDateKey(dObj);
+      const dayName = days[dObj.getDay()];
+      const dayNum = dObj.getDate();
+      const monthName = months[dObj.getMonth()];
+      const yearNum = dObj.getFullYear();
+
+      const opt = document.createElement('option');
+      opt.value = dKey;
+      if (i === 1) {
+        opt.textContent = `Tomorrow - ${dayName}, ${dayNum} ${monthName} ${yearNum}`;
+      } else {
+        opt.textContent = `${dayName}, ${dayNum} ${monthName} ${yearNum}`;
+      }
+      upcomingSchedDateSelect.appendChild(opt);
+    }
+
+    const tomorrowKey = getLocalDateKey(addDays(todayDate, 1));
+    if (currentVal && upcomingSchedDateSelect.querySelector(`option[value="${currentVal}"]`)) {
+      upcomingSchedDateSelect.value = currentVal;
+      upcomingPlanDateKey = currentVal;
+    } else {
+      upcomingSchedDateSelect.value = tomorrowKey;
+      upcomingPlanDateKey = tomorrowKey;
+    }
+  }
+
+  function resetUpcomingSlotForm(dateKey, resetSession = false) {
+    if (dateKey) upcomingPlanDateKey = dateKey;
+    if (resetSession) {
+      upcomingPlanSlotNumber = 1;
+      upcomingPlanPreviousEndMinutes = null;
+    }
+
+    if (upcomingSchedSlotBadge) {
+      upcomingSchedSlotBadge.textContent = `Slot ${upcomingPlanSlotNumber}`;
+    }
+
+    // Hide banners and error messages
+    if (upcomingSchedErrorMsg) {
+      upcomingSchedErrorMsg.style.display = 'none';
+      upcomingSchedErrorMsg.textContent = '';
+    }
+
+    // Starting Time control: first slot is dropdown, later is read-only
+    if (upcomingPlanSlotNumber === 1 || upcomingPlanPreviousEndMinutes === null) {
+      if (upcomingSchedStartSelect) {
+        upcomingSchedStartSelect.style.display = 'block';
+        upcomingSchedStartSelect.innerHTML = '<option value="">Select time</option>';
+        for (let m = 540; m <= 1075; m += 5) { // 9:00 AM (540) to 5:55 PM (1075)
+          const opt = document.createElement('option');
+          opt.value = String(m);
+          opt.textContent = formatMinutesTo12Hour(m);
+          upcomingSchedStartSelect.appendChild(opt);
+        }
+        upcomingSchedStartSelect.value = '';
+      }
+      if (upcomingSchedStartReadonly) upcomingSchedStartReadonly.style.display = 'none';
+      if (upcomingSchedStartHint) upcomingSchedStartHint.style.display = 'none';
+
+      // Finished By starts disabled
+      if (upcomingSchedEndSelect) {
+        upcomingSchedEndSelect.innerHTML = '<option value="">Select time</option>';
+        upcomingSchedEndSelect.disabled = true;
+      }
+      if (upcomingSchedEndHint) {
+        upcomingSchedEndHint.style.display = 'block';
+        upcomingSchedEndHint.textContent = 'Choose a Starting Time first.';
+      }
+    } else {
+      // Subsequent slot
+      if (upcomingSchedStartSelect) upcomingSchedStartSelect.style.display = 'none';
+      if (upcomingSchedStartReadonly) {
+        upcomingSchedStartReadonly.style.display = 'flex';
+        upcomingSchedStartReadonly.textContent = formatMinutesTo12Hour(upcomingPlanPreviousEndMinutes);
+      }
+      if (upcomingSchedStartHint) {
+        upcomingSchedStartHint.style.display = 'block';
+        upcomingSchedStartHint.textContent = `Starts when Slot ${upcomingPlanSlotNumber - 1} ends.`;
+      }
+
+      // Populate Finished By options from upcomingPlanPreviousEndMinutes + 5 up to 1080
+      populateUpcomingEndSelect(upcomingPlanPreviousEndMinutes);
+    }
+
+    if (upcomingSchedTaskInput) {
+      upcomingSchedTaskInput.value = '';
+    }
+
+    updateUpcomingFormButtons();
+  }
+
+  function populateUpcomingEndSelect(startMins) {
+    if (!upcomingSchedEndSelect) return;
+    upcomingSchedEndSelect.innerHTML = '<option value="">Select time</option>';
+
+    if (typeof startMins !== 'number' || isNaN(startMins) || startMins >= 1080) {
+      upcomingSchedEndSelect.disabled = true;
+      if (upcomingSchedEndHint) {
+        upcomingSchedEndHint.style.display = 'block';
+        upcomingSchedEndHint.textContent = 'Choose a Starting Time first.';
+      }
+      return;
+    }
+
+    for (let m = startMins + 5; m <= 1080; m += 5) { // up to and including 6:00 PM (1080)
+      const opt = document.createElement('option');
+      opt.value = String(m);
+      opt.textContent = formatMinutesTo12Hour(m);
+      upcomingSchedEndSelect.appendChild(opt);
+    }
+    upcomingSchedEndSelect.disabled = false;
+    upcomingSchedEndSelect.value = '';
+    if (upcomingSchedEndHint) upcomingSchedEndHint.style.display = 'none';
+  }
+
+  function getEffectiveUpcomingStartTime() {
+    if (upcomingPlanSlotNumber > 1 && typeof upcomingPlanPreviousEndMinutes === 'number') {
+      return upcomingPlanPreviousEndMinutes;
+    }
+    if (upcomingSchedStartSelect && upcomingSchedStartSelect.value) {
+      return parseInt(upcomingSchedStartSelect.value, 10);
+    }
+    return null;
+  }
+
+  function updateUpcomingFormButtons() {
+    const startMins = getEffectiveUpcomingStartTime();
+    const endVal = upcomingSchedEndSelect ? upcomingSchedEndSelect.value : '';
+    const endMins = endVal ? parseInt(endVal, 10) : null;
+    const taskVal = upcomingSchedTaskInput ? upcomingSchedTaskInput.value.trim() : '';
+
+    const canSubmit = typeof startMins === 'number' && !isNaN(startMins) &&
+                      typeof endMins === 'number' && !isNaN(endMins) &&
+                      endMins > startMins &&
+                      taskVal.length > 0;
+
+    const isDayFull = typeof endMins === 'number' && endMins >= 1080;
+
+    if (upcomingSchedNextBtn) {
+      if (isDayFull) {
+        upcomingSchedNextBtn.disabled = true;
+      } else {
+        upcomingSchedNextBtn.disabled = !canSubmit;
+      }
+    }
+
+    if (upcomingSchedSaveBtn) {
+      upcomingSchedSaveBtn.disabled = !canSubmit;
+    }
+
+    if (isDayFull && canSubmit) {
+      if (upcomingSchedErrorMsg) {
+        upcomingSchedErrorMsg.style.display = 'block';
+        upcomingSchedErrorMsg.style.color = 'var(--slate-600)';
+        upcomingSchedErrorMsg.textContent = 'The day is full. Press Save Schedule.';
+      }
+    } else if (upcomingSchedErrorMsg && upcomingSchedErrorMsg.textContent === 'The day is full. Press Save Schedule.') {
+      upcomingSchedErrorMsg.style.display = 'none';
+      upcomingSchedErrorMsg.style.color = '';
+      upcomingSchedErrorMsg.textContent = '';
+    }
+  }
+
+  function validateUpcomingSlot(dateKey, startMins, endMins) {
+    const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
+    if (dateKey < tomorrowStr) {
+      return 'The date must be tomorrow or later.';
+    }
+
+    if (endMins < startMins + 5) {
+      return 'Finished By must be at least 5 minutes after Starting Time.';
+    }
+
+    const dayData = state.days[dateKey];
+    const sMinLimit = (dayData && typeof dayData.startMinutes === 'number') ? dayData.startMinutes : 540;
+    const eMinLimit = (dayData && typeof dayData.endMinutes === 'number') ? dayData.endMinutes : 1080;
+
+    if (startMins < sMinLimit || endMins > eMinLimit) {
+      return `This time is outside that day's range (${formatMinutesTo12Hour(sMinLimit)} - ${formatMinutesTo12Hour(eMinLimit)}).`;
+    }
+
+    // Check overlaps with existing saved slots on this date
+    if (dayData && Array.isArray(dayData.slots)) {
+      for (let idx = 0; idx < dayData.slots.length; idx++) {
+        const slot = dayData.slots[idx];
+        const s = getEffectiveSlotStart(dayData, idx);
+        const e = typeof slot.end === 'number' ? slot.end : s;
+        if (s !== null && e !== null && Math.max(startMins, s) < Math.min(endMins, e)) {
+          return `This overlaps ${formatMinutesTo12Hour(s)} - ${formatMinutesTo12Hour(e)} on that date.`;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  async function saveUpcomingSlotCore(dateKey, startMins, endMins, taskText) {
+    if (!state.days[dateKey]) {
+      state.days[dateKey] = {
+        startMinutes: 540,
+        endMinutes: 1080,
+        slots: [],
+        savedAt: null,
+      };
+    }
+
+    const dayData = state.days[dateKey];
+    if (!Array.isArray(dayData.slots)) {
+      dayData.slots = [];
+    }
+
+    // Update day boundaries to accommodate slot if needed
+    if (typeof dayData.startMinutes !== 'number' || dayData.startMinutes > startMins) {
+      dayData.startMinutes = Math.min(dayData.startMinutes || 540, startMins);
+    }
+    if (typeof dayData.endMinutes !== 'number' || dayData.endMinutes < endMins) {
+      dayData.endMinutes = Math.max(dayData.endMinutes || 1080, endMins);
+    }
+
+    const newSlot = {
+      id: `slot-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      start: startMins,
+      end: endMins,
+      text: taskText,
+      taskText: taskText,
+      status: 'NONE',
+      markedAt: null,
+    };
+
+    dayData.slots.push(newSlot);
+    // Sort all slots by start time
+    dayData.slots.sort((a, b) => {
+      const aStart = typeof a.start === 'number' ? a.start : 0;
+      const bStart = typeof b.start === 'number' ? b.start : 0;
+      return aStart - bStart;
+    });
+
+    dayData.savedAt = getIsoTimestamp();
+
+    saveToLocalStorage();
+    await syncDayToSupabase(dateKey);
+  }
+
+  async function handleUpcomingNext() {
+    clearUpcomingBanners();
+    const dateKey = upcomingPlanDateKey || (upcomingSchedDateSelect ? upcomingSchedDateSelect.value : null);
+    const startMins = getEffectiveUpcomingStartTime();
+    const endVal = upcomingSchedEndSelect ? upcomingSchedEndSelect.value : '';
+    const endMins = endVal ? parseInt(endVal, 10) : null;
+    const taskText = upcomingSchedTaskInput ? upcomingSchedTaskInput.value.trim() : '';
+
+    if (!dateKey || startMins === null || endMins === null || !taskText) {
+      showUpcomingError('Please complete all fields for this slot.');
+      return;
+    }
+
+    const errorMsg = validateUpcomingSlot(dateKey, startMins, endMins);
+    if (errorMsg) {
+      showUpcomingError(errorMsg);
+      return;
+    }
+
+    try {
+      await saveUpcomingSlotCore(dateKey, startMins, endMins, taskText);
+
+      const savedSlotNum = upcomingPlanSlotNumber;
+      if (upcomingSchedSlotSavedMsg) {
+        upcomingSchedSlotSavedMsg.textContent = `Slot ${savedSlotNum} saved: ${formatMinutesTo12Hour(startMins)} - ${formatMinutesTo12Hour(endMins)}.`;
+        upcomingSchedSlotSavedMsg.style.display = 'block';
+      }
+
+      upcomingPlanPreviousEndMinutes = endMins;
+      upcomingPlanSlotNumber++;
+
+      resetUpcomingSlotForm(dateKey, false);
+
+      // Refresh list below
+      await loadAndRenderUpcomingSavedList();
+    } catch (err) {
+      console.error('Failed to save upcoming slot:', err);
+      showUpcomingSaveError(handleUpcomingNext);
+    }
+  }
+
+  async function handleUpcomingSaveSchedule() {
+    clearUpcomingBanners();
+    const dateKey = upcomingPlanDateKey || (upcomingSchedDateSelect ? upcomingSchedDateSelect.value : null);
+    const startMins = getEffectiveUpcomingStartTime();
+    const endVal = upcomingSchedEndSelect ? upcomingSchedEndSelect.value : '';
+    const endMins = endVal ? parseInt(endVal, 10) : null;
+    const taskText = upcomingSchedTaskInput ? upcomingSchedTaskInput.value.trim() : '';
+
+    if (!dateKey || startMins === null || endMins === null || !taskText) {
+      showUpcomingError('Please complete all fields for this slot.');
+      return;
+    }
+
+    const errorMsg = validateUpcomingSlot(dateKey, startMins, endMins);
+    if (errorMsg) {
+      showUpcomingError(errorMsg);
+      return;
+    }
+
+    try {
+      await saveUpcomingSlotCore(dateKey, startMins, endMins, taskText);
+
+      const dObj = parseLocalDateKey(dateKey);
+      const fullDateStr = formatFullDisplayDate(dObj);
+      const daysAhead = Math.round((dObj.getTime() - todayDate.getTime()) / 86400000);
+
+      if (upcomingSchedSuccessMsg) {
+        upcomingSchedSuccessMsg.innerHTML = '';
+        const strong = document.createElement('strong');
+        strong.textContent = '✓ Saved Successfully!';
+        strong.style.display = 'block';
+        strong.style.marginBottom = '4px';
+
+        const line1 = document.createElement('div');
+        line1.textContent = `Saved for ${fullDateStr}.`;
+
+        upcomingSchedSuccessMsg.appendChild(strong);
+        upcomingSchedSuccessMsg.appendChild(line1);
+
+        if (daysAhead > 90) {
+          const line2 = document.createElement('div');
+          line2.textContent = 'It will appear in the list below when it is within 90 days.';
+          line2.style.fontSize = '0.88rem';
+          line2.style.marginTop = '2px';
+          upcomingSchedSuccessMsg.appendChild(line2);
+        }
+        upcomingSchedSuccessMsg.style.display = 'flex';
+        upcomingSchedSuccessMsg.style.flexDirection = 'column';
+        upcomingSchedSuccessMsg.style.alignItems = 'flex-start';
+      }
+
+      // Reset form to first-slot state for the same date
+      resetUpcomingSlotForm(dateKey, true);
+
+      // Refresh list below and set active date to this date
+      upcomingSavedListActiveDateKey = dateKey;
+      await loadAndRenderUpcomingSavedList();
+    } catch (err) {
+      console.error('Failed to save upcoming schedule:', err);
+      showUpcomingSaveError(handleUpcomingSaveSchedule);
+    }
+  }
+
+  function clearUpcomingBanners() {
+    if (upcomingSchedErrorMsg) {
+      upcomingSchedErrorMsg.style.display = 'none';
+      upcomingSchedErrorMsg.style.color = '';
+      upcomingSchedErrorMsg.textContent = '';
+    }
+    if (upcomingSchedSlotSavedMsg) {
+      upcomingSchedSlotSavedMsg.style.display = 'none';
+      upcomingSchedSlotSavedMsg.textContent = '';
+    }
+    if (upcomingSchedSuccessMsg) {
+      upcomingSchedSuccessMsg.style.display = 'none';
+      upcomingSchedSuccessMsg.innerHTML = '';
+    }
+    if (upcomingSchedSaveError) {
+      upcomingSchedSaveError.style.display = 'none';
+      upcomingSchedSaveError.innerHTML = '';
+    }
+  }
+
+  function showUpcomingError(msg) {
+    if (upcomingSchedErrorMsg) {
+      upcomingSchedErrorMsg.style.display = 'block';
+      upcomingSchedErrorMsg.style.color = 'var(--rose-600)';
+      upcomingSchedErrorMsg.textContent = msg;
+    }
+  }
+
+  function showUpcomingSaveError(retryCallback) {
+    if (!upcomingSchedSaveError) return;
+    upcomingSchedSaveError.innerHTML = '';
+
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = 'Could not save. Check your internet and try again.';
+    upcomingSchedSaveError.appendChild(msgSpan);
+
+    const retryBtn = document.createElement('button');
+    retryBtn.type = 'button';
+    retryBtn.className = 'btn-save-retry';
+    retryBtn.textContent = 'Retry';
+    retryBtn.addEventListener('click', () => {
+      upcomingSchedSaveError.style.display = 'none';
+      if (typeof retryCallback === 'function') retryCallback();
+    });
+    upcomingSchedSaveError.appendChild(retryBtn);
+    upcomingSchedSaveError.style.display = 'flex';
+  }
+
+  async function loadAndRenderUpcomingSavedList() {
+    if (!upcomingSavedContainer) return;
+    upcomingSavedContainer.innerHTML = '<p class="activity-panel-message">Loading…</p>';
+
+    const tomorrowObj = addDays(todayDate, 1);
+    const maxDateObj = addDays(todayDate, 90);
+    const fromKey = getLocalDateKey(tomorrowObj);
+    const toKey = getLocalDateKey(maxDateObj);
+
+    try {
+      loadFromLocalStorage();
+      if (supabaseClient && currentUserId && currentUserId !== 'anonymous') {
+        await loadRange(fromKey, toKey);
+      }
+
+      // Collect all days in range with valid slots
+      const daysList = [];
+      for (let i = 1; i <= 90; i++) {
+        const dKey = getLocalDateKey(addDays(todayDate, i));
+        const dayData = state.days[dKey];
+        const validSlots = getValidSlotsForDay(dayData, dKey);
+        if (validSlots.length > 0) {
+          daysList.push({
+            dateKey: dKey,
+            slots: validSlots,
+          });
+        }
+      }
+
+      upcomingSavedContainer.innerHTML = '';
+
+      if (daysList.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.className = 'activity-panel-message';
+        emptyMsg.style.textAlign = 'left';
+        emptyMsg.style.padding = '16px 0';
+        emptyMsg.textContent = 'You have not added any upcoming work yet.';
+        upcomingSavedContainer.appendChild(emptyMsg);
+        return;
+      }
+
+      // If active date is not in list or null, pick the earliest date
+      if (!upcomingSavedListActiveDateKey || !daysList.some(d => d.dateKey === upcomingSavedListActiveDateKey)) {
+        upcomingSavedListActiveDateKey = daysList[0].dateKey;
+      }
+
+      // Render Jump row of date buttons
+      const jumpRow = document.createElement('div');
+      jumpRow.className = 'upcoming-saved-jump-row';
+      jumpRow.setAttribute('role', 'group');
+      jumpRow.setAttribute('aria-label', 'Saved upcoming dates');
+
+      daysList.forEach(dayItem => {
+        const dObj = parseLocalDateKey(dayItem.dateKey);
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const shortLabel = `${days[dObj.getDay()]} ${dObj.getDate()} ${months[dObj.getMonth()]}`;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-jump-date';
+        const isSelected = upcomingSavedListActiveDateKey === dayItem.dateKey;
+        btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+        btn.textContent = `${shortLabel} - ${dayItem.slots.length}`;
+        btn.dataset.dateKey = dayItem.dateKey;
+
+        btn.addEventListener('click', () => {
+          upcomingSavedListActiveDateKey = dayItem.dateKey;
+          renderUpcomingSavedDateDetail(daysList, true);
+        });
+
+        jumpRow.appendChild(btn);
+      });
+
+      upcomingSavedContainer.appendChild(jumpRow);
+
+      // Detail container
+      const detailContainer = document.createElement('div');
+      detailContainer.id = 'upcoming-saved-detail-container';
+      upcomingSavedContainer.appendChild(detailContainer);
+
+      renderUpcomingSavedDateDetail(daysList, false);
+    } catch (err) {
+      console.error('Failed to load upcoming saved list:', err);
+      upcomingSavedContainer.innerHTML = '';
+
+      const errP = document.createElement('p');
+      errP.className = 'activity-panel-message';
+      errP.textContent = 'Could not load your work.';
+
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'btn btn-secondary';
+      retryBtn.style.minHeight = '44px';
+      retryBtn.style.marginTop = '8px';
+      retryBtn.textContent = 'Retry';
+      retryBtn.addEventListener('click', () => loadAndRenderUpcomingSavedList());
+
+      upcomingSavedContainer.appendChild(errP);
+      upcomingSavedContainer.appendChild(retryBtn);
+    }
+  }
+
+  function renderUpcomingSavedDateDetail(daysList, shouldFocus = false) {
+    const detailContainer = document.getElementById('upcoming-saved-detail-container');
+    if (!detailContainer) return;
+    detailContainer.innerHTML = '';
+
+    // Update jump row buttons aria-pressed
+    const jumpBtns = upcomingSavedContainer.querySelectorAll('.btn-jump-date');
+    jumpBtns.forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.dateKey === upcomingSavedListActiveDateKey));
+    });
+
+    const activeDay = daysList.find(d => d.dateKey === upcomingSavedListActiveDateKey) || daysList[0];
+    if (!activeDay) return;
+
+    const dObj = parseLocalDateKey(activeDay.dateKey);
+    const fullDateText = formatFullDisplayDate(dObj);
+
+    const header = document.createElement('div');
+    header.className = 'home-day-header';
+    header.style.marginTop = '16px';
+
+    const h3 = document.createElement('h3');
+    h3.className = 'home-day-title';
+    h3.tabIndex = -1;
+    h3.textContent = fullDateText;
+    header.appendChild(h3);
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'home-day-count';
+    countSpan.textContent = `${activeDay.slots.length} ${activeDay.slots.length === 1 ? 'slot' : 'slots'}`;
+    header.appendChild(countSpan);
+
+    detailContainer.appendChild(header);
+
+    const ul = document.createElement('ul');
+    ul.className = 'home-tiles-grid';
+
+    activeDay.slots.forEach(slotItem => {
+      const tile = createSlotTileElement(slotItem, false, true);
+      ul.appendChild(tile);
+    });
+
+    detailContainer.appendChild(ul);
+
+    if (shouldFocus) {
+      h3.focus();
+    }
+  }
+
+  async function openUpcomingScheduleView() {
+    switchView('upcomingSchedule');
+    populateUpcomingDateDropdown();
+    resetUpcomingSlotForm(upcomingPlanDateKey, true);
+    clearUpcomingBanners();
+    await loadAndRenderUpcomingSavedList();
+  }
+
+  // Bind Upcoming Schedule Form Listeners
+  if (upcomingSchedDateSelect) {
+    upcomingSchedDateSelect.addEventListener('change', () => {
+      const newDateVal = upcomingSchedDateSelect.value;
+      if (hasUnsavedUpcomingSlot()) {
+        pendingUpcomingDateChangeValue = newDateVal;
+        // Revert select display value until confirmed
+        upcomingSchedDateSelect.value = upcomingPlanDateKey;
+        confirmUpcomingDiscard(() => {
+          upcomingPlanDateKey = pendingUpcomingDateChangeValue;
+          upcomingSchedDateSelect.value = pendingUpcomingDateChangeValue;
+          resetUpcomingSlotForm(upcomingPlanDateKey, true);
+          clearUpcomingBanners();
+        });
+      } else {
+        upcomingPlanDateKey = newDateVal;
+        resetUpcomingSlotForm(upcomingPlanDateKey, true);
+        clearUpcomingBanners();
+      }
+    });
+  }
+
+  if (upcomingSchedStartSelect) {
+    upcomingSchedStartSelect.addEventListener('change', () => {
+      clearUpcomingBanners();
+      const val = upcomingSchedStartSelect.value;
+      if (val) {
+        populateUpcomingEndSelect(parseInt(val, 10));
+      } else {
+        if (upcomingSchedEndSelect) {
+          upcomingSchedEndSelect.innerHTML = '<option value="">Select time</option>';
+          upcomingSchedEndSelect.disabled = true;
+        }
+        if (upcomingSchedEndHint) {
+          upcomingSchedEndHint.style.display = 'block';
+          upcomingSchedEndHint.textContent = 'Choose a Starting Time first.';
+        }
+      }
+      updateUpcomingFormButtons();
+    });
+  }
+
+  if (upcomingSchedEndSelect) {
+    upcomingSchedEndSelect.addEventListener('change', () => {
+      clearUpcomingBanners();
+      updateUpcomingFormButtons();
+    });
+  }
+
+  if (upcomingSchedTaskInput) {
+    upcomingSchedTaskInput.addEventListener('input', () => {
+      clearUpcomingBanners();
+      updateUpcomingFormButtons();
+    });
+  }
+
+  if (upcomingSchedNextBtn) {
+    upcomingSchedNextBtn.addEventListener('click', handleUpcomingNext);
+  }
+
+  if (upcomingSchedSaveBtn) {
+    upcomingSchedSaveBtn.addEventListener('click', handleUpcomingSaveSchedule);
+  }
+
   if (btnActivityPrev) {
     btnActivityPrev.addEventListener('click', () => {
       loadAndShowActivity('previous');
@@ -1480,7 +2178,7 @@
 
   if (btnActivityUpcoming) {
     btnActivityUpcoming.addEventListener('click', () => {
-      loadAndShowActivity('upcoming');
+      openUpcomingScheduleView();
     });
   }
 
@@ -1518,6 +2216,21 @@
     if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
+
+    // If currently on Upcoming Schedule view with an unsaved slot, ask confirmation first
+    if (hasUnsavedUpcomingSlot()) {
+      confirmUpcomingDiscard(async () => {
+        resetUpcomingSlotForm(upcomingPlanDateKey, true);
+        clearUpcomingBanners();
+        await proceedGoToHome();
+      });
+      return;
+    }
+
+    await proceedGoToHome();
+  }
+
+  async function proceedGoToHome() {
     flushPendingDebouncedSave();
 
     // Reset currentActivityTab so Home shows the default activity selection clean
