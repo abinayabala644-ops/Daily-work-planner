@@ -186,6 +186,7 @@
   const summaryPlanThisDayBtn = document.getElementById('summary-plan-this-day-btn');
   const summaryCalendarToggleBtn = document.getElementById('summary-calendar-toggle-btn');
   const summaryBackBtn = document.getElementById('summary-back-btn');
+  const summaryUpcomingBtn = document.getElementById('summary-upcoming-btn');
   const summaryEditTimesBtn = document.getElementById('summary-edit-times-btn');
   const summaryStartNewDayBtn = document.getElementById('summary-start-new-day-btn');
   const summarySlotsList = document.getElementById('summary-slots-list');
@@ -2178,6 +2179,12 @@
 
   if (btnActivityUpcoming) {
     btnActivityUpcoming.addEventListener('click', () => {
+      openUpcomingScheduleView();
+    });
+  }
+
+  if (summaryUpcomingBtn) {
+    summaryUpcomingBtn.addEventListener('click', () => {
       openUpcomingScheduleView();
     });
   }
