@@ -140,6 +140,7 @@
   const btnActivityArrow = document.getElementById('btn-activity-arrow');
   const activityDropdownMenu = document.getElementById('activity-dropdown-menu');
   const activityPanelTitle = document.getElementById('activity-panel-title');
+  const activityPanelSubtitle = document.getElementById('activity-panel-subtitle');
   const activityPanelContent = document.getElementById('activity-panel-content');
 
   // In-app Reminder Banner Elements
@@ -868,8 +869,6 @@
   let currentActivityTab = null; // 'previous' | 'today' | 'upcoming' | null
   let isActivityMenuOpen = false;
   let selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
-  let editingUpcomingTask = null; // { dateKey, slotId } or null
-  let isUpcomingSaving = false;
 
   if (workDetailCloseBtn && workDetailDialog) {
     workDetailCloseBtn.addEventListener('click', () => {
@@ -973,9 +972,16 @@
   if (btnActivityMain) btnActivityMain.addEventListener('click', toggleActivityMenu);
   if (btnActivityArrow) btnActivityArrow.addEventListener('click', toggleActivityMenu);
 
-  function createSlotTileElement(slotItem, includeDate = true) {
+  function createSlotTileElement(slotItem, includeDate = true, isPlannedContext = false) {
     const li = document.createElement('li');
-    const statusClass = slotItem.status === 'COMPLETED' ? 'comp' : (slotItem.status === 'NOT_COMPLETED' ? 'not-comp' : 'unmarked');
+    let statusClass = 'unmarked';
+    if (slotItem.status === 'COMPLETED') {
+      statusClass = 'comp';
+    } else if (slotItem.status === 'NOT_COMPLETED') {
+      statusClass = 'not-comp';
+    } else if (isPlannedContext) {
+      statusClass = 'planned';
+    }
     li.className = 'home-tile-card ' + statusClass;
     li.tabIndex = 0;
     li.setAttribute('role', 'button');
@@ -1010,20 +1016,40 @@
     timeSpan.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
     li.appendChild(timeSpan);
 
-    // Completion Status + Relevant completion emoji
+    // Completion Status + Relevant completion symbol and words
     const statusDiv = document.createElement('div');
     statusDiv.className = 'home-tile-status ' + statusClass;
-    let emoji = '⏳';
-    let statusText = 'Not marked yet';
-    if (slotItem.status === 'COMPLETED') {
-      emoji = '😊';
-      statusText = 'Completed';
-    } else if (slotItem.status === 'NOT_COMPLETED') {
-      emoji = '😔';
-      statusText = 'Not Completed';
+    if (isPlannedContext && (!slotItem.status || slotItem.status === 'NONE')) {
+      const dot = document.createElement('span');
+      dot.className = 'cal-status-planned-icon';
+      dot.setAttribute('aria-hidden', 'true');
+      statusDiv.appendChild(dot);
+      const txt = document.createTextNode(' Planned');
+      statusDiv.appendChild(txt);
+    } else {
+      let emoji = '⏳';
+      let statusText = 'Not marked yet';
+      if (slotItem.status === 'COMPLETED') {
+        emoji = '😊';
+        statusText = 'Completed';
+      } else if (slotItem.status === 'NOT_COMPLETED') {
+        emoji = '😔';
+        statusText = 'Not Completed';
+      }
+      statusDiv.textContent = `${emoji} ${statusText}`;
     }
-    statusDiv.textContent = `${emoji} ${statusText}`;
     li.appendChild(statusDiv);
+
+    // Mark message if recorded
+    if (slotItem.markedAt) {
+      const markMsg = formatMarkedAtMessage(slotItem.status, slotItem.markedAt, slotItem.dateKey);
+      if (markMsg && !markMsg.muted) {
+        const markDiv = document.createElement('div');
+        markDiv.className = 'home-tile-markmsg';
+        markDiv.textContent = markMsg.text;
+        li.appendChild(markDiv);
+      }
+    }
 
     // Click handler to open saved details modal
     li.addEventListener('click', () => {
@@ -1042,6 +1068,7 @@
   function formatDayHeadingWithDate(dateKey) {
     const todayStr = getLocalDateKey(todayDate);
     const yesterdayStr = getLocalDateKey(addDays(todayDate, -1));
+    const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
     const dObj = parseLocalDateKey(dateKey);
 
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1053,6 +1080,9 @@
     }
     if (dateKey === yesterdayStr) {
       return `Yesterday - ${formattedDate}`;
+    }
+    if (dateKey === tomorrowStr) {
+      return `Tomorrow - ${formattedDate}`;
     }
     return formattedDate;
   }
@@ -1081,7 +1111,6 @@
   }
 
   let activePreviousSummaryDateKey = null;
-  let activeUpcomingSummaryDateKey = null;
 
   function renderPreviousWork7Days(daysList, fromKey, toKey) {
     if (!prevSummaryContent) return;
@@ -1241,391 +1270,40 @@
     switchView('prevDateSummary');
   }
 
-  function renderUpcomingWorkSection(upcomingItems) {
-    if (!activityPanelContent) return;
-    activityPanelContent.innerHTML = "";
-
-    const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
-
-    // --- 1. Scheduling Form Card ---
-    const formCard = document.createElement('div');
-    formCard.className = 'upcoming-schedule-form-card';
-
-    const formTitle = document.createElement('h3');
-    formTitle.className = 'upcoming-form-title';
-    formTitle.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-      <line x1="16" y1="2" x2="16" y2="6"></line>
-      <line x1="8" y1="2" x2="8" y2="6"></line>
-      <line x1="3" y1="10" x2="21" y2="10"></line>
-    </svg>${editingUpcomingTask ? 'Edit Scheduled Work' : 'Schedule Future Work'}`;
-    formCard.appendChild(formTitle);
-
-    const formGrid = document.createElement('div');
-    formGrid.className = 'upcoming-form-grid';
-
-    // 1. Select Date
-    const dateGroup = document.createElement('div');
-    dateGroup.className = 'upcoming-form-group';
-    const dateLabel = document.createElement('label');
-    dateLabel.className = 'upcoming-form-label';
-    dateLabel.htmlFor = 'upcoming-form-date';
-    dateLabel.textContent = '1. Select Date';
-    const dateInput = document.createElement('input');
-    dateInput.type = 'date';
-    dateInput.id = 'upcoming-form-date';
-    dateInput.className = 'upcoming-form-input';
-    dateInput.min = tomorrowStr; // future dates
-    dateInput.value = editingUpcomingTask ? editingUpcomingTask.dateKey : tomorrowStr;
-    dateGroup.appendChild(dateLabel);
-    dateGroup.appendChild(dateInput);
-    formGrid.appendChild(dateGroup);
-
-    // 2. Starting Time
-    const startGroup = document.createElement('div');
-    startGroup.className = 'upcoming-form-group';
-    const startLabel = document.createElement('label');
-    startLabel.className = 'upcoming-form-label';
-    startLabel.htmlFor = 'upcoming-form-start';
-    startLabel.textContent = '2. Starting Time';
-    const startSelect = document.createElement('select');
-    startSelect.id = 'upcoming-form-start';
-    startSelect.className = 'upcoming-form-select';
-
-    for (let t = MIN_WORK_TIME; t <= MAX_WORK_TIME - 5; t += 5) {
-      const opt = document.createElement('option');
-      opt.value = String(t);
-      opt.textContent = formatMinutesTo12Hour(t);
-      startSelect.appendChild(opt);
-    }
-    const initialStart = editingUpcomingTask ? editingUpcomingTask.startMinutes : 540; // 9:00 AM
-    startSelect.value = String(initialStart);
-    startGroup.appendChild(startLabel);
-    startGroup.appendChild(startSelect);
-    formGrid.appendChild(startGroup);
-
-    // 3. Finished By
-    const endGroup = document.createElement('div');
-    endGroup.className = 'upcoming-form-group';
-    const endLabel = document.createElement('label');
-    endLabel.className = 'upcoming-form-label';
-    endLabel.htmlFor = 'upcoming-form-end';
-    endLabel.textContent = '3. Finished By';
-    const endSelect = document.createElement('select');
-    endSelect.id = 'upcoming-form-end';
-    endSelect.className = 'upcoming-form-select';
-
-    function updateFinishedByOptions(selectedStart) {
-      endSelect.innerHTML = '';
-      const minEnd = selectedStart + 5;
-      for (let t = minEnd; t <= MAX_WORK_TIME; t += 5) {
-        const opt = document.createElement('option');
-        opt.value = String(t);
-        opt.textContent = formatMinutesTo12Hour(t);
-        endSelect.appendChild(opt);
-      }
-      // Default to 1 hour later or 6:00 PM
-      const defaultEnd = Math.min(selectedStart + 60, MAX_WORK_TIME);
-      endSelect.value = String(defaultEnd);
-    }
-
-    updateFinishedByOptions(initialStart);
-    if (editingUpcomingTask && editingUpcomingTask.endMinutes) {
-      endSelect.value = String(editingUpcomingTask.endMinutes);
-    }
-
-    startSelect.addEventListener('change', () => {
-      const s = parseInt(startSelect.value, 10) || MIN_WORK_TIME;
-      updateFinishedByOptions(s);
+  async function hasAnyFutureWorkSaved(todayStr) {
+    // 1. Check local state cache
+    const localHas = Object.keys(state.days).some(k => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || k <= todayStr) return false;
+      const slots = getValidSlotsForDay(state.days[k], k);
+      return slots.length > 0;
     });
+    if (localHas) return true;
 
-    endGroup.appendChild(endLabel);
-    endGroup.appendChild(endSelect);
-    formGrid.appendChild(endGroup);
-
-    // 4. Work / Task Name
-    const taskGroup = document.createElement('div');
-    taskGroup.className = 'upcoming-form-group full-span';
-    const taskLabel = document.createElement('label');
-    taskLabel.className = 'upcoming-form-label';
-    taskLabel.htmlFor = 'upcoming-form-task';
-    taskLabel.textContent = '4. Work / Task Name';
-    const taskInput = document.createElement('input');
-    taskInput.type = 'text';
-    taskInput.id = 'upcoming-form-task';
-    taskInput.className = 'upcoming-form-input';
-    taskInput.placeholder = 'e.g. Website Development, Project Review, Documentation…';
-    taskInput.value = editingUpcomingTask ? (editingUpcomingTask.taskText || '') : '';
-    taskGroup.appendChild(taskLabel);
-    taskGroup.appendChild(taskInput);
-    formGrid.appendChild(taskGroup);
-
-    formCard.appendChild(formGrid);
-
-    const formError = document.createElement('p');
-    formError.className = 'upcoming-form-error';
-    formError.style.display = 'none';
-    formCard.appendChild(formError);
-
-    const actionsRow = document.createElement('div');
-    actionsRow.className = 'upcoming-form-actions';
-
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'button';
-    saveBtn.className = 'btn-save-upcoming';
-    saveBtn.textContent = editingUpcomingTask ? 'Update Scheduled Work' : 'Save Work';
-
-    saveBtn.addEventListener('click', async () => {
-      if (isUpcomingSaving) return;
-
-      const dateVal = dateInput.value;
-      const startVal = parseInt(startSelect.value, 10);
-      const endVal = parseInt(endSelect.value, 10);
-      const taskVal = taskInput.value.trim();
-
-      if (!dateVal) {
-        formError.textContent = 'Please choose a date.';
-        formError.style.display = 'block';
-        dateInput.focus();
-        return;
-      }
-
-      if (!taskVal) {
-        formError.textContent = 'Please enter a work / task name.';
-        formError.style.display = 'block';
-        taskInput.focus();
-        return;
-      }
-
-      if (isNaN(startVal) || isNaN(endVal) || endVal <= startVal) {
-        formError.textContent = 'Finished By time must be after Starting Time.';
-        formError.style.display = 'block';
-        return;
-      }
-
-      formError.style.display = 'none';
-      isUpcomingSaving = true;
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving…';
-
+    // 2. If signed in, check Supabase
+    if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
       try {
-        // Ensure day data exists
-        if (!state.days[dateVal]) {
-          state.days[dateVal] = {
-            startMinutes: MIN_WORK_TIME,
-            endMinutes: MAX_WORK_TIME,
-            slots: [],
-            savedAt: null,
-          };
-        }
+        const { data, error } = await supabaseClient
+          .from('planner_days')
+          .select('day, start_min, slots')
+          .eq('user_id', currentUserId)
+          .gt('day', todayStr)
+          .limit(10);
 
-        const dayData = state.days[dateVal];
-        if (!Array.isArray(dayData.slots)) {
-          dayData.slots = [];
-        }
-
-        if (editingUpcomingTask) {
-          // If editing and date changed, remove from old date
-          if (editingUpcomingTask.dateKey !== dateVal && state.days[editingUpcomingTask.dateKey]) {
-            const oldDay = state.days[editingUpcomingTask.dateKey];
-            oldDay.slots = oldDay.slots.filter(s => s.id !== editingUpcomingTask.slotId);
-            saveStorage(editingUpcomingTask.dateKey);
+        if (!error && Array.isArray(data)) {
+          for (const row of data) {
+            if (row && typeof row.day === "string") {
+              const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
+              const sanitized = sanitizeSlots(row.slots, sMin);
+              const valid = getValidSlotsForDay({ slots: sanitized, startMinutes: sMin }, row.day);
+              if (valid.length > 0) return true;
+            }
           }
-
-          // Update existing or add to new date
-          const existingSlot = dayData.slots.find(s => s.id === editingUpcomingTask.slotId);
-          if (existingSlot) {
-            existingSlot.start = startVal;
-            existingSlot.end = endVal;
-            existingSlot.taskText = taskVal;
-            existingSlot.text = taskVal;
-          } else {
-            dayData.slots.push({
-              id: editingUpcomingTask.slotId || ('slot-' + Date.now()),
-              start: startVal,
-              end: endVal,
-              taskText: taskVal,
-              text: taskVal,
-              status: 'NONE',
-              markedAt: null,
-            });
-          }
-        } else {
-          // Create new task slot
-          const newSlotId = 'slot-' + Date.now();
-          dayData.slots.push({
-            id: newSlotId,
-            start: startVal,
-            end: endVal,
-            taskText: taskVal,
-            text: taskVal,
-            status: 'NONE',
-            markedAt: null,
-          });
         }
-
-        // Sort slots chronologically
-        dayData.slots.sort((a, b) => (a.start || 0) - (b.start || 0));
-
-        // Save immediately
-        saveStorage(dateVal);
-        editingUpcomingTask = null;
-
-        // Reload fresh upcoming work view
-        await loadAndShowActivity('upcoming');
       } catch (err) {
-        console.error('Error saving upcoming work:', err);
-        formError.textContent = 'Could not save work. Please try again.';
-        formError.style.display = 'block';
-      } finally {
-        isUpcomingSaving = false;
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Save Work';
+        console.warn("hasAnyFutureWorkSaved error:", err);
       }
-    });
-
-    actionsRow.appendChild(saveBtn);
-
-    if (editingUpcomingTask) {
-      const cancelBtn = document.createElement('button');
-      cancelBtn.type = 'button';
-      cancelBtn.className = 'btn-cancel-edit-upcoming';
-      cancelBtn.textContent = 'Cancel';
-      cancelBtn.addEventListener('click', () => {
-        editingUpcomingTask = null;
-        renderUpcomingWorkSection(upcomingItems);
-      });
-      actionsRow.appendChild(cancelBtn);
     }
-
-    formCard.appendChild(actionsRow);
-    activityPanelContent.appendChild(formCard);
-
-    // --- 2. Scheduled Tasks Section (Grouped by Date into Date Buttons) ---
-    const listSection = document.createElement('div');
-    listSection.className = 'upcoming-tasks-list-section';
-
-    if (!upcomingItems || upcomingItems.length === 0) {
-      const p = document.createElement('p');
-      p.className = 'activity-panel-message';
-      p.textContent = "No upcoming work scheduled for this week.";
-      listSection.appendChild(p);
-      activityPanelContent.appendChild(listSection);
-      return;
-    }
-
-    // Group upcoming items by date
-    const groupsByDate = {};
-    upcomingItems.forEach(item => {
-      if (!groupsByDate[item.dateKey]) {
-        groupsByDate[item.dateKey] = [];
-      }
-      groupsByDate[item.dateKey].push(item);
-    });
-
-    const dateKeys = Object.keys(groupsByDate).sort((a, b) => a.localeCompare(b));
-
-    const dateButtonsRow = document.createElement('div');
-    dateButtonsRow.className = 'prev-work-jump-row';
-    dateButtonsRow.style.marginTop = '16px';
-    dateButtonsRow.setAttribute('role', 'group');
-    dateButtonsRow.setAttribute('aria-label', 'Upcoming work dates');
-
-    dateKeys.forEach(dKey => {
-      const itemsForDay = groupsByDate[dKey];
-      const dObj = parseLocalDateKey(dKey);
-      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const shortLabel = `${days[dObj.getDay()]} ${dObj.getDate()} ${months[dObj.getMonth()]}`;
-
-      // Calculate timing range for button display
-      let timingsSummary = "";
-      if (itemsForDay.length === 1) {
-        timingsSummary = `${formatMinutesTo12Hour(itemsForDay[0].startMinutes)} - ${formatMinutesTo12Hour(itemsForDay[0].endMinutes)}`;
-      } else {
-        const minStart = Math.min(...itemsForDay.map(i => i.startMinutes));
-        const maxEnd = Math.max(...itemsForDay.map(i => i.endMinutes));
-        timingsSummary = `${formatMinutesTo12Hour(minStart)} - ${formatMinutesTo12Hour(maxEnd)}`;
-      }
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn-jump-date';
-      const isSelected = activeUpcomingSummaryDateKey === dKey;
-      btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-      btn.textContent = `${shortLabel} (${timingsSummary})`;
-      btn.dataset.dateKey = dKey;
-      btn.addEventListener('click', () => {
-        activeUpcomingSummaryDateKey = dKey;
-        openUpcomingWorkDateSummary(dKey, itemsForDay);
-      });
-      dateButtonsRow.appendChild(btn);
-    });
-
-    listSection.appendChild(dateButtonsRow);
-    activityPanelContent.appendChild(listSection);
-  }
-
-  function openUpcomingWorkDateSummary(dateKey, itemsForDay) {
-    if (!upcomingDateSummaryContent) return;
-    upcomingDateSummaryContent.innerHTML = "";
-
-    const dObj = parseLocalDateKey(dateKey);
-    const fullDateText = formatFullDisplayDate(dObj);
-    if (upcomingDateSummaryTitle) {
-      upcomingDateSummaryTitle.textContent = "Upcoming Work Date Summary";
-    }
-    if (upcomingDateSummarySubtitle) {
-      upcomingDateSummarySubtitle.textContent = `All scheduled work for ${fullDateText}`;
-    }
-
-    // ONE simple, professional summary tile containing all upcoming work activities together
-    const tile = document.createElement('div');
-    tile.className = 'date-summary-tile';
-
-    const tileHeader = document.createElement('div');
-    tileHeader.className = 'date-summary-tile-header';
-
-    const dateHeading = document.createElement('h2');
-    dateHeading.className = 'date-summary-tile-date';
-    dateHeading.textContent = fullDateText;
-    tileHeader.appendChild(dateHeading);
-
-    const countP = document.createElement('p');
-    countP.className = 'date-summary-tile-count';
-    countP.textContent = `${itemsForDay.length} upcoming ${itemsForDay.length === 1 ? 'task' : 'tasks'} scheduled`;
-    tileHeader.appendChild(countP);
-    tile.appendChild(tileHeader);
-
-    // List of all upcoming work activities within the single summary tile
-    const list = document.createElement('ul');
-    list.className = 'date-summary-activities-list';
-
-    itemsForDay.forEach(slotItem => {
-      const li = document.createElement('li');
-      li.className = 'date-summary-activity-item upcoming-item';
-
-      const mainRow = document.createElement('div');
-      mainRow.className = 'date-summary-activity-main';
-
-      const desc = document.createElement('span');
-      desc.className = 'date-summary-activity-desc';
-      desc.textContent = slotItem.taskText || 'No task written';
-      mainRow.appendChild(desc);
-
-      const time = document.createElement('span');
-      time.className = 'date-summary-activity-time';
-      time.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
-      mainRow.appendChild(time);
-      li.appendChild(mainRow);
-
-      list.appendChild(li);
-    });
-
-    tile.appendChild(list);
-    upcomingDateSummaryContent.appendChild(tile);
-
-    switchView('upcomingDateSummary');
+    return false;
   }
 
   async function loadAndShowActivity(tab) {
@@ -1708,6 +1386,11 @@
       activityPanelTitle.textContent = 'Upcoming Work';
     }
 
+    if (activityPanelSubtitle) {
+      activityPanelSubtitle.style.display = 'none';
+      activityPanelSubtitle.textContent = '';
+    }
+
     if (activityPanelContent) {
       activityPanelContent.innerHTML = '<p class="activity-panel-message">Loading…</p>';
     }
@@ -1716,72 +1399,97 @@
 
     try {
       if (tab === 'upcoming') {
-        await loadAllUpcomingWork();
+        const tomorrowDateObj = addDays(todayDate, 1);
+        const endDateObj = addDays(todayDate, 7);
+        const fromKey = getLocalDateKey(tomorrowDateObj);
+        const toKey = getLocalDateKey(endDateObj);
 
-        const now = new Date();
-        const currentMins = now.getHours() * 60 + now.getMinutes();
+        // Subtitle under Upcoming Work heading
+        if (activityPanelSubtitle) {
+          activityPanelSubtitle.textContent = `Next 7 days: ${formatShortDisplayDate(tomorrowDateObj)} - ${formatShortDisplayDate(endDateObj)}`;
+          activityPanelSubtitle.style.display = 'block';
+        }
 
-        // Calculate end of the current calendar week (Sunday)
-        const currentDayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
-        const daysUntilSunday = (7 - currentDayOfWeek) % 7;
-        const endOfWeekDateObj = addDays(now, daysUntilSunday);
-        const endOfWeekStr = getLocalDateKey(endOfWeekDateObj);
+        // Always ensure local data is loaded
+        loadFromLocalStorage();
 
-        const items = [];
-        // Scheduled work from today's date until the end of the current calendar week (Sunday)
-        const sortedDayKeys = Object.keys(state.days)
-          .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= todayStr && k <= endOfWeekStr)
-          .sort((a, b) => a.localeCompare(b)); // chronological by date
+        // Load 7 days in one range request
+        if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+          await loadRange(fromKey, toKey);
+        }
 
-        sortedDayKeys.forEach(dKey => {
-          const day = state.days[dKey];
-          if (day && Array.isArray(day.slots)) {
-            day.slots.forEach((s, idx) => {
-              const sMin = getEffectiveSlotStart(day, idx);
-              const eMin = typeof s.end === "number" ? s.end : null;
-              const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
-              const status = s.status || "NONE";
-
-              // Do not display empty or unsaved work slots as scheduled tasks
-              if (eMin !== null && !isNaN(eMin) && sMin !== null && !isNaN(sMin) && text !== "") {
-                if (dKey === todayStr) {
-                  // If it's today, only include future slots starting later than current time
-                  if (sMin > currentMins) {
-                    items.push({
-                      dateKey: dKey,
-                      slot: s,
-                      startMinutes: sMin,
-                      endMinutes: eMin,
-                      taskText: text,
-                      status,
-                      markedAt: s.markedAt || null,
-                    });
-                  }
-                } else {
-                  items.push({
-                    dateKey: dKey,
-                    slot: s,
-                    startMinutes: sMin,
-                    endMinutes: eMin,
-                    taskText: text,
-                    status,
-                    markedAt: s.markedAt || null,
-                  });
-                }
-              }
+        // Collect days in window that have saved work slots
+        const windowDays = [];
+        for (let i = 1; i <= 7; i++) {
+          const dKey = getLocalDateKey(addDays(todayDate, i));
+          const dayData = state.days[dKey];
+          const validSlots = getValidSlotsForDay(dayData, dKey);
+          if (validSlots.length > 0) {
+            windowDays.push({
+              dateKey: dKey,
+              slots: validSlots,
             });
           }
-        });
+        }
 
-        // Sort upcoming work by date and starting time
-        items.sort((a, b) => {
-          if (a.dateKey !== b.dateKey) {
-            return a.dateKey.localeCompare(b.dateKey);
+        if (activityPanelContent) {
+          activityPanelContent.innerHTML = "";
+        }
+
+        if (windowDays.length > 0) {
+          // Render one section per date, earliest first
+          windowDays.forEach(dayItem => {
+            const section = document.createElement('section');
+            section.className = 'home-day-section';
+
+            const header = document.createElement('div');
+            header.className = 'home-day-header';
+
+            const h3 = document.createElement('h3');
+            h3.className = 'home-day-title';
+            h3.textContent = formatDayHeadingWithDate(dayItem.dateKey);
+            header.appendChild(h3);
+
+            const countSpan = document.createElement('span');
+            countSpan.className = 'home-day-count';
+            countSpan.textContent = `${dayItem.slots.length} ${dayItem.slots.length === 1 ? 'slot' : 'slots'}`;
+            header.appendChild(countSpan);
+
+            section.appendChild(header);
+
+            const ul = document.createElement('ul');
+            ul.className = 'home-tiles-grid';
+
+            dayItem.slots.forEach(slotItem => {
+              const tile = createSlotTileElement(slotItem, false, true);
+              ul.appendChild(tile);
+            });
+
+            section.appendChild(ul);
+            activityPanelContent.appendChild(section);
+          });
+        } else {
+          // No saved work in the next 7 days window - distinguish between empty window and empty future
+          const hasAnyFuture = await hasAnyFutureWorkSaved(todayStr);
+
+          if (hasAnyFuture) {
+            const p = document.createElement('p');
+            p.className = 'activity-panel-message';
+            p.textContent = "No work scheduled in the next 7 days.";
+
+            const hint = document.createElement('p');
+            hint.className = 'activity-panel-hint';
+            hint.textContent = "Plan a day from the planner calendar to see it here.";
+
+            activityPanelContent.appendChild(p);
+            activityPanelContent.appendChild(hint);
+          } else {
+            const p = document.createElement('p');
+            p.className = 'activity-panel-message';
+            p.textContent = "You have not added any work yet.";
+            activityPanelContent.appendChild(p);
           }
-          return a.startMinutes - b.startMinutes;
-        });
-
-        renderUpcomingWorkSection(items);
+        }
       }
     } catch (err) {
       if (activityPanelContent) {
@@ -2405,6 +2113,13 @@
     }
   }
 
+  function isLastSlotOfDay(slot, dayData) {
+    if (!slot || !dayData) return false;
+    const slotEnd = typeof slot.end === "number" ? slot.end : null;
+    const dayEnd = typeof dayData.endMinutes === "number" ? dayData.endMinutes : null;
+    return slotEnd !== null && dayEnd !== null && slotEnd === dayEnd;
+  }
+
   function updateSlotValidationUI(showErrorAlways = false) {
     const dayData = getCurrentDayData();
     if (!dayData) return;
@@ -2422,14 +2137,16 @@
 
     const hasChosenEnd = Boolean(slotEndSelect.value);
     const isEndValid = Boolean(hasChosenEnd && !error);
+    const isLastSlot = isEndValid && isLastSlotOfDay(slot, dayData);
 
-    // Next is disabled until the slot is valid
+    // Forward button is disabled until the slot has a valid Finished By
     if (slotNextBtn) {
       slotNextBtn.disabled = !isEndValid;
+      slotNextBtn.textContent = isLastSlot ? "Finish" : "Next \u2192";
     }
 
-    const isLastSlot = isEndValid && slot.end === dayData.endMinutes;
     if (slotEndLastHint) {
+      slotEndLastHint.textContent = "This is the last slot. Finish opens your summary.";
       slotEndLastHint.style.display = isLastSlot ? "block" : "none";
     }
 
