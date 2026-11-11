@@ -14,7 +14,7 @@
  *     2. Organized list of ALL slots in time order (each card has ✓ Completed and ✗ Not Completed buttons).
  *     3. Unfinished plan banner ("This plan is not finished." + "Continue planning" button) if incomplete.
  *     4. Result card at the very end when all slots completed AND plan is finished; otherwise small hint line.
- *     5. Existing buttons: Back, Edit times, Start New Day (clears only the selected date).
+ *     5. Existing buttons: Back, Start New Day (clears only the selected date).
  * - Multi-day support:
  *     - Yesterday, Today, Tomorrow quick buttons on first page.
  *     - Monthly calendar native dialog with full completion status indicators:
@@ -135,9 +135,8 @@
   const btnActivityPrev = document.getElementById('btn-activity-prev');
   const btnActivityToday = document.getElementById('btn-activity-today');
   const btnActivityUpcoming = document.getElementById('btn-activity-upcoming');
-  const activityPanelTitle = document.getElementById('activity-panel-title');
-  const activityPanelSubtitle = document.getElementById('activity-panel-subtitle');
-  const activityPanelContent = document.getElementById('activity-panel-content');
+  const homeTodayProgressCard = document.getElementById('home-today-progress-card');
+  const homeTodayProgressContent = document.getElementById('home-today-progress-content');
 
   // In-app Reminder Banner Elements
   const appReminderBanner = document.getElementById('app-reminder-banner');
@@ -182,7 +181,6 @@
   const summaryCalendarToggleBtn = document.getElementById('summary-calendar-toggle-btn');
   const summaryBackBtn = document.getElementById('summary-back-btn');
   const summaryUpcomingBtn = document.getElementById('summary-upcoming-btn');
-  const summaryEditTimesBtn = document.getElementById('summary-edit-times-btn');
   const summaryStartNewDayBtn = document.getElementById('summary-start-new-day-btn');
   const summarySlotsList = document.getElementById('summary-slots-list');
   const summaryResultArea = document.getElementById('summary-result-area');
@@ -2400,25 +2398,272 @@
     });
   }
 
-  async function renderHomeView() {
-    updateHomeProverb();
-    // Reload user's saved plans every time Home opens
-    try {
-      await loadPlans();
-    } catch (e) {
-      console.warn("Failed to refresh plans on Home open", e);
-    }
-    checkInAppReminders();
+  // --- TODAY'S WORK PROGRESS SYSTEM ON HOME ---
+  let todayProgressTimer = null;
+  let summaryRuleTimer = null;
+  let cachedTodaySlots = []; // valid slots with text for today
 
-    if (currentActivityTab) {
-      loadAndShowActivity(currentActivityTab);
-    } else {
-      updateActivityNavButtonsState(null);
-      if (activityPanelTitle) activityPanelTitle.style.display = 'none';
-      if (activityPanelContent) {
-        activityPanelContent.innerHTML = '<p class="activity-panel-message">Choose a button above to view your work.</p>';
+  function getDeviceCurrentMinutes() {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+
+  function getTodayWorkProgressSlots() {
+    const todayStr = getLocalDateKey(todayDate);
+    const dayData = state.days[todayStr];
+    if (!dayData || !Array.isArray(dayData.slots)) return [];
+
+    const result = [];
+    dayData.slots.forEach((s, idx) => {
+      const sStart = getEffectiveSlotStart(dayData, idx);
+      const sEnd = typeof s.end === "number" ? s.end : null;
+      if (sStart !== null && sEnd !== null && !isNaN(sStart) && !isNaN(sEnd)) {
+        const text = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim();
+        if (text.length > 0) {
+          result.push({
+            slotIndex: idx,
+            slotNumber: idx + 1,
+            startMinutes: sStart,
+            endMinutes: sEnd,
+            taskText: text,
+            status: s.status || "NONE",
+            markedAt: s.markedAt || null,
+          });
+        }
+      }
+    });
+
+    result.sort((a, b) => a.startMinutes - b.startMinutes);
+    return result;
+  }
+
+  async function loadAndRenderTodayWorkProgress() {
+    if (!homeTodayProgressContent) return;
+
+    // Check date change / rollover
+    checkDateRollover();
+
+    homeTodayProgressContent.innerHTML = '';
+    const loadingP = document.createElement('p');
+    loadingP.className = 'today-progress-message';
+    loadingP.textContent = 'Loading…';
+    homeTodayProgressContent.appendChild(loadingP);
+
+    const todayStr = getLocalDateKey(todayDate);
+
+    try {
+      loadFromLocalStorage();
+      if (supabaseClient && currentUserId && currentUserId !== 'anonymous') {
+        await loadRange(todayStr, todayStr);
+      }
+
+      cachedTodaySlots = getTodayWorkProgressSlots();
+      renderTodayWorkProgressInPlace();
+    } catch (err) {
+      console.warn('Failed to load today work progress:', err);
+      homeTodayProgressContent.innerHTML = '';
+
+      const errP = document.createElement('p');
+      errP.className = 'today-progress-message';
+      errP.textContent = 'Could not load today’s work.';
+
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'btn btn-secondary';
+      retryBtn.style.minHeight = '44px';
+      retryBtn.style.marginTop = '10px';
+      retryBtn.textContent = 'Retry';
+      retryBtn.addEventListener('click', () => {
+        loadAndRenderTodayWorkProgress();
+      });
+
+      homeTodayProgressContent.appendChild(errP);
+      homeTodayProgressContent.appendChild(retryBtn);
+    }
+  }
+
+  function renderTodayWorkProgressInPlace() {
+    if (!homeTodayProgressContent) return;
+
+    if (!cachedTodaySlots || cachedTodaySlots.length === 0) {
+      homeTodayProgressContent.innerHTML = '';
+      const emptyP = document.createElement('p');
+      emptyP.className = 'today-progress-message';
+      emptyP.textContent = 'No work with details is scheduled for today.';
+      homeTodayProgressContent.appendChild(emptyP);
+      return;
+    }
+
+    const currentMin = getDeviceCurrentMinutes();
+
+    let ul = homeTodayProgressContent.querySelector('.today-progress-list');
+    if (!ul) {
+      homeTodayProgressContent.innerHTML = '';
+      ul = document.createElement('ul');
+      ul.className = 'today-progress-list';
+      homeTodayProgressContent.appendChild(ul);
+    }
+
+    // Render / update each row
+    cachedTodaySlots.forEach((slotItem) => {
+      const isRunning = slotItem.startMinutes <= currentMin && currentMin < slotItem.endMinutes;
+      const timeRangeText = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
+
+      let statusKind = 'unmarked';
+      let statusWord = 'Not marked yet';
+      let statusSymbol = '';
+
+      if (slotItem.status === 'COMPLETED') {
+        statusKind = 'completed';
+        statusWord = '✓ Completed';
+      } else if (slotItem.status === 'NOT_COMPLETED') {
+        statusKind = 'not-completed';
+        statusWord = '✗ Not Completed';
+      } else if (currentMin < slotItem.startMinutes) {
+        statusKind = 'upcoming';
+        statusWord = 'Upcoming';
+      } else {
+        statusKind = 'unmarked';
+        statusWord = 'Not marked yet';
+      }
+
+      let li = ul.querySelector(`li[data-slot-idx="${slotItem.slotIndex}"]`);
+      if (!li) {
+        li = document.createElement('li');
+        li.className = 'today-progress-item';
+        li.dataset.slotIdx = String(slotItem.slotIndex);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'today-progress-btn';
+
+        const timeCol = document.createElement('div');
+        timeCol.className = 'today-slot-time-col';
+
+        const badgeNow = document.createElement('span');
+        badgeNow.className = 'today-slot-badge-now';
+        badgeNow.textContent = 'Now';
+        badgeNow.style.display = 'none';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'today-slot-time-range';
+        timeSpan.textContent = timeRangeText;
+
+        timeCol.appendChild(badgeNow);
+        timeCol.appendChild(timeSpan);
+
+        const bodyCol = document.createElement('div');
+        bodyCol.className = 'today-slot-body-col';
+
+        const workDiv = document.createElement('div');
+        workDiv.className = 'today-slot-work-text';
+        workDiv.textContent = slotItem.taskText;
+
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'today-slot-status-label';
+        statusDiv.textContent = statusWord;
+
+        bodyCol.appendChild(workDiv);
+        bodyCol.appendChild(statusDiv);
+
+        btn.appendChild(timeCol);
+        btn.appendChild(bodyCol);
+
+        // Click handler: opens today's planner at that slot
+        btn.addEventListener('click', () => {
+          openTodayPlannerAtSlot(slotItem.slotIndex);
+        });
+
+        li.appendChild(btn);
+        ul.appendChild(li);
+      }
+
+      // Update classes and dynamic elements in place
+      const rowBtn = li.querySelector('.today-progress-btn');
+      if (rowBtn) {
+        rowBtn.className = 'today-progress-btn status-' + statusKind + (isRunning ? ' is-current-slot' : '');
+
+        const badge = rowBtn.querySelector('.today-slot-badge-now');
+        if (badge) {
+          badge.style.display = isRunning ? 'inline-flex' : 'none';
+        }
+
+        const statusLabel = rowBtn.querySelector('.today-slot-status-label');
+        if (statusLabel) {
+          statusLabel.textContent = statusWord;
+        }
+
+        const workEl = rowBtn.querySelector('.today-slot-work-text');
+        if (workEl) {
+          workEl.textContent = slotItem.taskText;
+        }
+
+        // Accessible label
+        const statusAccessible = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : (currentMin < slotItem.startMinutes ? 'Upcoming' : 'Not marked yet'));
+        rowBtn.setAttribute('aria-label', `Open slot ${slotItem.slotNumber}: ${timeRangeText}, ${slotItem.taskText}, ${statusAccessible}.`);
+      }
+    });
+  }
+
+  function openTodayPlannerAtSlot(slotIdx) {
+    flushPendingDebouncedSave();
+    const todayStr = getLocalDateKey(todayDate);
+    selectedDateKey = todayStr;
+    updateDateButtonsState();
+
+    const dayData = getCurrentDayData();
+    if (!dayData) return;
+
+    currentSlotIndex = slotIdx;
+    renderSlotPage();
+    switchView('slot');
+  }
+
+  function checkDateRollover() {
+    const currentRealToday = new Date();
+    const currentTodayStr = getLocalDateKey(currentRealToday);
+    const existingTodayStr = getLocalDateKey(todayDate);
+    if (currentTodayStr !== existingTodayStr) {
+      todayDate = currentRealToday;
+      selectedDateKey = currentTodayStr;
+      selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
+      updateDateButtonsState();
+    }
+  }
+
+  function startLiveTimers() {
+    if (todayProgressTimer) clearInterval(todayProgressTimer);
+    todayProgressTimer = setInterval(() => {
+      checkDateRollover();
+      // If home view is active, update in place
+      if (views.home && views.home.classList.contains('active')) {
+        renderTodayWorkProgressInPlace();
+      }
+      // If summary view is active, update muted status of buttons in place
+      if (views.summary && views.summary.classList.contains('active')) {
+        updateSummaryMarkingRulesInPlace();
+      }
+    }, 30000); // 30 seconds
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkDateRollover();
+      if (views.home && views.home.classList.contains('active')) {
+        renderTodayWorkProgressInPlace();
+      }
+      if (views.summary && views.summary.classList.contains('active')) {
+        updateSummaryMarkingRulesInPlace();
       }
     }
+  });
+
+  async function renderHomeView() {
+    updateHomeProverb();
+    checkInAppReminders();
+
+    // Load today's progress every time Home opens
+    await loadAndRenderTodayWorkProgress();
   }
 
   if (btnHomeNext) {
@@ -2592,6 +2837,7 @@
 
   // --- VIEW SWITCHING ---
   function clearSummarySaveMessage() {
+    clearAllSummarySlotWarnings();
     if (summarySaveMessage) {
       summarySaveMessage.innerHTML = "";
       summarySaveMessage.className = "";
@@ -3277,6 +3523,72 @@
     return { text: `${prefix} at ${timePart}`, muted: false };
   }
 
+  // --- SUMMARY MARKING RULES LOGIC ---
+  function canSlotBeMarkedNow(startMinutes) {
+    const todayStr = getLocalDateKey(todayDate);
+    if (selectedDateKey < todayStr) {
+      // Past date: every slot can be marked
+      return true;
+    }
+    if (selectedDateKey > todayStr) {
+      // Future date: no slot can be marked
+      return false;
+    }
+    // Summary of TODAY: can be marked only when its start time has arrived
+    const currentMin = getDeviceCurrentMinutes();
+    return startMinutes <= currentMin;
+  }
+
+  function getSlotMarkRestrictionMessage(startMinutes) {
+    const todayStr = getLocalDateKey(todayDate);
+    if (selectedDateKey > todayStr) {
+      const selObj = parseLocalDateKey(selectedDateKey);
+      const fullDateStr = formatFullDisplayDate(selObj); // e.g. "Thu, 12 Nov 2026"
+      return `This date has not come yet. You can mark this work on ${fullDateStr}.`;
+    }
+    return `It is not time yet. You can mark this work after it starts at ${formatMinutesTo12Hour(startMinutes)}.`;
+  }
+
+  function clearAllSummarySlotWarnings() {
+    if (!summarySlotsList) return;
+    const groups = summarySlotsList.querySelectorAll('.slot-status-btn-group');
+    groups.forEach((g) => {
+      if (typeof g.clearSlotWarning === 'function') {
+        g.clearSlotWarning();
+      }
+    });
+  }
+
+  function updateSummaryMarkingRulesInPlace() {
+    if (!summarySlotsList || !views.summary || !views.summary.classList.contains('active')) return;
+    const cards = summarySlotsList.querySelectorAll('.summary-slot-card');
+    cards.forEach((card) => {
+      const btnGroup = card.querySelector('.slot-status-btn-group');
+      if (!btnGroup) return;
+
+      const btnCompleted = btnGroup.querySelector('.slot-status-btn[aria-label*="Completed"]');
+      const btnNotCompleted = btnGroup.querySelector('.slot-status-btn[aria-label*="Not Completed"]');
+      const startMinVal = card.dataset.startMinutes ? parseInt(card.dataset.startMinutes, 10) : null;
+
+      if (startMinVal !== null && !isNaN(startMinVal)) {
+        const canMark = canSlotBeMarkedNow(startMinVal);
+        const isCompActive = btnCompleted && btnCompleted.classList.contains('completed-active');
+        const isNotCompActive = btnNotCompleted && btnNotCompleted.classList.contains('not-completed-active');
+
+        if (!canMark) {
+          if (btnCompleted && !isCompActive) btnCompleted.setAttribute('aria-disabled', 'true');
+          else if (btnCompleted) btnCompleted.removeAttribute('aria-disabled');
+
+          if (btnNotCompleted && !isNotCompActive) btnNotCompleted.setAttribute('aria-disabled', 'true');
+          else if (btnNotCompleted) btnNotCompleted.removeAttribute('aria-disabled');
+        } else {
+          if (btnCompleted) btnCompleted.removeAttribute('aria-disabled');
+          if (btnNotCompleted) btnNotCompleted.removeAttribute('aria-disabled');
+        }
+      }
+    });
+  }
+
   // --- SUMMARY VIEW LOGIC ---
   function renderSummaryView() {
     const dayData = getCurrentDayData();
@@ -3322,6 +3634,7 @@
     slotsWithTimes.forEach(({ slot, slotNumber, startMinutes, endMinutes }) => {
       const card = document.createElement('div');
       card.className = "summary-slot-card";
+      card.dataset.startMinutes = String(startMinutes);
 
       const slotStartStr = formatMinutesTo12Hour(startMinutes);
       const slotEndStr = formatMinutesTo12Hour(endMinutes);
@@ -3383,6 +3696,34 @@
       const markMessageEl = document.createElement('div');
       markMessageEl.style.cssText = "font-size: 0.82rem; font-weight: 600; margin-top: 6px; width: 100%;";
 
+      const markWarningEl = document.createElement('div');
+      markWarningEl.className = 'slot-mark-time-warning';
+      markWarningEl.setAttribute('role', 'status');
+      markWarningEl.setAttribute('aria-live', 'polite');
+      markWarningEl.style.display = 'none';
+
+      let warningDismissTimer = null;
+
+      function clearSlotWarning() {
+        if (warningDismissTimer) {
+          clearTimeout(warningDismissTimer);
+          warningDismissTimer = null;
+        }
+        markWarningEl.textContent = '';
+        markWarningEl.style.display = 'none';
+      }
+
+      function showSlotWarning(msgText) {
+        clearAllSummarySlotWarnings();
+        markWarningEl.textContent = msgText;
+        markWarningEl.style.display = 'block';
+        warningDismissTimer = setTimeout(() => {
+          clearSlotWarning();
+        }, 6000);
+      }
+
+      btnGroup.clearSlotWarning = clearSlotWarning;
+
       // formatMarkedAtMessage is declared in outer scope
 
       function updateSlotCardButtons() {
@@ -3399,11 +3740,38 @@
         const msgInfo = formatMarkedAtMessage(currentStatus, slot.markedAt, selectedDateKey);
         markMessageEl.textContent = msgInfo.text;
         markMessageEl.style.color = msgInfo.muted ? "var(--slate-500)" : "var(--slate-800)";
+
+        // Evaluate whether this slot can be marked right now
+        const canMark = canSlotBeMarkedNow(startMinutes);
+        if (!canMark) {
+          // If already active, the user can turn it off so keep that active one not muted
+          if (!isComp) btnCompleted.setAttribute('aria-disabled', 'true');
+          else btnCompleted.removeAttribute('aria-disabled');
+
+          if (!isNotComp) btnNotCompleted.setAttribute('aria-disabled', 'true');
+          else btnNotCompleted.removeAttribute('aria-disabled');
+        } else {
+          btnCompleted.removeAttribute('aria-disabled');
+          btnNotCompleted.removeAttribute('aria-disabled');
+        }
       }
 
       btnCompleted.addEventListener('click', () => {
         clearSummarySaveMessage();
-        if (slot.status === "COMPLETED") {
+        const isCurrentlyActive = slot.status === "COMPLETED";
+
+        if (!isCurrentlyActive) {
+          const canMark = canSlotBeMarkedNow(startMinutes);
+          if (!canMark) {
+            const warningText = getSlotMarkRestrictionMessage(startMinutes);
+            showSlotWarning(warningText);
+            return;
+          }
+        }
+
+        clearAllSummarySlotWarnings();
+
+        if (isCurrentlyActive) {
           slot.status = "NONE";
           slot.markedAt = null;
         } else {
@@ -3418,7 +3786,20 @@
 
       btnNotCompleted.addEventListener('click', () => {
         clearSummarySaveMessage();
-        if (slot.status === "NOT_COMPLETED") {
+        const isCurrentlyActive = slot.status === "NOT_COMPLETED";
+
+        if (!isCurrentlyActive) {
+          const canMark = canSlotBeMarkedNow(startMinutes);
+          if (!canMark) {
+            const warningText = getSlotMarkRestrictionMessage(startMinutes);
+            showSlotWarning(warningText);
+            return;
+          }
+        }
+
+        clearAllSummarySlotWarnings();
+
+        if (isCurrentlyActive) {
           slot.status = "NONE";
           slot.markedAt = null;
         } else {
@@ -3436,6 +3817,7 @@
       btnGroup.appendChild(btnCompleted);
       btnGroup.appendChild(btnNotCompleted);
       btnGroup.appendChild(markMessageEl);
+      btnGroup.appendChild(markWarningEl);
       card.appendChild(btnGroup);
 
       summarySlotsList.appendChild(card);
@@ -3559,11 +3941,6 @@
       initSettingsView();
       switchView('settings');
     }
-  });
-
-  summaryEditTimesBtn.addEventListener('click', () => {
-    initSettingsView();
-    switchView('settings');
   });
 
   summaryStartNewDayBtn.addEventListener('click', () => {
@@ -3871,6 +4248,7 @@
 
       // A signed-in user who opens the site lands on Home (My Work Board)
       selectedDateKey = getLocalDateKey(todayDate);
+      startLiveTimers();
       switchView('home');
       await renderHomeView();
     } catch (e) {
