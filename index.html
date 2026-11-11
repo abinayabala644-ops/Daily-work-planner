@@ -1207,100 +1207,144 @@
       margin-bottom: 24px;
       position: relative;
     }
-    .activity-btn-row {
-      display: flex;
-      align-items: stretch;
-      width: 100%;
-      max-width: 280px;
-      margin: 0 auto;
-      border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    }
-    .btn-activity-main {
-      flex: 1;
-      min-height: 44px;
-      padding: 10px 18px;
-      background: #ffffff;
-      color: var(--slate-800);
-      border: 1px solid var(--slate-300);
-      border-right: none;
-      border-top-left-radius: 10px;
-      border-bottom-left-radius: 10px;
-      font-size: 1rem;
+    .activity-section-title {
+      font-size: 1.25rem;
       font-weight: 700;
+      color: var(--slate-900);
+      text-align: center;
+      margin: 0 0 16px 0;
+    }
+
+    .activity-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    @media (min-width: 600px) {
+      .activity-nav-grid {
+        gap: 12px;
+      }
+    }
+
+    .btn-activity-nav {
+      position: relative;
+      min-height: 56px;
+      min-width: 44px;
+      padding: 8px 6px;
+      border-radius: 12px;
+      border: 2px solid transparent;
       font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #0f172a;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: background 0.15s ease;
+      gap: 6px;
+      text-align: center;
+      line-height: 1.2;
+      box-sizing: border-box;
+      transition: background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
-    .btn-activity-main:hover,
-    .btn-activity-arrow:hover {
-      background: var(--slate-50);
+
+    @media (min-width: 600px) {
+      .btn-activity-nav {
+        flex-direction: row;
+        padding: 10px 16px;
+        font-size: 1rem;
+        gap: 8px;
+        line-height: 1.3;
+      }
     }
-    .btn-activity-main:focus-visible,
-    .btn-activity-arrow:focus-visible {
-      outline: 2px solid var(--slate-900);
+
+    .btn-activity-nav svg {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      stroke: #0f172a;
+    }
+
+    .btn-activity-nav .btn-activity-label {
+      word-break: normal;
+      overflow-wrap: break-word;
+    }
+
+    /* 1. Previous Work: yellow */
+    .btn-activity-prev {
+      background-color: #fde047;
+      border-color: #eab308;
+    }
+    .btn-activity-prev:hover {
+      background-color: #facc15;
+    }
+
+    /* 2. Today Schedule: pink */
+    .btn-activity-today {
+      background-color: #f9a8d4;
+      border-color: #ec4899;
+    }
+    .btn-activity-today:hover {
+      background-color: #f472b6;
+    }
+
+    /* 3. Upcoming Schedule: green */
+    .btn-activity-upcoming {
+      background-color: #86efac;
+      border-color: #22c55e;
+    }
+    .btn-activity-upcoming:hover {
+      background-color: #4ade80;
+    }
+
+    /* Hover lift & soft shadow */
+    .btn-activity-nav:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+    }
+
+    /* Pressed state moves back down */
+    .btn-activity-nav:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    }
+
+    /* Visible focus ring: 3px solid #0f172a with 2px offset */
+    .btn-activity-nav:focus-visible {
+      outline: 3px solid #0f172a;
       outline-offset: 2px;
       z-index: 2;
     }
-    .btn-activity-arrow {
-      min-height: 44px;
-      min-width: 44px;
-      padding: 0 14px;
-      background: #ffffff;
-      color: var(--slate-700);
-      border: 1px solid var(--slate-300);
-      border-top-right-radius: 10px;
-      border-bottom-right-radius: 10px;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s ease;
-    }
-    .activity-dropdown-menu {
+
+    /* Active indicator bar: 4px dark #0f172a underline bar at bottom */
+    .btn-activity-nav[aria-pressed="true"]::after {
+      content: "";
       position: absolute;
-      top: 52px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100%;
-      max-width: 280px;
-      background: #ffffff;
-      border: 1px solid var(--slate-200);
-      border-radius: 10px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      z-index: 20;
-      padding: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+      bottom: 2px;
+      left: 12px;
+      right: 12px;
+      height: 4px;
+      background-color: #0f172a;
+      border-radius: 2px;
     }
-    .activity-menu-item {
-      width: 100%;
-      min-height: 44px;
-      padding: 10px 14px;
-      background: transparent;
-      border: none;
-      border-radius: 6px;
-      text-align: left;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--slate-800);
-      cursor: pointer;
-      font-family: inherit;
-      display: flex;
-      align-items: center;
-    }
-    .activity-menu-item:hover,
-    .activity-menu-item:focus {
-      background: var(--slate-100);
-      color: var(--slate-900);
-      outline: none;
+
+    /* Motion reduction */
+    @media (prefers-reduced-motion: reduce) {
+      .btn-activity-nav {
+        transition: background-color 0.01ms !important;
+        transform: none !important;
+      }
+      .btn-activity-nav:hover {
+        transform: none !important;
+      }
+      .btn-activity-nav:active {
+        transform: none !important;
+      }
     }
 
     .activity-panel {
@@ -1616,54 +1660,79 @@
       margin: 0;
     }
 
-    /* Jump to a Date row */
-    .prev-work-jump-row {
+    /* Previous 7 Days horizontal button strip */
+    .prev-7-days-strip {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 20px;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 10px;
+      overflow-x: auto;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+      padding: 6px 2px 14px 2px;
+      margin: 0 0 16px 0;
+      list-style: none;
+    }
+    .prev-7-days-strip::-webkit-scrollbar {
+      height: 6px;
+    }
+    .prev-7-days-strip::-webkit-scrollbar-thumb {
+      background: var(--slate-300);
+      border-radius: 9999px;
     }
 
-    .btn-jump-date {
-      min-height: 44px;
-      padding: 8px 14px;
-      font-family: inherit;
-      font-size: 0.88rem;
-      font-weight: 600;
-      color: var(--slate-700);
-      background: #ffffff;
+    .prev-7-day-btn {
+      flex: 0 0 auto;
+      min-width: 96px;
+      min-height: 72px;
+      padding: 10px 12px;
+      border-radius: 12px;
       border: 1px solid var(--slate-300);
-      border-radius: 8px;
+      background: #ffffff;
+      color: var(--slate-900);
       cursor: pointer;
-      transition: all 0.15s ease;
       display: inline-flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      white-space: nowrap;
+      gap: 3px;
+      text-align: center;
+      font-family: inherit;
+      scroll-snap-align: start;
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+      user-select: none;
     }
-
-    .btn-jump-date:hover {
-      background: var(--slate-100);
-      color: var(--slate-900);
+    .prev-7-day-btn:hover {
+      background: var(--slate-50);
       border-color: var(--slate-400);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
     }
-
-    .btn-jump-date:focus-visible {
+    .prev-7-day-btn:active {
+      transform: scale(0.98);
+    }
+    .prev-7-day-btn:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
     }
 
-    .btn-jump-date[aria-pressed="true"] {
-      background: var(--slate-900);
-      color: #ffffff;
-      border-color: var(--slate-900);
+    .prev-day-weekday {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      line-height: 1.2;
     }
-
-    .home-day-total-info {
-      font-size: 0.85rem;
+    .prev-day-date {
+      font-size: 0.88rem;
       font-weight: 600;
-      color: var(--slate-600);
-      margin: -4px 0 12px 0;
+      color: var(--slate-700);
+      line-height: 1.2;
+    }
+    .prev-day-count {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--slate-500);
+      line-height: 1.2;
+      margin-top: 2px;
     }
 
     /* Clickable Tile styling */
@@ -1800,6 +1869,215 @@
     .date-summary-activity-status.unmarked {
       color: var(--slate-600);
     }
+
+    /* Summary Header Action Buttons */
+    .btn-summary-upcoming {
+      background-color: #10b981;
+      color: #ffffff;
+      border: 1px solid #059669;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+    }
+    .btn-summary-upcoming:hover {
+      background-color: #059669;
+      color: #ffffff;
+    }
+    .btn-summary-upcoming:focus-visible {
+      outline: 2px solid #047857;
+      outline-offset: 2px;
+    }
+
+    /* Upcoming Schedule 3-Page System Styles */
+    .upcoming-sched-header-btn {
+      min-height: 44px;
+      padding: 8px 16px;
+      background: var(--slate-900);
+      color: #ffffff;
+      border: 1px solid var(--slate-900);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+      white-space: nowrap;
+    }
+    .upcoming-sched-header-btn:hover {
+      background: var(--slate-800);
+    }
+    .upcoming-sched-header-btn:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
+    .upcoming-date-buttons-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .btn-upcoming-date {
+      min-height: 44px;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--slate-800);
+      background: #ffffff;
+      border: 1px solid var(--slate-300);
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-upcoming-date:hover {
+      background: var(--slate-100);
+      color: var(--slate-900);
+      border-color: var(--slate-400);
+    }
+    .btn-upcoming-date:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
+    /* Slot Card in Page B */
+    .upcoming-slot-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .upcoming-slot-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .upcoming-slot-card-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin: 0;
+    }
+    .btn-slot-remove {
+      min-height: 44px;
+      padding: 6px 14px;
+      background: #ffffff;
+      color: var(--rose-600);
+      border: 1px solid var(--rose-300);
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .btn-slot-remove:hover {
+      background: #fef2f2;
+      border-color: var(--rose-400);
+      color: var(--rose-700);
+    }
+    .btn-slot-remove:focus-visible {
+      outline: 2px solid var(--rose-600);
+      outline-offset: 2px;
+    }
+
+    /* Readonly Slot Preview in Page B */
+    .upcoming-slot-readonly-box {
+      background: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .upcoming-slot-readonly-times {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--slate-900);
+    }
+    .upcoming-slot-readonly-work {
+      font-size: 0.92rem;
+      color: var(--slate-700);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Page C Event Detail Cards */
+    .upcoming-detail-list {
+      list-style: none;
+      padding: 0;
+      margin: 18px 0 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .upcoming-detail-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-left: 5px solid #2563eb;
+      border-radius: 10px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .upcoming-detail-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px 16px;
+    }
+    .upcoming-detail-item {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .upcoming-detail-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--slate-500);
+    }
+    .upcoming-detail-value {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--slate-900);
+    }
+    .upcoming-detail-work-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--slate-500);
+      margin-top: 4px;
+    }
+    .upcoming-detail-work-text {
+      font-size: 0.96rem;
+      font-weight: 500;
+      color: var(--slate-800);
+      line-height: 1.45;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .upcoming-detail-work-text.muted {
+      color: var(--slate-500);
+      font-style: italic;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
@@ -1846,28 +2124,138 @@
       </div>
 
       <div class="activity-section">
-        <div class="activity-btn-row">
-          <button type="button" id="btn-activity-main" class="btn-activity-main" aria-haspopup="menu" aria-expanded="false" aria-controls="activity-dropdown-menu">
-            <span>My Activity</span>
-          </button>
-          <button type="button" id="btn-activity-arrow" class="btn-activity-arrow" aria-haspopup="menu" aria-expanded="false" aria-controls="activity-dropdown-menu" aria-label="Toggle activity menu">
-            <span>▾</span>
-          </button>
-        </div>
+        <h2 class="activity-section-title">My Activity</h2>
 
-        <div id="activity-dropdown-menu" class="activity-dropdown-menu" role="menu" style="display: none;" aria-label="My Activity Options">
-          <button type="button" class="activity-menu-item" role="menuitem" data-tab="previous" tabindex="-1">Previous Work</button>
-          <button type="button" class="activity-menu-item" role="menuitem" data-tab="today" tabindex="-1">Today Schedule</button>
-          <button type="button" class="activity-menu-item" role="menuitem" data-tab="upcoming" tabindex="-1">Upcoming Work</button>
+        <div class="activity-nav-grid" role="group" aria-label="My Activity">
+          <button type="button" id="btn-activity-prev" class="btn-activity-nav btn-activity-prev" data-tab="previous" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+              <polyline points="12 7 12 12 15 15"></polyline>
+            </svg>
+            <span class="btn-activity-label">Previous Work</span>
+          </button>
+          <button type="button" id="btn-activity-today" class="btn-activity-nav btn-activity-today" data-tab="today">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+              <circle cx="12" cy="15" r="2" fill="#0f172a"></circle>
+            </svg>
+            <span class="btn-activity-label">Today Schedule</span>
+          </button>
+          <button type="button" id="btn-activity-upcoming" class="btn-activity-nav btn-activity-upcoming" data-tab="upcoming" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+              <line x1="12" y1="13" x2="12" y2="17"></line>
+              <line x1="10" y1="15" x2="14" y2="15"></line>
+            </svg>
+            <span class="btn-activity-label">Upcoming Schedule</span>
+          </button>
         </div>
 
         <div id="activity-panel" class="activity-panel" aria-live="polite">
           <h2 id="activity-panel-title" class="activity-panel-header" style="display: none;">Activity</h2>
           <p id="activity-panel-subtitle" class="activity-panel-subtitle" style="display: none;"></p>
           <div id="activity-panel-content">
-            <p class="activity-panel-message">Choose an activity to view.</p>
+            <p class="activity-panel-message">Choose a button above to view your work.</p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- PAGE A: UPCOMING SCHEDULE (SAVED DATES ONLY) -->
+    <div id="view-upcoming-schedule" class="card views">
+      <div class="header-row">
+        <div>
+          <h1 id="upcoming-sched-title" class="header-title" tabindex="-1">Upcoming Schedule</h1>
+          <p id="upcoming-sched-subtitle" class="header-subtitle">You Saved Upcoming Event</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" id="upcoming-add-schedule-btn" class="upcoming-sched-header-btn">
+            Add Schedule
+          </button>
+        </div>
+      </div>
+
+      <!-- Save confirmation banner if arrived from Page B save -->
+      <div id="upcoming-page-a-success-msg" class="save-message-box save-message-success" style="display: none; margin-top: 16px;" role="status" aria-live="polite"></div>
+
+      <!-- Container showing ONLY saved-date buttons or empty message -->
+      <div id="upcoming-dates-container" style="margin-top: 20px;" aria-live="polite">
+        <!-- Loaded dynamically in app.js -->
+      </div>
+    </div>
+
+    <!-- PAGE B: ADD UPCOMING SCHEDULE (ENTRY PAGE) -->
+    <div id="view-add-upcoming-schedule" class="card views">
+      <div class="header-row" style="margin-bottom: 12px;">
+        <button type="button" id="add-upcoming-back-btn" class="btn btn-secondary">
+          &larr; Upcoming Schedule
+        </button>
+      </div>
+
+      <div class="header-row" style="margin-bottom: 16px;">
+        <div>
+          <h1 id="add-upcoming-title" class="header-title" tabindex="-1">Add Upcoming Schedule</h1>
+          <p id="add-upcoming-today-display" class="header-subtitle"></p>
+        </div>
+      </div>
+
+      <!-- Planning Form Container -->
+      <div style="margin-top: 16px;">
+        <!-- Choose date: native date input -->
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="add-upcoming-date-input" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Choose date</label>
+          <input type="date" id="add-upcoming-date-input" class="time-input" style="max-width: 260px;" />
+        </div>
+
+        <!-- Stacked Slot Cards Container -->
+        <div id="add-upcoming-slots-container">
+          <!-- Dynamically populated slot cards -->
+        </div>
+
+        <!-- Action Buttons: Next and Save -->
+        <div class="upcoming-sched-buttons-row" style="margin-top: 20px;">
+          <button type="button" id="add-upcoming-next-btn" class="btn btn-primary" style="min-height: 44px;" disabled>
+            Next &rarr;
+          </button>
+          <button type="button" id="add-upcoming-save-btn" class="btn-summary-save" style="min-height: 44px;" disabled>
+            Save
+          </button>
+        </div>
+
+        <!-- Error & Notice Messages below buttons -->
+        <div id="add-upcoming-full-hint" class="save-message-hint" style="display: none; margin-top: 10px; font-weight: 600; color: var(--slate-700);">
+          The day is full. Press Save.
+        </div>
+        <div id="add-upcoming-reason-msg" class="save-message-hint" style="display: none; margin-top: 8px; font-size: 0.88rem; font-weight: 600; color: var(--slate-600);"></div>
+        <div id="add-upcoming-error-msg" class="field-error-text" style="display: none; margin-top: 10px; font-size: 0.9rem; font-weight: 600;"></div>
+        <div id="add-upcoming-save-error" class="save-message-box save-message-error" style="display: none; margin-top: 14px;" role="alert"></div>
+      </div>
+    </div>
+
+    <!-- PAGE C: SAVED UPCOMING EVENT DETAILS (ONE DATE) -->
+    <div id="view-upcoming-event-details" class="card views">
+      <div class="header-row" style="margin-bottom: 12px;">
+        <button type="button" id="upcoming-event-details-back-btn" class="btn btn-secondary">
+          &larr; Upcoming Schedule
+        </button>
+      </div>
+
+      <div class="header-row">
+        <div>
+          <h1 id="upcoming-event-details-title" class="header-title" tabindex="-1">Saved Upcoming Event Details</h1>
+          <p class="header-subtitle">Saved Upcoming Event</p>
+        </div>
+      </div>
+
+      <div id="upcoming-event-details-content" style="margin-top: 18px;" aria-live="polite">
+        <!-- Loaded dynamically in app.js -->
       </div>
     </div>
 
@@ -1886,26 +2274,6 @@
       </div>
 
       <div id="prev-summary-content" style="margin-top: 18px;" aria-live="polite">
-        <!-- Loaded dynamically in app.js -->
-      </div>
-    </div>
-
-    <!-- SEPARATE SCREEN: PREVIOUS WORK DATE SUMMARY -->
-    <div id="view-prev-date-summary" class="card views">
-      <div class="header-row" style="margin-bottom: 16px;">
-        <button type="button" id="prev-date-summary-back-btn" class="btn btn-secondary">
-          &larr; Back
-        </button>
-      </div>
-
-      <div class="header-row">
-        <div>
-          <h1 id="prev-date-summary-title" class="header-title" tabindex="-1">Previous Work Date Summary</h1>
-          <p id="prev-date-summary-subtitle" class="header-subtitle">Summary for selected date</p>
-        </div>
-      </div>
-
-      <div id="prev-date-summary-content" style="margin-top: 18px;" aria-live="polite">
         <!-- Loaded dynamically in app.js -->
       </div>
     </div>
@@ -2042,6 +2410,17 @@
           </button>
           <button type="button" id="summary-back-btn" class="btn btn-secondary">
             &larr; Back
+          </button>
+          <button type="button" id="summary-upcoming-btn" class="btn btn-summary-upcoming" aria-label="Open Upcoming Schedule">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+              <line x1="12" y1="13" x2="12" y2="17"></line>
+              <line x1="10" y1="15" x2="14" y2="15"></line>
+            </svg>
+            Upcoming Schedule
           </button>
           <button type="button" id="summary-edit-times-btn" class="btn btn-secondary">
             Edit times
@@ -2190,6 +2569,18 @@
       <div class="modal-actions">
         <button type="button" id="duration-dialog-cancel" class="btn btn-secondary">Cancel</button>
         <button type="button" id="duration-dialog-continue" class="btn" style="background: var(--rose-600); color: #fff;">Continue</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Native Dialog: Discard Unsaved Upcoming Slot Confirmation -->
+  <dialog id="upcoming-sched-discard-dialog">
+    <div class="modal-box">
+      <h3 class="modal-title">Discard this unsaved schedule?</h3>
+      <p class="modal-desc">You have unsaved changes in this upcoming schedule. Discarding will clear these changes.</p>
+      <div class="modal-actions">
+        <button type="button" id="upcoming-discard-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="upcoming-discard-confirm-btn" class="btn" style="background: var(--rose-600); color: #fff;">Discard</button>
       </div>
     </div>
   </dialog>
