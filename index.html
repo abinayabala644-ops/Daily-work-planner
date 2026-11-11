@@ -1660,54 +1660,79 @@
       margin: 0;
     }
 
-    /* Jump to a Date row */
-    .prev-work-jump-row {
+    /* Previous 7 Days horizontal button strip */
+    .prev-7-days-strip {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 20px;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 10px;
+      overflow-x: auto;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+      padding: 6px 2px 14px 2px;
+      margin: 0 0 16px 0;
+      list-style: none;
+    }
+    .prev-7-days-strip::-webkit-scrollbar {
+      height: 6px;
+    }
+    .prev-7-days-strip::-webkit-scrollbar-thumb {
+      background: var(--slate-300);
+      border-radius: 9999px;
     }
 
-    .btn-jump-date {
-      min-height: 44px;
-      padding: 8px 14px;
-      font-family: inherit;
-      font-size: 0.88rem;
-      font-weight: 600;
-      color: var(--slate-700);
-      background: #ffffff;
+    .prev-7-day-btn {
+      flex: 0 0 auto;
+      min-width: 96px;
+      min-height: 72px;
+      padding: 10px 12px;
+      border-radius: 12px;
       border: 1px solid var(--slate-300);
-      border-radius: 8px;
+      background: #ffffff;
+      color: var(--slate-900);
       cursor: pointer;
-      transition: all 0.15s ease;
       display: inline-flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      white-space: nowrap;
+      gap: 3px;
+      text-align: center;
+      font-family: inherit;
+      scroll-snap-align: start;
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+      user-select: none;
     }
-
-    .btn-jump-date:hover {
-      background: var(--slate-100);
-      color: var(--slate-900);
+    .prev-7-day-btn:hover {
+      background: var(--slate-50);
       border-color: var(--slate-400);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
     }
-
-    .btn-jump-date:focus-visible {
+    .prev-7-day-btn:active {
+      transform: scale(0.98);
+    }
+    .prev-7-day-btn:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
     }
 
-    .btn-jump-date[aria-pressed="true"] {
-      background: var(--slate-900);
-      color: #ffffff;
-      border-color: var(--slate-900);
+    .prev-day-weekday {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      line-height: 1.2;
     }
-
-    .home-day-total-info {
-      font-size: 0.85rem;
+    .prev-day-date {
+      font-size: 0.88rem;
       font-weight: 600;
-      color: var(--slate-600);
-      margin: -4px 0 12px 0;
+      color: var(--slate-700);
+      line-height: 1.2;
+    }
+    .prev-day-count {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--slate-500);
+      line-height: 1.2;
+      margin-top: 2px;
     }
 
     /* Clickable Tile styling */
@@ -2248,26 +2273,6 @@
       </div>
 
       <div id="prev-summary-content" style="margin-top: 18px;" aria-live="polite">
-        <!-- Loaded dynamically in app.js -->
-      </div>
-    </div>
-
-    <!-- SEPARATE SCREEN: PREVIOUS WORK DATE SUMMARY -->
-    <div id="view-prev-date-summary" class="card views">
-      <div class="header-row" style="margin-bottom: 16px;">
-        <button type="button" id="prev-date-summary-back-btn" class="btn btn-secondary">
-          &larr; Back
-        </button>
-      </div>
-
-      <div class="header-row">
-        <div>
-          <h1 id="prev-date-summary-title" class="header-title" tabindex="-1">Previous Work Date Summary</h1>
-          <p id="prev-date-summary-subtitle" class="header-subtitle">Summary for selected date</p>
-        </div>
-      </div>
-
-      <div id="prev-date-summary-content" style="margin-top: 18px;" aria-live="polite">
         <!-- Loaded dynamically in app.js -->
       </div>
     </div>

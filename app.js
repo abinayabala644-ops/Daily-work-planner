@@ -110,7 +110,6 @@
     addUpcomingSchedule: document.getElementById('view-add-upcoming-schedule'), // Page B
     upcomingEventDetails: document.getElementById('view-upcoming-event-details'), // Page C
     prevSummary: document.getElementById('view-prev-summary'),
-    prevDateSummary: document.getElementById('view-prev-date-summary'),
     upcomingDateSummary: document.getElementById('view-upcoming-date-summary'),
     settings: document.getElementById('view-settings'),
     slot: document.getElementById('view-slot'),
@@ -124,12 +123,6 @@
   // Previous Work Summary Screen Elements
   const prevSummaryNextBtn = document.getElementById('prev-summary-next-btn');
   const prevSummaryContent = document.getElementById('prev-summary-content');
-
-  // Previous Work Date Summary Screen Elements
-  const prevDateSummaryBackBtn = document.getElementById('prev-date-summary-back-btn');
-  const prevDateSummaryTitle = document.getElementById('prev-date-summary-title');
-  const prevDateSummarySubtitle = document.getElementById('prev-date-summary-subtitle');
-  const prevDateSummaryContent = document.getElementById('prev-date-summary-content');
 
   // Upcoming Work Date Summary Screen Elements
   const upcomingDateSummaryBackBtn = document.getElementById('upcoming-date-summary-back-btn');
@@ -1095,7 +1088,17 @@
     return validSlots;
   }
 
-  let activePreviousSummaryDateKey = null;
+  function openDateSummaryFromPreviousWork(dateKey) {
+    selectedDateKey = dateKey;
+    flushPendingDebouncedSave();
+    clearSummarySaveMessage();
+    updateDateButtonsState();
+    renderSummaryView();
+    switchView('summary');
+    if (summaryHeaderTitle) {
+      summaryHeaderTitle.focus();
+    }
+  }
 
   function renderPreviousWork7Days(daysList, fromKey, toKey) {
     if (!prevSummaryContent) return;
@@ -1141,118 +1144,143 @@
     toolbar.appendChild(rangeInfo);
     prevSummaryContent.appendChild(toolbar);
 
-    // If the 7 days have no valid work: show only "No previous work found in these 7 days."
-    if (!daysList || daysList.length === 0) {
-      const emptyMsg = document.createElement('p');
-      emptyMsg.className = 'activity-panel-message';
-      emptyMsg.style.textAlign = 'left';
-      emptyMsg.style.padding = '16px 0';
-      emptyMsg.textContent = "No previous work found in these 7 days.";
-      prevSummaryContent.appendChild(emptyMsg);
-      return;
-    }
+    // 2. Row of 7 date buttons in one horizontal row (from toKey down to fromKey, newest first)
+    const strip = document.createElement('ul');
+    strip.className = 'prev-7-days-strip';
+    strip.setAttribute('role', 'group');
+    strip.setAttribute('aria-label', 'Previous 7 days');
 
-    // 2. Row of date buttons (No "All dates" button - click any date button navigates to separate date summary page)
-    const jumpRow = document.createElement('div');
-    jumpRow.className = 'prev-work-jump-row';
-    jumpRow.setAttribute('role', 'group');
-    jumpRow.setAttribute('aria-label', 'Available dates');
+    const daysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const monthsShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    daysList.forEach(dayItem => {
-      const dObj = parseLocalDateKey(dayItem.dateKey);
-      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const shortLabel = `${days[dObj.getDay()]} ${dObj.getDate()} ${months[dObj.getMonth()]}`;
+    daysList.forEach(item => {
+      const li = document.createElement('li');
+      li.style.display = 'contents';
 
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'btn-jump-date';
-      const isSelected = activePreviousSummaryDateKey === dayItem.dateKey;
-      btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-      btn.textContent = `${shortLabel} - ${dayItem.slots.length}`;
-      btn.dataset.dateKey = dayItem.dateKey;
+      btn.className = 'prev-7-day-btn';
+      btn.dataset.dateKey = item.dateKey;
+
+      const dObj = parseLocalDateKey(item.dateKey);
+      const weekday = daysShort[dObj.getDay()];
+      const dayNum = dObj.getDate();
+      const monthName = monthsShort[dObj.getMonth()];
+      const yearNum = dObj.getFullYear();
+
+      const spanWeekday = document.createElement('span');
+      spanWeekday.className = 'prev-day-weekday';
+      spanWeekday.textContent = weekday;
+
+      const spanDate = document.createElement('span');
+      spanDate.className = 'prev-day-date';
+      spanDate.textContent = `${dayNum} ${monthName}`;
+
+      const spanCount = document.createElement('span');
+      spanCount.className = 'prev-day-count';
+      spanCount.dataset.countFor = item.dateKey;
+      spanCount.textContent = item.countText || '…';
+
+      btn.appendChild(spanWeekday);
+      btn.appendChild(spanDate);
+      btn.appendChild(spanCount);
+
+      const countAccessible = (item.countText && item.countText !== '…') ? item.countText : 'loading slots';
+      btn.setAttribute('aria-label', `${weekday}, ${dayNum} ${monthName} ${yearNum}, ${countAccessible}. Open summary.`);
+
       btn.addEventListener('click', () => {
-        activePreviousSummaryDateKey = dayItem.dateKey;
-        openPreviousWorkDateSummary(dayItem);
+        openDateSummaryFromPreviousWork(item.dateKey);
       });
-      jumpRow.appendChild(btn);
+
+      li.appendChild(btn);
+      strip.appendChild(li);
     });
 
-    prevSummaryContent.appendChild(jumpRow);
+    prevSummaryContent.appendChild(strip);
   }
 
-  function openPreviousWorkDateSummary(dayItem) {
-    if (!prevDateSummaryContent) return;
-    prevDateSummaryContent.innerHTML = "";
-
-    const dObj = parseLocalDateKey(dayItem.dateKey);
-    const fullDateText = formatFullDisplayDate(dObj);
-    if (prevDateSummaryTitle) {
-      prevDateSummaryTitle.textContent = "Previous Work Date Summary";
-    }
-    if (prevDateSummarySubtitle) {
-      prevDateSummarySubtitle.textContent = `All activities for ${fullDateText}`;
+  async function loadPreviousWorkCounts(daysList, fromKey, toKey) {
+    // Container for inline load failure feedback under the buttons
+    let errorContainer = document.getElementById('prev-work-load-error');
+    if (errorContainer) {
+      errorContainer.remove();
     }
 
-    // ONE clean, professional summary tile containing all work activities together
-    const tile = document.createElement('div');
-    tile.className = 'date-summary-tile';
+    try {
+      // 1. Ensure local state is fresh
+      loadFromLocalStorage();
 
-    const tileHeader = document.createElement('div');
-    tileHeader.className = 'date-summary-tile-header';
+      // 2. If signed in, load the 7-day range from Supabase
+      if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
+        await loadRange(fromKey, toKey);
+      }
 
-    const dateHeading = document.createElement('h2');
-    dateHeading.className = 'date-summary-tile-date';
-    dateHeading.textContent = fullDateText;
-    tileHeader.appendChild(dateHeading);
+      // 3. Update count spans on each rendered button
+      daysList.forEach(item => {
+        const dayData = state.days[item.dateKey];
+        const validSlots = getValidSlotsForDay(dayData, item.dateKey);
+        const count = validSlots.length;
+        const countText = count > 1 ? `${count} slots` : (count === 1 ? '1 slot' : 'No work');
+        item.countText = countText;
 
-    const compCount = dayItem.slots.filter(s => s.status === 'COMPLETED').length;
-    const notCompCount = dayItem.slots.filter(s => s.status === 'NOT_COMPLETED').length;
-    const unmarkedCount = dayItem.slots.filter(s => s.status !== 'COMPLETED' && s.status !== 'NOT_COMPLETED').length;
+        const span = prevSummaryContent ? prevSummaryContent.querySelector(`.prev-day-count[data-count-for="${item.dateKey}"]`) : null;
+        if (span) {
+          span.textContent = countText;
+          const btn = span.closest('.prev-7-day-btn');
+          if (btn) {
+            const dObj = parseLocalDateKey(item.dateKey);
+            const daysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+            const monthsShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const weekday = daysShort[dObj.getDay()];
+            const dayNum = dObj.getDate();
+            const monthName = monthsShort[dObj.getMonth()];
+            const yearNum = dObj.getFullYear();
+            btn.setAttribute('aria-label', `${weekday}, ${dayNum} ${monthName} ${yearNum}, ${countText}. Open summary.`);
+          }
+        }
+      });
+    } catch (err) {
+      console.warn("Could not load counts for previous 7 days:", err);
+      // Requirement: "If loading the counts fails, keep the buttons, show "—" as the count,
+      // and show one line under the row: "Could not load your work." with a Retry button (44px) that reloads only the counts."
+      daysList.forEach(item => {
+        item.countText = '—';
+        const span = prevSummaryContent ? prevSummaryContent.querySelector(`.prev-day-count[data-count-for="${item.dateKey}"]`) : null;
+        if (span) {
+          span.textContent = '—';
+        }
+      });
 
-    const countP = document.createElement('p');
-    countP.className = 'date-summary-tile-count';
-    countP.textContent = `${dayItem.slots.length} ${dayItem.slots.length === 1 ? 'activity' : 'activities'} (${compCount} Completed, ${notCompCount} Not Completed, ${unmarkedCount} Not marked yet)`;
-    tileHeader.appendChild(countP);
-    tile.appendChild(tileHeader);
+      if (prevSummaryContent && !document.getElementById('prev-work-load-error')) {
+        const errDiv = document.createElement('div');
+        errDiv.id = 'prev-work-load-error';
+        errDiv.style.marginTop = '12px';
 
-    // List of all work activities within the single summary tile
-    const list = document.createElement('ul');
-    list.className = 'date-summary-activities-list';
+        const p = document.createElement('p');
+        p.className = 'activity-panel-message';
+        p.style.textAlign = 'left';
+        p.style.margin = '0 0 8px 0';
+        p.textContent = "Could not load your work.";
 
-    dayItem.slots.forEach(slotItem => {
-      const li = document.createElement('li');
-      const statusClass = slotItem.status === 'COMPLETED' ? 'comp' : (slotItem.status === 'NOT_COMPLETED' ? 'not-comp' : 'unmarked');
-      li.className = 'date-summary-activity-item ' + statusClass;
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn btn-secondary';
+        retry.style.minHeight = '44px';
+        retry.textContent = 'Retry';
+        retry.addEventListener('click', () => {
+          // Put counts back to loading "…" and re-run only the count fetch
+          daysList.forEach(item => {
+            const span = prevSummaryContent.querySelector(`.prev-day-count[data-count-for="${item.dateKey}"]`);
+            if (span) span.textContent = '…';
+          });
+          loadPreviousWorkCounts(daysList, fromKey, toKey);
+        });
 
-      const mainRow = document.createElement('div');
-      mainRow.className = 'date-summary-activity-main';
-
-      const desc = document.createElement('span');
-      desc.className = 'date-summary-activity-desc';
-      desc.textContent = slotItem.taskText || 'No task written';
-      mainRow.appendChild(desc);
-
-      const time = document.createElement('span');
-      time.className = 'date-summary-activity-time';
-      time.textContent = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
-      mainRow.appendChild(time);
-      li.appendChild(mainRow);
-
-      const statusRow = document.createElement('div');
-      statusRow.className = 'date-summary-activity-status ' + statusClass;
-      const emoji = slotItem.status === 'COMPLETED' ? '✓ ' : (slotItem.status === 'NOT_COMPLETED' ? '✗ ' : '⏳ ');
-      const label = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : 'Not marked yet');
-      statusRow.textContent = `Status: ${emoji}${label}`;
-      li.appendChild(statusRow);
-
-      list.appendChild(li);
-    });
-
-    tile.appendChild(list);
-    prevDateSummaryContent.appendChild(tile);
-
-    switchView('prevDateSummary');
+        errDiv.appendChild(p);
+        errDiv.appendChild(retry);
+        prevSummaryContent.appendChild(errDiv);
+      }
+    }
   }
 
   async function hasAnyFutureWorkSaved(todayStr) {
@@ -1303,66 +1331,43 @@
     }
 
     if (tab === 'previous') {
-      // CHANGE 1: Choosing "Previous Work" opens ONE screen titled "Previous Work Summary"
+      // Choosing "Previous Work" opens ONE screen titled "Previous Work Summary"
       switchView('prevSummary');
-      if (prevSummaryContent) {
-        prevSummaryContent.innerHTML = '<p class="activity-panel-message">Loading…</p>';
-      }
 
       const todayStr = getLocalDateKey(todayDate);
-      try {
-        // Enforce strictly previous work: do not include today's schedule
-        if (selectedPreviousWorkDateKey >= todayStr) {
-          selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
-        }
-        const selObj = parseLocalDateKey(selectedPreviousWorkDateKey);
-        const fromDateObj = addDays(selObj, -6);
-        const fromKey = getLocalDateKey(fromDateObj);
-        const toKey = selectedPreviousWorkDateKey;
-
-        // Load all 7 days in one range request (reuses loadRange with pages of 1000 rows)
-        if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
-          await loadRange(fromKey, toKey);
-        } else {
-          loadFromLocalStorage();
-        }
-
-        const daysList = [];
-        // Walk backwards from toKey to fromKey (6 previous days plus selected date = 7 days total)
-        for (let offset = 0; offset >= -6; offset--) {
-          const dKey = getLocalDateKey(addDays(selObj, offset));
-          if (dKey >= todayStr) continue; // strictly exclude today
-          const dayData = state.days[dKey];
-          const slots = getValidSlotsForDay(dayData, dKey);
-          // Only dates with at least one valid slot (valid start and end time) are listed
-          if (slots.length > 0) {
-            daysList.push({
-              dateKey: dKey,
-              slots,
-            });
-          }
-        }
-
-        renderPreviousWork7Days(daysList, fromKey, toKey);
-      } catch (err) {
-        if (prevSummaryContent) {
-          prevSummaryContent.innerHTML = "";
-          const p = document.createElement('p');
-          p.className = 'activity-panel-message';
-          p.textContent = "Could not load your work.";
-
-          const retry = document.createElement('button');
-          retry.type = 'button';
-          retry.className = 'btn btn-secondary';
-          retry.style.minHeight = '44px';
-          retry.style.marginTop = '8px';
-          retry.textContent = 'Retry';
-          retry.addEventListener('click', () => loadAndShowActivity('previous'));
-
-          prevSummaryContent.appendChild(p);
-          prevSummaryContent.appendChild(retry);
-        }
+      // Enforce strictly previous work: do not include today's schedule
+      if (selectedPreviousWorkDateKey >= todayStr) {
+        selectedPreviousWorkDateKey = getLocalDateKey(addDays(todayDate, -1));
       }
+      const selObj = parseLocalDateKey(selectedPreviousWorkDateKey);
+      const fromDateObj = addDays(selObj, -6);
+      const fromKey = getLocalDateKey(fromDateObj);
+      const toKey = selectedPreviousWorkDateKey;
+
+      // Ensure local state cache is up-to-date
+      loadFromLocalStorage();
+
+      // Build the 7 dates in descending order (newest date first: selected date down to 6 days prior)
+      const daysList = [];
+      for (let offset = 0; offset >= -6; offset--) {
+        const dKey = getLocalDateKey(addDays(selObj, offset));
+        const dayData = state.days[dKey];
+        let initialCountText = '…';
+        if (dayData && Array.isArray(dayData.slots)) {
+          const validSlots = getValidSlotsForDay(dayData, dKey);
+          initialCountText = validSlots.length > 1 ? `${validSlots.length} slots` : (validSlots.length === 1 ? '1 slot' : 'No work');
+        }
+        daysList.push({
+          dateKey: dKey,
+          countText: initialCountText,
+        });
+      }
+
+      // 1. Immediately render the row of 7 buttons so it works without waiting and even if loading fails
+      renderPreviousWork7Days(daysList, fromKey, toKey);
+
+      // 2. Asynchronously load the range from Supabase and update counts
+      loadPreviousWorkCounts(daysList, fromKey, toKey);
       return;
     }
 
@@ -2432,14 +2437,6 @@
       initSettingsView();
       switchView('settings');
       if (startInput) startInput.focus();
-    });
-  }
-
-  // Previous Work Date Summary Back button -> return to Previous Work Summary page preserving 7-day view & selection
-  if (prevDateSummaryBackBtn) {
-    prevDateSummaryBackBtn.addEventListener('click', () => {
-      switchView('prevSummary');
-      loadAndShowActivity('previous');
     });
   }
 
