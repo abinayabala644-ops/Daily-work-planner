@@ -1347,6 +1347,269 @@
       }
     }
 
+    /* Unfinished Work Banner on Home */
+    .home-unfinished-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      border-left: 4px solid #f59e0b;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+    .home-unfinished-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1 1 260px;
+    }
+    .home-unfinished-title {
+      font-size: 0.98rem;
+      font-weight: 800;
+      color: #78350f;
+      margin: 0;
+      line-height: 1.35;
+    }
+    .home-unfinished-details {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #78350f;
+      margin: 0;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    .btn-home-unfinished-continue {
+      min-height: 44px;
+      padding: 8px 20px;
+      background: var(--slate-900);
+      color: #ffffff;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .btn-home-unfinished-continue:hover {
+      background: var(--slate-800);
+    }
+    .btn-home-unfinished-continue:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
+    /* Today's Work Progress Box on Home */
+    .today-progress-card {
+      margin-top: 24px;
+      background: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .today-progress-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--slate-900);
+      letter-spacing: -0.01em;
+      margin: 0 0 16px 0;
+    }
+    .today-progress-message {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--slate-600);
+      text-align: center;
+      padding: 24px 12px;
+      margin: 0;
+    }
+    .today-progress-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .today-progress-item {
+      display: block;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .today-progress-btn {
+      width: 100%;
+      min-height: 44px;
+      padding: 14px 16px 14px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--slate-300);
+      background: #ffffff;
+      color: #0f172a;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      text-align: left;
+      font-family: inherit;
+      font-size: 1rem;
+      border-left-width: 6px;
+      border-left-style: solid;
+      border-left-color: var(--slate-400);
+      transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+      box-sizing: border-box;
+    }
+    .today-progress-btn:hover {
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.07);
+      filter: brightness(0.98);
+    }
+    .today-progress-btn:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
+
+    /* Completed status row */
+    .today-progress-btn.status-completed {
+      border-left-color: #15803d;
+      background-color: #dcfce7;
+      border-color: #86efac;
+      color: #14532d;
+    }
+    /* Not Completed status row */
+    .today-progress-btn.status-not-completed {
+      border-left-color: #b91c1c;
+      background-color: #fee2e2;
+      border-color: #fca5a5;
+      color: #7f1d1d;
+    }
+    /* Upcoming status row */
+    .today-progress-btn.status-upcoming {
+      border-left-color: #9ca3af;
+      background-color: #f3f4f6;
+      border-color: #d1d5db;
+      color: #374151;
+    }
+    /* Not marked yet status row */
+    .today-progress-btn.status-unmarked {
+      border-left-color: #94a3b8;
+      background-color: #ffffff;
+      border-color: #cbd5e1;
+      color: #0f172a;
+    }
+
+    /* Current Running Slot Highlight (Now) */
+    .today-progress-btn.is-current-slot {
+      outline: 3px solid #1d4ed8;
+      outline-offset: 1px;
+      box-shadow: 0 4px 14px rgba(29, 78, 216, 0.18);
+      padding: 16px 18px 16px 20px;
+    }
+
+    /* Row Content Layout */
+    .today-slot-time-col {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .today-slot-badge-now {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #1d4ed8;
+      color: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+    .today-slot-time-range {
+      font-size: 1.12rem;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      line-height: 1.25;
+      color: inherit;
+    }
+    .today-slot-body-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+    }
+    .today-slot-work-text {
+      font-size: 1rem;
+      font-weight: 500;
+      color: inherit;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    .today-slot-status-label {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    @media (min-width: 600px) {
+      .today-progress-btn {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+      .today-slot-time-col {
+        flex: 0 0 auto;
+        min-width: 170px;
+      }
+      .today-slot-body-col {
+        flex: 1 1 auto;
+        align-items: flex-end;
+        text-align: right;
+      }
+      .today-slot-work-text {
+        text-align: right;
+      }
+    }
+
+    /* Summary Rule Notice Banner under slot buttons */
+    .slot-mark-time-warning {
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #78350f;
+      line-height: 1.4;
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 6px;
+    }
+    .slot-status-btn[aria-disabled="true"] {
+      opacity: 0.55;
+      background: var(--slate-100);
+      color: var(--slate-500);
+      border-color: var(--slate-300);
+      cursor: pointer;
+    }
+
     .activity-panel {
       margin-top: 20px;
       background: var(--slate-50);
@@ -1947,74 +2210,6 @@
       outline-offset: 2px;
     }
 
-    /* Slot Card in Page B */
-    .upcoming-slot-card {
-      background: #ffffff;
-      border: 1px solid var(--slate-200);
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    }
-    .upcoming-slot-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-    .upcoming-slot-card-title {
-      font-size: 1.05rem;
-      font-weight: 800;
-      color: var(--slate-900);
-      margin: 0;
-    }
-    .btn-slot-remove {
-      min-height: 44px;
-      padding: 6px 14px;
-      background: #ffffff;
-      color: var(--rose-600);
-      border: 1px solid var(--rose-300);
-      border-radius: 8px;
-      font-size: 0.88rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s ease;
-    }
-    .btn-slot-remove:hover {
-      background: #fef2f2;
-      border-color: var(--rose-400);
-      color: var(--rose-700);
-    }
-    .btn-slot-remove:focus-visible {
-      outline: 2px solid var(--rose-600);
-      outline-offset: 2px;
-    }
-
-    /* Readonly Slot Preview in Page B */
-    .upcoming-slot-readonly-box {
-      background: var(--slate-50);
-      border: 1px solid var(--slate-200);
-      border-radius: 8px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .upcoming-slot-readonly-times {
-      font-size: 0.95rem;
-      font-weight: 800;
-      color: var(--slate-900);
-    }
-    .upcoming-slot-readonly-work {
-      font-size: 0.92rem;
-      color: var(--slate-700);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
     /* Page C Event Detail Cards */
     .upcoming-detail-list {
       list-style: none;
@@ -2114,6 +2309,15 @@
 
     <!-- PAGE 0: MY WORK BOARD (HOME) -->
     <div id="view-home" class="card views">
+      <!-- Unfinished Work Notification at Very Top of Home -->
+      <div id="home-unfinished-banner" class="home-unfinished-banner" role="status" aria-live="polite" style="display: none;">
+        <div class="home-unfinished-content">
+          <p class="home-unfinished-title">Today’s schedule is not finished.</p>
+          <p id="home-unfinished-details" class="home-unfinished-details"></p>
+        </div>
+        <button type="button" id="home-unfinished-continue-btn" class="btn-home-unfinished-continue">Continue</button>
+      </div>
+
       <div class="home-hero-card">
         <div class="home-hero-bg-shape" aria-hidden="true"></div>
         <div class="home-hero-content">
@@ -2158,11 +2362,11 @@
           </button>
         </div>
 
-        <div id="activity-panel" class="activity-panel" aria-live="polite">
-          <h2 id="activity-panel-title" class="activity-panel-header" style="display: none;">Activity</h2>
-          <p id="activity-panel-subtitle" class="activity-panel-subtitle" style="display: none;"></p>
-          <div id="activity-panel-content">
-            <p class="activity-panel-message">Choose a button above to view your work.</p>
+        <!-- TODAY'S WORK PROGRESS BOX -->
+        <div id="home-today-progress-card" class="today-progress-card">
+          <h2 class="today-progress-title">Today’s Work Progress</h2>
+          <div id="home-today-progress-content" aria-live="off">
+            <p class="today-progress-message">Loading…</p>
           </div>
         </div>
       </div>
@@ -2182,60 +2386,9 @@
         </div>
       </div>
 
-      <!-- Save confirmation banner if arrived from Page B save -->
-      <div id="upcoming-page-a-success-msg" class="save-message-box save-message-success" style="display: none; margin-top: 16px;" role="status" aria-live="polite"></div>
-
       <!-- Container showing ONLY saved-date buttons or empty message -->
       <div id="upcoming-dates-container" style="margin-top: 20px;" aria-live="polite">
         <!-- Loaded dynamically in app.js -->
-      </div>
-    </div>
-
-    <!-- PAGE B: ADD UPCOMING SCHEDULE (ENTRY PAGE) -->
-    <div id="view-add-upcoming-schedule" class="card views">
-      <div class="header-row" style="margin-bottom: 12px;">
-        <button type="button" id="add-upcoming-back-btn" class="btn btn-secondary">
-          &larr; Upcoming Schedule
-        </button>
-      </div>
-
-      <div class="header-row" style="margin-bottom: 16px;">
-        <div>
-          <h1 id="add-upcoming-title" class="header-title" tabindex="-1">Add Upcoming Schedule</h1>
-          <p id="add-upcoming-today-display" class="header-subtitle"></p>
-        </div>
-      </div>
-
-      <!-- Planning Form Container -->
-      <div style="margin-top: 16px;">
-        <!-- Choose date: native date input -->
-        <div class="form-group" style="margin-bottom: 20px;">
-          <label for="add-upcoming-date-input" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Choose date</label>
-          <input type="date" id="add-upcoming-date-input" class="time-input" style="max-width: 260px;" />
-        </div>
-
-        <!-- Stacked Slot Cards Container -->
-        <div id="add-upcoming-slots-container">
-          <!-- Dynamically populated slot cards -->
-        </div>
-
-        <!-- Action Buttons: Next and Save -->
-        <div class="upcoming-sched-buttons-row" style="margin-top: 20px;">
-          <button type="button" id="add-upcoming-next-btn" class="btn btn-primary" style="min-height: 44px;" disabled>
-            Next &rarr;
-          </button>
-          <button type="button" id="add-upcoming-save-btn" class="btn-summary-save" style="min-height: 44px;" disabled>
-            Save
-          </button>
-        </div>
-
-        <!-- Error & Notice Messages below buttons -->
-        <div id="add-upcoming-full-hint" class="save-message-hint" style="display: none; margin-top: 10px; font-weight: 600; color: var(--slate-700);">
-          The day is full. Press Save.
-        </div>
-        <div id="add-upcoming-reason-msg" class="save-message-hint" style="display: none; margin-top: 8px; font-size: 0.88rem; font-weight: 600; color: var(--slate-600);"></div>
-        <div id="add-upcoming-error-msg" class="field-error-text" style="display: none; margin-top: 10px; font-size: 0.9rem; font-weight: 600;"></div>
-        <div id="add-upcoming-save-error" class="save-message-box save-message-error" style="display: none; margin-top: 14px;" role="alert"></div>
       </div>
     </div>
 
@@ -2425,9 +2578,6 @@
           <button type="button" id="summary-edit-times-btn" class="btn btn-secondary">
             Edit times
           </button>
-          <button type="button" id="summary-start-new-day-btn" class="btn" style="background: var(--rose-600); color: #fff;">
-            Start New Day
-          </button>
         </div>
       </div>
 
@@ -2537,18 +2687,6 @@
     </div>
   </dialog>
 
-  <!-- Native Dialog: Start New Day -->
-  <dialog id="new-day-dialog">
-    <div class="modal-box">
-      <h3 class="modal-title">Start a new day?</h3>
-      <p class="modal-desc">This clears all slots and their statuses for this date.</p>
-      <div class="modal-actions">
-        <button type="button" id="dialog-cancel-btn" class="btn btn-secondary">Cancel</button>
-        <button type="button" id="dialog-confirm-btn" class="btn" style="background: var(--rose-600); color: #fff;">Start New Day</button>
-      </div>
-    </div>
-  </dialog>
-
   <!-- Native Dialog: Settings Change Confirmation -->
   <dialog id="settings-confirm-dialog">
     <div class="modal-box">
@@ -2569,18 +2707,6 @@
       <div class="modal-actions">
         <button type="button" id="duration-dialog-cancel" class="btn btn-secondary">Cancel</button>
         <button type="button" id="duration-dialog-continue" class="btn" style="background: var(--rose-600); color: #fff;">Continue</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- Native Dialog: Discard Unsaved Upcoming Slot Confirmation -->
-  <dialog id="upcoming-sched-discard-dialog">
-    <div class="modal-box">
-      <h3 class="modal-title">Discard this unsaved schedule?</h3>
-      <p class="modal-desc">You have unsaved changes in this upcoming schedule. Discarding will clear these changes.</p>
-      <div class="modal-actions">
-        <button type="button" id="upcoming-discard-cancel-btn" class="btn btn-secondary">Cancel</button>
-        <button type="button" id="upcoming-discard-confirm-btn" class="btn" style="background: var(--rose-600); color: #fff;">Discard</button>
       </div>
     </div>
   </dialog>
