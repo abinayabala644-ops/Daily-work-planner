@@ -235,6 +235,7 @@
   const addUpcomingDateInput = document.getElementById('add-upcoming-date-input');
   const addUpcomingSlotsContainer = document.getElementById('add-upcoming-slots-container');
   const addUpcomingFullHint = document.getElementById('add-upcoming-full-hint');
+  const addUpcomingReasonMsg = document.getElementById('add-upcoming-reason-msg');
   const addUpcomingErrorMsg = document.getElementById('add-upcoming-error-msg');
   const addUpcomingSaveError = document.getElementById('add-upcoming-save-error');
   const addUpcomingNextBtn = document.getElementById('add-upcoming-next-btn');
@@ -490,17 +491,21 @@
     }
   }
 
-  async function syncDayToSupabase(dateKey) {
+  async function syncDayToSupabase(dateKey, throwOnError = false) {
     if (!supabaseClient || !currentUserId || currentUserId === "anonymous") return;
     const dayData = state.days[dateKey];
     try {
       if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) {
         // Deleted or empty: delete row in database
-        await supabaseClient
+        const { error: delError } = await supabaseClient
           .from('planner_days')
           .delete()
           .eq('user_id', currentUserId)
           .eq('day', dateKey);
+        if (delError) {
+          if (throwOnError) throw delError;
+          console.warn("Supabase syncDay delete error:", delError);
+        }
       } else {
         // Upsert row
         const serializedSlots = (dayData.slots || []).map((s, idx) => ({
@@ -513,7 +518,7 @@
           markedAt: s.markedAt || null,
         }));
 
-        await supabaseClient
+        const { error: upsertError } = await supabaseClient
           .from('planner_days')
           .upsert({
             user_id: currentUserId,
@@ -523,8 +528,14 @@
             slots: serializedSlots,
             saved_at: dayData.savedAt || null,
           }, { onConflict: 'user_id,day' });
+
+        if (upsertError) {
+          if (throwOnError) throw upsertError;
+          console.warn("Supabase syncDay upsert error:", upsertError);
+        }
       }
     } catch (err) {
+      if (throwOnError) throw err;
       console.warn("Supabase syncDay error:", err);
     }
   }
@@ -1713,6 +1724,10 @@
   }
 
   function clearAddUpcomingBanners() {
+    if (addUpcomingReasonMsg) {
+      addUpcomingReasonMsg.style.display = 'none';
+      addUpcomingReasonMsg.textContent = '';
+    }
     if (addUpcomingErrorMsg) {
       addUpcomingErrorMsg.style.display = 'none';
       addUpcomingErrorMsg.textContent = '';
@@ -1981,18 +1996,43 @@
       }
     }
 
-    // Save button: disabled until date is chosen and EVERY slot has an Ending Time and non-empty work
-    const allSlotsComplete = pageBSlots.length > 0 && pageBSlots.every(s =>
-      typeof s.startMinutes === 'number' && !isNaN(s.startMinutes) &&
-      typeof s.endMinutes === 'number' && !isNaN(s.endMinutes) &&
-      s.endMinutes > s.startMinutes &&
-      (s.workText || '').trim().length > 0
-    );
+    // Determine disabled reason if Save cannot be performed
+    let disabledReason = '';
+    if (!dateVal) {
+      disabledReason = 'Choose a date.';
+    } else if (pageBSlots.length === 0) {
+      disabledReason = 'Add at least one slot.';
+    } else {
+      for (const s of pageBSlots) {
+        if (s.startMinutes === null || isNaN(s.startMinutes)) {
+          disabledReason = 'Choose a Starting Time.';
+          break;
+        }
+        if (s.endMinutes === null || isNaN(s.endMinutes) || s.endMinutes <= s.startMinutes) {
+          disabledReason = 'Choose an Ending Time.';
+          break;
+        }
+        if (!(s.workText || '').trim()) {
+          disabledReason = 'Type your work.';
+          break;
+        }
+      }
+    }
 
-    const canSave = Boolean(dateVal) && allSlotsComplete;
+    const canSave = !disabledReason;
 
     if (addUpcomingSaveBtn) {
       addUpcomingSaveBtn.disabled = !canSave;
+    }
+
+    if (addUpcomingReasonMsg) {
+      if (!canSave) {
+        addUpcomingReasonMsg.textContent = disabledReason;
+        addUpcomingReasonMsg.style.display = 'block';
+      } else {
+        addUpcomingReasonMsg.textContent = '';
+        addUpcomingReasonMsg.style.display = 'none';
+      }
     }
   }
 
@@ -2032,6 +2072,9 @@
 
     for (let i = 0; i < pageBSlots.length; i++) {
       const s = pageBSlots[i];
+      if (s.endMinutes <= s.startMinutes) {
+        return 'Ending Time must be after the Starting Time.';
+      }
       if (s.endMinutes < s.startMinutes + 5) {
         return `Slot ${s.slotNumber}: Ending Time must be at least 5 minutes after Starting Time.`;
       }
@@ -2115,7 +2158,24 @@
       dayData.savedAt = getIsoTimestamp();
 
       saveToLocalStorage();
-      await syncDayToSupabase(dateKey);
+      await syncDayToSupabase(dateKey, true);
+
+      // Read-back verification from Supabase if online user
+      if (supabaseClient && currentUserId && currentUserId !== 'anonymous') {
+        const { data: verifyRow, error: verifyError } = await supabaseClient
+          .from('planner_days')
+          .select('slots, saved_at')
+          .eq('user_id', currentUserId)
+          .eq('day', dateKey)
+          .maybeSingle();
+
+        if (verifyError) {
+          throw new Error('Supabase verify query failed: ' + verifyError.message);
+        }
+        if (!verifyRow || !Array.isArray(verifyRow.slots) || verifyRow.slots.length < dayData.slots.length) {
+          throw new Error('Supabase verify failed: saved slots mismatch');
+        }
+      }
 
       // Reset Page B state so no discard dialog is triggered
       pageBPlanDate = '';
@@ -2128,7 +2188,7 @@
       // Open Page A with success message
       await openUpcomingSchedulePageA(dateKey);
     } catch (err) {
-      console.error('Failed to save upcoming schedule:', err);
+      console.error('Failed to save upcoming schedule. Error code/message:', (err && err.message) || err);
       if (addUpcomingSaveBtn) {
         addUpcomingSaveBtn.disabled = false;
         addUpcomingSaveBtn.textContent = 'Save';
