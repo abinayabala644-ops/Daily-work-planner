@@ -173,8 +173,40 @@
     }
 
     .toggle-mode-container {
-      margin-top: 20px;
-      text-align: center;
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .form-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .forgot-link-btn {
+      background: none;
+      border: none;
+      color: var(--blue-700);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 2px 4px;
+    }
+
+    .forgot-link-btn:hover {
+      color: var(--blue-800);
+    }
+
+    .forgot-link-btn:focus-visible {
+      outline: 2px solid var(--blue-700);
+      outline-offset: 2px;
+      border-radius: 4px;
     }
 
     .toggle-mode-btn {
@@ -251,8 +283,11 @@
           />
         </div>
 
-        <div class="form-group">
-          <label for="auth-password" class="form-label">Password</label>
+        <div class="form-group" id="group-password">
+          <div class="form-label-row">
+            <label for="auth-password" class="form-label" id="auth-password-label">Password</label>
+            <button type="button" id="forgot-password-link" class="forgot-link-btn">Forgot Password?</button>
+          </div>
           <input
             type="password"
             id="auth-password"
@@ -261,7 +296,7 @@
             placeholder="••••••••"
             required
           />
-          <label class="show-password-row">
+          <label class="show-password-row" id="group-show-password">
             <input type="checkbox" id="toggle-password" class="show-password-checkbox" />
             <span class="show-password-label">Show password</span>
           </label>
@@ -275,6 +310,9 @@
       <div class="toggle-mode-container">
         <button type="button" id="toggle-mode-btn" class="toggle-mode-btn">
           Create account
+        </button>
+        <button type="button" id="back-to-signin-btn" class="toggle-mode-btn" style="display: none;">
+          &larr; Back to Sign In
         </button>
       </div>
 
