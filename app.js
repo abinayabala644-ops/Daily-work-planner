@@ -107,7 +107,6 @@
   const views = {
     home: document.getElementById('view-home'),
     upcomingSchedule: document.getElementById('view-upcoming-schedule'), // Page A
-    addUpcomingSchedule: document.getElementById('view-add-upcoming-schedule'), // Page B
     upcomingEventDetails: document.getElementById('view-upcoming-event-details'), // Page C
     prevSummary: document.getElementById('view-prev-summary'),
     upcomingDateSummary: document.getElementById('view-upcoming-date-summary'),
@@ -135,6 +134,9 @@
   const btnActivityPrev = document.getElementById('btn-activity-prev');
   const btnActivityToday = document.getElementById('btn-activity-today');
   const btnActivityUpcoming = document.getElementById('btn-activity-upcoming');
+  const homeUnfinishedBanner = document.getElementById('home-unfinished-banner');
+  const homeUnfinishedDetails = document.getElementById('home-unfinished-details');
+  const homeUnfinishedContinueBtn = document.getElementById('home-unfinished-continue-btn');
   const homeTodayProgressCard = document.getElementById('home-today-progress-card');
   const homeTodayProgressContent = document.getElementById('home-today-progress-content');
 
@@ -181,7 +183,7 @@
   const summaryCalendarToggleBtn = document.getElementById('summary-calendar-toggle-btn');
   const summaryBackBtn = document.getElementById('summary-back-btn');
   const summaryUpcomingBtn = document.getElementById('summary-upcoming-btn');
-  const summaryStartNewDayBtn = document.getElementById('summary-start-new-day-btn');
+  const summaryEditTimesBtn = document.getElementById('summary-edit-times-btn');
   const summarySlotsList = document.getElementById('summary-slots-list');
   const summaryResultArea = document.getElementById('summary-result-area');
   const summaryFinishMessage = document.getElementById('summary-finish-message');
@@ -199,10 +201,6 @@
   const calendarDaysGrid = document.getElementById('calendar-days-grid');
 
   // Other Dialogs
-  const newDayDialog = document.getElementById('new-day-dialog');
-  const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
-  const dialogConfirmBtn = document.getElementById('dialog-confirm-btn');
-
   const settingsConfirmDialog = document.getElementById('settings-confirm-dialog');
   const settingsDialogCancel = document.getElementById('settings-dialog-cancel');
   const settingsDialogContinue = document.getElementById('settings-dialog-continue');
@@ -221,33 +219,15 @@
   const detailMarkVal = document.getElementById('detail-mark-val');
   const workDetailCloseBtn = document.getElementById('work-detail-close-btn');
 
-  // Upcoming Schedule 3-Page System Elements
+  // Upcoming Schedule Pages Elements
   // Page A
   const upcomingAddScheduleBtn = document.getElementById('upcoming-add-schedule-btn');
-  const upcomingPageASuccessMsg = document.getElementById('upcoming-page-a-success-msg');
   const upcomingDatesContainer = document.getElementById('upcoming-dates-container');
-
-  // Page B
-  const addUpcomingBackBtn = document.getElementById('add-upcoming-back-btn');
-  const addUpcomingTodayDisplay = document.getElementById('add-upcoming-today-display');
-  const addUpcomingDateInput = document.getElementById('add-upcoming-date-input');
-  const addUpcomingSlotsContainer = document.getElementById('add-upcoming-slots-container');
-  const addUpcomingFullHint = document.getElementById('add-upcoming-full-hint');
-  const addUpcomingReasonMsg = document.getElementById('add-upcoming-reason-msg');
-  const addUpcomingErrorMsg = document.getElementById('add-upcoming-error-msg');
-  const addUpcomingSaveError = document.getElementById('add-upcoming-save-error');
-  const addUpcomingNextBtn = document.getElementById('add-upcoming-next-btn');
-  const addUpcomingSaveBtn = document.getElementById('add-upcoming-save-btn');
 
   // Page C
   const upcomingEventDetailsBackBtn = document.getElementById('upcoming-event-details-back-btn');
   const upcomingEventDetailsTitle = document.getElementById('upcoming-event-details-title');
   const upcomingEventDetailsContent = document.getElementById('upcoming-event-details-content');
-
-  // Upcoming Schedule Discard Dialog Elements
-  const upcomingSchedDiscardDialog = document.getElementById('upcoming-sched-discard-dialog');
-  const upcomingDiscardCancelBtn = document.getElementById('upcoming-discard-cancel-btn');
-  const upcomingDiscardConfirmBtn = document.getElementById('upcoming-discard-confirm-btn');
 
   // Log out button
   const btnLogout = document.getElementById('btn-logout');
@@ -1511,85 +1491,12 @@
     }
   }
 
-  // --- UPCOMING SCHEDULE 3-PAGE SYSTEM (PAGE A, B, C) ---
-  let pageASavedSuccessMessage = null; // { dateKey: string }
-  let pageBPlanDate = ''; // YYYY-MM-DD
-  let pageBSlots = []; // array of { slotNumber, startMinutes, endMinutes, workText }
+  // --- UPCOMING SCHEDULE (PAGE A & DETAILS PAGE C) ---
   let pageCSelectedDateKey = null;
 
-  function hasUnsavedPageBData() {
-    if (!views.addUpcomingSchedule || !views.addUpcomingSchedule.classList.contains('active')) {
-      return false;
-    }
-    if (pageBPlanDate) return true;
-    if (pageBSlots.length > 1) return true;
-    if (pageBSlots.length === 1) {
-      const s = pageBSlots[0];
-      if (s.startMinutes !== null || s.endMinutes !== null || (s.workText && s.workText.trim().length > 0)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function confirmPageBDiscard(onConfirm) {
-    if (upcomingSchedDiscardDialog) {
-      const handleConfirm = () => {
-        cleanup();
-        upcomingSchedDiscardDialog.close();
-        if (typeof onConfirm === 'function') onConfirm();
-      };
-      const handleCancel = () => {
-        cleanup();
-        upcomingSchedDiscardDialog.close();
-      };
-      const cleanup = () => {
-        if (upcomingDiscardConfirmBtn) upcomingDiscardConfirmBtn.removeEventListener('click', handleConfirm);
-        if (upcomingDiscardCancelBtn) upcomingDiscardCancelBtn.removeEventListener('click', handleCancel);
-        upcomingSchedDiscardDialog.removeEventListener('cancel', handleCancel);
-      };
-
-      if (upcomingDiscardConfirmBtn) upcomingDiscardConfirmBtn.addEventListener('click', handleConfirm);
-      if (upcomingDiscardCancelBtn) upcomingDiscardCancelBtn.addEventListener('click', handleCancel);
-      upcomingSchedDiscardDialog.addEventListener('cancel', handleCancel);
-
-      upcomingSchedDiscardDialog.showModal();
-    } else {
-      if (confirm('Discard this unsaved schedule?')) {
-        if (typeof onConfirm === 'function') onConfirm();
-      }
-    }
-  }
-
   // --- PAGE A: UPCOMING SCHEDULE (SAVED DATES ONLY) ---
-  async function openUpcomingSchedulePageA(savedSuccessDateKey = null) {
+  async function openUpcomingSchedulePageA() {
     switchView('upcomingSchedule');
-
-    if (savedSuccessDateKey) {
-      pageASavedSuccessMessage = { dateKey: savedSuccessDateKey };
-    }
-
-    if (upcomingPageASuccessMsg) {
-      if (pageASavedSuccessMessage) {
-        upcomingPageASuccessMsg.innerHTML = '';
-        const strong = document.createElement('strong');
-        strong.textContent = '✓ Saved Successfully!';
-        strong.style.display = 'block';
-        strong.style.marginBottom = '2px';
-
-        const dObj = parseLocalDateKey(pageASavedSuccessMessage.dateKey);
-        const line = document.createElement('div');
-        line.textContent = `Saved for ${formatFullDisplayDate(dObj)}.`;
-
-        upcomingPageASuccessMsg.appendChild(strong);
-        upcomingPageASuccessMsg.appendChild(line);
-        upcomingPageASuccessMsg.style.display = 'block';
-      } else {
-        upcomingPageASuccessMsg.style.display = 'none';
-        upcomingPageASuccessMsg.innerHTML = '';
-      }
-    }
-
     await loadAndRenderPageASavedDates();
   }
 
@@ -1654,8 +1561,6 @@
         btn.setAttribute('aria-label', `View saved schedule for ${formattedDate}`);
 
         btn.addEventListener('click', () => {
-          // Clear Page A success message when navigating away
-          pageASavedSuccessMessage = null;
           openUpcomingEventDetailsPageC(item.dateKey);
         });
 
@@ -1682,537 +1587,6 @@
       upcomingDatesContainer.appendChild(errP);
       upcomingDatesContainer.appendChild(retryBtn);
     }
-  }
-
-  // --- PAGE B: ADD UPCOMING SCHEDULE (ENTRY PAGE) ---
-  function openAddUpcomingSchedulePageB() {
-    pageASavedSuccessMessage = null;
-    switchView('addUpcomingSchedule');
-
-    // Display current date read-only: "Today: Tue, 10 Nov 2026"
-    if (addUpcomingTodayDisplay) {
-      addUpcomingTodayDisplay.textContent = `Today: ${formatFullDisplayDate(todayDate)}`;
-    }
-
-    // Set min & max on date input, start empty
-    const tomorrowObj = addDays(todayDate, 1);
-    const maxDateObj = addDays(todayDate, 365);
-    const minStr = getLocalDateKey(tomorrowObj);
-    const maxStr = getLocalDateKey(maxDateObj);
-
-    if (addUpcomingDateInput) {
-      addUpcomingDateInput.min = minStr;
-      addUpcomingDateInput.max = maxStr;
-      addUpcomingDateInput.value = '';
-    }
-
-    pageBPlanDate = '';
-    pageBSlots = [
-      {
-        slotNumber: 1,
-        startMinutes: null,
-        endMinutes: null,
-        workText: '',
-      }
-    ];
-
-    clearAddUpcomingBanners();
-    renderPageBSlots();
-    updatePageBButtons();
-  }
-
-  function clearAddUpcomingBanners() {
-    if (addUpcomingReasonMsg) {
-      addUpcomingReasonMsg.style.display = 'none';
-      addUpcomingReasonMsg.textContent = '';
-    }
-    if (addUpcomingErrorMsg) {
-      addUpcomingErrorMsg.style.display = 'none';
-      addUpcomingErrorMsg.textContent = '';
-    }
-    if (addUpcomingFullHint) {
-      addUpcomingFullHint.style.display = 'none';
-    }
-    if (addUpcomingSaveError) {
-      addUpcomingSaveError.style.display = 'none';
-      addUpcomingSaveError.innerHTML = '';
-    }
-  }
-
-  function renderPageBSlots() {
-    if (!addUpcomingSlotsContainer) return;
-    addUpcomingSlotsContainer.innerHTML = '';
-
-    const totalSlots = pageBSlots.length;
-
-    pageBSlots.forEach((slotData, index) => {
-      const isLastSlot = index === totalSlots - 1;
-      const isReadOnly = !isLastSlot;
-
-      const card = document.createElement('div');
-      card.className = 'upcoming-slot-card';
-
-      const header = document.createElement('div');
-      header.className = 'upcoming-slot-card-header';
-
-      const title = document.createElement('h3');
-      title.className = 'upcoming-slot-card-title';
-      title.textContent = `Slot ${slotData.slotNumber}`;
-      header.appendChild(title);
-
-      // Only the last slot when there is more than one shows "Remove slot" button
-      if (isLastSlot && totalSlots > 1) {
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'btn-slot-remove';
-        removeBtn.textContent = 'Remove slot';
-        removeBtn.setAttribute('aria-label', `Remove Slot ${slotData.slotNumber}`);
-        removeBtn.addEventListener('click', () => {
-          clearAddUpcomingBanners();
-          pageBSlots.pop();
-          renderPageBSlots();
-          updatePageBButtons();
-        });
-        header.appendChild(removeBtn);
-      }
-
-      card.appendChild(header);
-
-      if (isReadOnly) {
-        // Render previous slot as read-only preview
-        const readOnlyBox = document.createElement('div');
-        readOnlyBox.className = 'upcoming-slot-readonly-box';
-
-        const timesSpan = document.createElement('div');
-        timesSpan.className = 'upcoming-slot-readonly-times';
-        timesSpan.textContent = `${formatMinutesTo12Hour(slotData.startMinutes)} - ${formatMinutesTo12Hour(slotData.endMinutes)}`;
-        readOnlyBox.appendChild(timesSpan);
-
-        const workSpan = document.createElement('div');
-        workSpan.className = 'upcoming-slot-readonly-work';
-        workSpan.textContent = slotData.workText.trim() || 'No task written';
-        readOnlyBox.appendChild(workSpan);
-
-        card.appendChild(readOnlyBox);
-      } else {
-        // Active editable slot
-        const timesGrid = document.createElement('div');
-        timesGrid.className = 'slot-times-grid';
-        timesGrid.style.display = 'grid';
-        timesGrid.style.gridTemplateColumns = '1fr 1fr';
-        timesGrid.style.gap = '14px';
-        timesGrid.style.marginBottom = '8px';
-
-        // 1. Starting Time
-        const startGroup = document.createElement('div');
-        startGroup.className = 'form-group';
-        startGroup.style.marginBottom = '0';
-
-        const startLabel = document.createElement('label');
-        startLabel.className = 'form-label';
-        startLabel.style.display = 'block';
-        startLabel.style.fontWeight = '700';
-        startLabel.style.marginBottom = '6px';
-        startLabel.textContent = 'Starting Time';
-        startLabel.htmlFor = `slot-${slotData.slotNumber}-start-select`;
-        startGroup.appendChild(startLabel);
-
-        if (slotData.slotNumber === 1) {
-          const startSelect = document.createElement('select');
-          startSelect.id = `slot-1-start-select`;
-          startSelect.className = 'time-select';
-
-          const defaultOpt = document.createElement('option');
-          defaultOpt.value = '';
-          defaultOpt.textContent = 'Select time';
-          startSelect.appendChild(defaultOpt);
-
-          for (let m = 540; m <= 1075; m += 5) { // 9:00 AM to 5:55 PM
-            const opt = document.createElement('option');
-            opt.value = String(m);
-            opt.textContent = formatMinutesTo12Hour(m);
-            if (slotData.startMinutes === m) opt.selected = true;
-            startSelect.appendChild(opt);
-          }
-
-          startSelect.addEventListener('change', () => {
-            clearAddUpcomingBanners();
-            const val = startSelect.value ? parseInt(startSelect.value, 10) : null;
-            slotData.startMinutes = val;
-            slotData.endMinutes = null; // clear Ending Time
-            renderPageBSlots();
-            updatePageBButtons();
-          });
-
-          startGroup.appendChild(startSelect);
-        } else {
-          // Read-only text equal to previous slot's Ending Time
-          const startDisplay = document.createElement('div');
-          startDisplay.className = 'time-readonly-display';
-          startDisplay.style.display = 'flex';
-          startDisplay.style.minHeight = '44px';
-          startDisplay.style.fontSize = '16px';
-          startDisplay.style.width = '100%';
-          startDisplay.style.alignItems = 'center';
-          startDisplay.style.padding = '10px 14px';
-          startDisplay.style.border = '1px solid var(--slate-300)';
-          startDisplay.style.borderRadius = '8px';
-          startDisplay.style.background = 'var(--slate-100)';
-          startDisplay.style.color = 'var(--slate-900)';
-          startDisplay.style.fontWeight = '700';
-          startDisplay.textContent = formatMinutesTo12Hour(slotData.startMinutes);
-          startGroup.appendChild(startDisplay);
-
-          const startHint = document.createElement('p');
-          startHint.style.margin = '4px 0 0 0';
-          startHint.style.fontSize = '0.78rem';
-          startHint.style.color = 'var(--slate-500)';
-          startHint.textContent = `Starts when Slot ${slotData.slotNumber - 1} ends.`;
-          startGroup.appendChild(startHint);
-        }
-
-        timesGrid.appendChild(startGroup);
-
-        // 2. Ending Time
-        const endGroup = document.createElement('div');
-        endGroup.className = 'form-group';
-        endGroup.style.marginBottom = '0';
-
-        const endLabel = document.createElement('label');
-        endLabel.className = 'form-label';
-        endLabel.style.display = 'block';
-        endLabel.style.fontWeight = '700';
-        endLabel.style.marginBottom = '6px';
-        endLabel.textContent = 'Ending Time';
-        endLabel.htmlFor = `slot-${slotData.slotNumber}-end-select`;
-        endGroup.appendChild(endLabel);
-
-        const endSelect = document.createElement('select');
-        endSelect.id = `slot-${slotData.slotNumber}-end-select`;
-        endSelect.className = 'time-select';
-
-        const endDefOpt = document.createElement('option');
-        endDefOpt.value = '';
-        endDefOpt.textContent = 'Select time';
-        endSelect.appendChild(endDefOpt);
-
-        if (typeof slotData.startMinutes === 'number' && !isNaN(slotData.startMinutes)) {
-          for (let m = slotData.startMinutes + 5; m <= 1080; m += 5) {
-            const opt = document.createElement('option');
-            opt.value = String(m);
-            opt.textContent = formatMinutesTo12Hour(m);
-            if (slotData.endMinutes === m) opt.selected = true;
-            endSelect.appendChild(opt);
-          }
-          endSelect.disabled = false;
-        } else {
-          endSelect.disabled = true;
-        }
-
-        endSelect.addEventListener('change', () => {
-          clearAddUpcomingBanners();
-          const val = endSelect.value ? parseInt(endSelect.value, 10) : null;
-          slotData.endMinutes = val;
-          updatePageBButtons();
-        });
-
-        endGroup.appendChild(endSelect);
-
-        if (slotData.startMinutes === null) {
-          const endHint = document.createElement('p');
-          endHint.style.margin = '4px 0 0 0';
-          endHint.style.fontSize = '0.78rem';
-          endHint.style.color = 'var(--slate-500)';
-          endHint.textContent = 'Choose a Starting Time first.';
-          endGroup.appendChild(endHint);
-        }
-
-        timesGrid.appendChild(endGroup);
-        card.appendChild(timesGrid);
-
-        // 3. Work Details
-        const workGroup = document.createElement('div');
-        workGroup.className = 'form-group';
-        workGroup.style.marginTop = '14px';
-        workGroup.style.marginBottom = '0';
-
-        const workLabel = document.createElement('label');
-        workLabel.className = 'form-label';
-        workLabel.style.display = 'block';
-        workLabel.style.fontWeight = '700';
-        workLabel.style.marginBottom = '6px';
-        workLabel.textContent = 'Work details';
-        workLabel.htmlFor = `slot-${slotData.slotNumber}-work-input`;
-        workGroup.appendChild(workLabel);
-
-        const workTextarea = document.createElement('textarea');
-        workTextarea.id = `slot-${slotData.slotNumber}-work-input`;
-        workTextarea.className = 'textarea-box';
-        workTextarea.placeholder = 'Type what you plan to do in this slot…';
-        workTextarea.value = slotData.workText || '';
-
-        workTextarea.addEventListener('input', () => {
-          clearAddUpcomingBanners();
-          slotData.workText = workTextarea.value;
-          updatePageBButtons();
-        });
-
-        workGroup.appendChild(workTextarea);
-        card.appendChild(workGroup);
-      }
-
-      addUpcomingSlotsContainer.appendChild(card);
-    });
-  }
-
-  function updatePageBButtons() {
-    const dateVal = addUpcomingDateInput ? addUpcomingDateInput.value : '';
-    const lastSlot = pageBSlots[pageBSlots.length - 1];
-
-    const isLastSlotComplete = lastSlot &&
-      typeof lastSlot.startMinutes === 'number' && !isNaN(lastSlot.startMinutes) &&
-      typeof lastSlot.endMinutes === 'number' && !isNaN(lastSlot.endMinutes) &&
-      lastSlot.endMinutes > lastSlot.startMinutes &&
-      (lastSlot.workText || '').trim().length > 0;
-
-    const isLastSlotFull = lastSlot && typeof lastSlot.endMinutes === 'number' && lastSlot.endMinutes >= 1080;
-
-    // Next button: disabled until last slot has Ending Time and non-empty work, stays disabled if Ending Time is 6:00 PM
-    if (addUpcomingNextBtn) {
-      if (isLastSlotFull) {
-        addUpcomingNextBtn.disabled = true;
-      } else {
-        addUpcomingNextBtn.disabled = !isLastSlotComplete;
-      }
-    }
-
-    if (addUpcomingFullHint) {
-      if (isLastSlotFull && isLastSlotComplete) {
-        addUpcomingFullHint.style.display = 'block';
-      } else {
-        addUpcomingFullHint.style.display = 'none';
-      }
-    }
-
-    // Determine disabled reason if Save cannot be performed
-    let disabledReason = '';
-    if (!dateVal) {
-      disabledReason = 'Choose a date.';
-    } else if (pageBSlots.length === 0) {
-      disabledReason = 'Add at least one slot.';
-    } else {
-      for (const s of pageBSlots) {
-        if (s.startMinutes === null || isNaN(s.startMinutes)) {
-          disabledReason = 'Choose a Starting Time.';
-          break;
-        }
-        if (s.endMinutes === null || isNaN(s.endMinutes) || s.endMinutes <= s.startMinutes) {
-          disabledReason = 'Choose an Ending Time.';
-          break;
-        }
-        if (!(s.workText || '').trim()) {
-          disabledReason = 'Type your work.';
-          break;
-        }
-      }
-    }
-
-    const canSave = !disabledReason;
-
-    if (addUpcomingSaveBtn) {
-      addUpcomingSaveBtn.disabled = !canSave;
-    }
-
-    if (addUpcomingReasonMsg) {
-      if (!canSave) {
-        addUpcomingReasonMsg.textContent = disabledReason;
-        addUpcomingReasonMsg.style.display = 'block';
-      } else {
-        addUpcomingReasonMsg.textContent = '';
-        addUpcomingReasonMsg.style.display = 'none';
-      }
-    }
-  }
-
-  function handlePageBNext() {
-    clearAddUpcomingBanners();
-    const lastSlot = pageBSlots[pageBSlots.length - 1];
-    if (!lastSlot || lastSlot.endMinutes === null || !(lastSlot.workText || '').trim()) {
-      return;
-    }
-
-    if (lastSlot.endMinutes >= 1080) {
-      if (addUpcomingFullHint) addUpcomingFullHint.style.display = 'block';
-      return;
-    }
-
-    const nextSlotNumber = pageBSlots.length + 1;
-    pageBSlots.push({
-      slotNumber: nextSlotNumber,
-      startMinutes: lastSlot.endMinutes,
-      endMinutes: null,
-      workText: '',
-    });
-
-    renderPageBSlots();
-    updatePageBButtons();
-  }
-
-  function validatePageBSlotsForSave(dateKey) {
-    const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
-    if (!dateKey || dateKey < tomorrowStr) {
-      return 'Choose a date from tomorrow onward.';
-    }
-
-    const dayData = state.days[dateKey];
-    const sMinLimit = (dayData && typeof dayData.startMinutes === 'number') ? dayData.startMinutes : 540;
-    const eMinLimit = (dayData && typeof dayData.endMinutes === 'number') ? dayData.endMinutes : 1080;
-
-    for (let i = 0; i < pageBSlots.length; i++) {
-      const s = pageBSlots[i];
-      if (s.endMinutes <= s.startMinutes) {
-        return 'Ending Time must be after the Starting Time.';
-      }
-      if (s.endMinutes < s.startMinutes + 5) {
-        return `Slot ${s.slotNumber}: Ending Time must be at least 5 minutes after Starting Time.`;
-      }
-      if (s.startMinutes < sMinLimit || s.endMinutes > eMinLimit) {
-        return `This time is outside that day's range (${formatMinutesTo12Hour(sMinLimit)} - ${formatMinutesTo12Hour(eMinLimit)}).`;
-      }
-    }
-
-    // Check overlap with already saved slots on that date
-    if (dayData && Array.isArray(dayData.slots)) {
-      for (const newS of pageBSlots) {
-        for (let idx = 0; idx < dayData.slots.length; idx++) {
-          const existingSlot = dayData.slots[idx];
-          const exStart = getEffectiveSlotStart(dayData, idx);
-          const exEnd = typeof existingSlot.end === 'number' ? existingSlot.end : exStart;
-          if (exStart !== null && exEnd !== null && Math.max(newS.startMinutes, exStart) < Math.min(newS.endMinutes, exEnd)) {
-            return `This overlaps ${formatMinutesTo12Hour(exStart)} - ${formatMinutesTo12Hour(exEnd)} on that date.`;
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
-  async function handlePageBSave() {
-    clearAddUpcomingBanners();
-    const dateKey = addUpcomingDateInput ? addUpcomingDateInput.value : '';
-
-    const validationError = validatePageBSlotsForSave(dateKey);
-    if (validationError) {
-      if (addUpcomingErrorMsg) {
-        addUpcomingErrorMsg.textContent = validationError;
-        addUpcomingErrorMsg.style.display = 'block';
-      }
-      return;
-    }
-
-    // Prepare save in ONE transaction
-    if (addUpcomingSaveBtn) {
-      addUpcomingSaveBtn.disabled = true;
-      addUpcomingSaveBtn.textContent = 'Saving…';
-    }
-
-    try {
-      if (!state.days[dateKey]) {
-        state.days[dateKey] = {
-          startMinutes: 540,
-          endMinutes: 1080,
-          slots: [],
-          savedAt: null,
-        };
-      }
-
-      const dayData = state.days[dateKey];
-      if (!Array.isArray(dayData.slots)) {
-        dayData.slots = [];
-      }
-
-      // Add each slot from pageBSlots
-      pageBSlots.forEach((s, idx) => {
-        const trimmedWork = (s.workText || '').trim();
-        dayData.slots.push({
-          id: `slot-${Date.now()}-${idx + 1}-${Math.floor(Math.random() * 1000)}`,
-          start: s.startMinutes,
-          end: s.endMinutes,
-          text: trimmedWork,
-          taskText: trimmedWork,
-          status: 'NONE',
-          markedAt: null,
-        });
-      });
-
-      // Keep all slots of that date in time order
-      dayData.slots.sort((a, b) => {
-        const aStart = typeof a.start === 'number' ? a.start : 0;
-        const bStart = typeof b.start === 'number' ? b.start : 0;
-        return aStart - bStart;
-      });
-
-      dayData.savedAt = getIsoTimestamp();
-
-      saveToLocalStorage();
-      await syncDayToSupabase(dateKey, true);
-
-      // Read-back verification from Supabase if online user
-      if (supabaseClient && currentUserId && currentUserId !== 'anonymous') {
-        const { data: verifyRow, error: verifyError } = await supabaseClient
-          .from('planner_days')
-          .select('slots, saved_at')
-          .eq('user_id', currentUserId)
-          .eq('day', dateKey)
-          .maybeSingle();
-
-        if (verifyError) {
-          throw new Error('Supabase verify query failed: ' + verifyError.message);
-        }
-        if (!verifyRow || !Array.isArray(verifyRow.slots) || verifyRow.slots.length < dayData.slots.length) {
-          throw new Error('Supabase verify failed: saved slots mismatch');
-        }
-      }
-
-      // Reset Page B state so no discard dialog is triggered
-      pageBPlanDate = '';
-      pageBSlots = [];
-
-      if (addUpcomingSaveBtn) {
-        addUpcomingSaveBtn.textContent = 'Save';
-      }
-
-      // Open Page A with success message
-      await openUpcomingSchedulePageA(dateKey);
-    } catch (err) {
-      console.error('Failed to save upcoming schedule. Error code/message:', (err && err.message) || err);
-      if (addUpcomingSaveBtn) {
-        addUpcomingSaveBtn.disabled = false;
-        addUpcomingSaveBtn.textContent = 'Save';
-      }
-      showPageBSaveError(handlePageBSave);
-    }
-  }
-
-  function showPageBSaveError(retryCallback) {
-    if (!addUpcomingSaveError) return;
-    addUpcomingSaveError.innerHTML = '';
-
-    const msgSpan = document.createElement('span');
-    msgSpan.textContent = 'Could not save. Check your internet and try again.';
-    addUpcomingSaveError.appendChild(msgSpan);
-
-    const retryBtn = document.createElement('button');
-    retryBtn.type = 'button';
-    retryBtn.className = 'btn-save-retry';
-    retryBtn.textContent = 'Retry';
-    retryBtn.addEventListener('click', () => {
-      addUpcomingSaveError.style.display = 'none';
-      if (typeof retryCallback === 'function') retryCallback();
-    });
-    addUpcomingSaveError.appendChild(retryBtn);
-    addUpcomingSaveError.style.display = 'flex';
   }
 
   // --- PAGE C: SAVED UPCOMING EVENT DETAILS (ONE DATE) ---
@@ -2331,41 +1705,15 @@
     }
   }
 
-  // Bind Listeners for Page A, B, C
+  // Bind Listeners for Upcoming Schedule
   if (upcomingAddScheduleBtn) {
     upcomingAddScheduleBtn.addEventListener('click', () => {
-      openAddUpcomingSchedulePageB();
+      const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
+      selectedDateKey = tomorrowStr;
+      initSettingsView();
+      switchView('settings');
+      if (startInput) startInput.focus();
     });
-  }
-
-  if (addUpcomingBackBtn) {
-    addUpcomingBackBtn.addEventListener('click', () => {
-      if (hasUnsavedPageBData()) {
-        confirmPageBDiscard(() => {
-          pageBPlanDate = '';
-          pageBSlots = [];
-          openUpcomingSchedulePageA();
-        });
-      } else {
-        openUpcomingSchedulePageA();
-      }
-    });
-  }
-
-  if (addUpcomingDateInput) {
-    addUpcomingDateInput.addEventListener('change', () => {
-      clearAddUpcomingBanners();
-      pageBPlanDate = addUpcomingDateInput.value;
-      updatePageBButtons();
-    });
-  }
-
-  if (addUpcomingNextBtn) {
-    addUpcomingNextBtn.addEventListener('click', handlePageBNext);
-  }
-
-  if (addUpcomingSaveBtn) {
-    addUpcomingSaveBtn.addEventListener('click', handlePageBSave);
   }
 
   if (upcomingEventDetailsBackBtn) {
@@ -2631,6 +1979,104 @@
     }
   }
 
+  function updateHomeUnfinishedBanner() {
+    if (!homeUnfinishedBanner || !homeUnfinishedDetails) return;
+
+    const todayStr = getLocalDateKey(todayDate);
+    const dayData = state.days[todayStr];
+
+    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) {
+      homeUnfinishedBanner.style.display = 'none';
+      return;
+    }
+
+    // Has at least one slot with non-empty typed text
+    const hasTypedText = dayData.slots.some(s => s && ((s.taskText && s.taskText.trim().length > 0) || (s.text && s.text.trim().length > 0)));
+    const finished = isScheduleFinished(dayData);
+    const saved = Boolean(dayData.savedAt);
+
+    if (hasTypedText && !finished && !saved) {
+      // Find the last slot of today in time order
+      const lastSlotIndex = dayData.slots.length - 1;
+      const slot = dayData.slots[lastSlotIndex];
+      const slotNumber = lastSlotIndex + 1;
+
+      const startMin = typeof slot.start === 'number' ? slot.start : (typeof dayData.startMinutes === 'number' ? dayData.startMinutes : MIN_WORK_TIME);
+      const startStr = formatMinutesTo12Hour(startMin);
+
+      let timeText = '';
+      if (typeof slot.end === 'number' && !isNaN(slot.end)) {
+        timeText = `${startStr} - ${formatMinutesTo12Hour(slot.end)}`;
+      } else {
+        timeText = `${startStr} - (finish time not chosen)`;
+      }
+
+      const rawTask = (slot.taskText || slot.text || '').trim();
+      let workText = rawTask || 'not typed yet';
+      if (workText.length > 120) {
+        workText = workText.slice(0, 120) + '…';
+      }
+
+      homeUnfinishedDetails.textContent = `You stopped at Slot ${slotNumber}: ${timeText}. Work: ${workText}.`;
+      homeUnfinishedBanner.style.display = 'flex';
+    } else {
+      homeUnfinishedBanner.style.display = 'none';
+    }
+  }
+
+  if (homeUnfinishedContinueBtn) {
+    homeUnfinishedContinueBtn.addEventListener('click', () => {
+      const todayStr = getLocalDateKey(todayDate);
+      selectedDateKey = todayStr;
+      updateDateButtonsState();
+
+      const dayData = state.days[todayStr];
+      if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) {
+        initSettingsView();
+        switchView('settings');
+        return;
+      }
+
+      const lastSlotIndex = dayData.slots.length - 1;
+      const lastSlot = dayData.slots[lastSlotIndex];
+
+      // If the slot has no valid Finished By (end is null or NaN): open that slot's page
+      if (typeof lastSlot.end !== 'number' || isNaN(lastSlot.end)) {
+        openTodayPlannerAtSlot(lastSlotIndex);
+        return;
+      }
+
+      // If the slot is complete and Finished By is earlier than the day's Ending Time: create and open the next slot
+      if (lastSlot.end < dayData.endMinutes) {
+        const nextIndex = lastSlotIndex + 1;
+        if (dayData.slots.length >= 48) {
+          openTodayPlannerAtSlot(lastSlotIndex);
+          return;
+        }
+
+        const newSlot = {
+          id: `slot-${nextIndex + 1}`,
+          start: lastSlot.end,
+          end: null,
+          taskText: '',
+          text: '',
+          status: 'NONE',
+          markedAt: null,
+        };
+        dayData.slots.push(newSlot);
+        saveStorage(todayStr);
+
+        currentSlotIndex = nextIndex;
+        renderSlotPage();
+        switchView('slot');
+        return;
+      }
+
+      // Fallback: open the last slot
+      openTodayPlannerAtSlot(lastSlotIndex);
+    });
+  }
+
   function startLiveTimers() {
     if (todayProgressTimer) clearInterval(todayProgressTimer);
     todayProgressTimer = setInterval(() => {
@@ -2638,6 +2084,7 @@
       // If home view is active, update in place
       if (views.home && views.home.classList.contains('active')) {
         renderTodayWorkProgressInPlace();
+        updateHomeUnfinishedBanner();
       }
       // If summary view is active, update muted status of buttons in place
       if (views.summary && views.summary.classList.contains('active')) {
@@ -2651,6 +2098,7 @@
       checkDateRollover();
       if (views.home && views.home.classList.contains('active')) {
         renderTodayWorkProgressInPlace();
+        updateHomeUnfinishedBanner();
       }
       if (views.summary && views.summary.classList.contains('active')) {
         updateSummaryMarkingRulesInPlace();
@@ -2664,6 +2112,7 @@
 
     // Load today's progress every time Home opens
     await loadAndRenderTodayWorkProgress();
+    updateHomeUnfinishedBanner();
   }
 
   if (btnHomeNext) {
@@ -2678,16 +2127,6 @@
   async function handleGoToHome(e) {
     if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
-    }
-
-    // If currently on Add Upcoming Schedule view with unsaved schedule, ask confirmation first
-    if (hasUnsavedPageBData()) {
-      confirmPageBDiscard(async () => {
-        pageBPlanDate = '';
-        pageBSlots = [];
-        await proceedGoToHome();
-      });
-      return;
     }
 
     await proceedGoToHome();
@@ -3943,29 +3382,13 @@
     }
   });
 
-  summaryStartNewDayBtn.addEventListener('click', () => {
-    newDayDialog.showModal();
-    dialogCancelBtn.focus();
-  });
-
-  dialogCancelBtn.addEventListener('click', () => {
-    newDayDialog.close();
-    summaryStartNewDayBtn.focus();
-  });
-
-  dialogConfirmBtn.addEventListener('click', () => {
-    newDayDialog.close();
-    clearSummarySaveMessage();
-    if (state.days[selectedDateKey]) {
-      state.days[selectedDateKey].slots = [];
-      state.days[selectedDateKey].savedAt = null;
-    }
-    currentSlotIndex = 0;
-    saveStorage(selectedDateKey);
-    initSettingsView();
-    switchView('settings');
-  });
-
+  if (summaryEditTimesBtn) {
+    summaryEditTimesBtn.addEventListener('click', () => {
+      initSettingsView();
+      switchView('settings');
+      if (startInput) startInput.focus();
+    });
+  }
 
   function updateSummarySaveState() {
     if (!summarySaveBtn || !summarySaveHint) return;
@@ -4185,7 +3608,7 @@
   });
 
   // Dialog backdrop close listeners
-  [newDayDialog, settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog].filter(Boolean).forEach((diag) => {
+  [settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog].filter(Boolean).forEach((diag) => {
     diag.addEventListener('click', (e) => {
       const rect = diag.getBoundingClientRect();
       const isInDialog =
