@@ -1324,9 +1324,15 @@
     updateActivityNavButtonsState(tab);
 
     if (tab === 'today') {
-      // CHANGE 3: Choosing "Today Schedule" opens the existing Summary page for TODAY
+      // Choosing "Today Schedule" directly opens the Daily Work Planner entry page for TODAY
       const todayStr = getLocalDateKey(todayDate);
-      handleSelectDate(todayStr);
+      flushPendingDebouncedSave();
+      clearSummarySaveMessage();
+      selectedDateKey = todayStr;
+      updateDateButtonsState();
+      initSettingsView();
+      switchView('settings');
+      if (startInput) startInput.focus();
       return;
     }
 
