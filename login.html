@@ -271,13 +271,18 @@
       </div>
 
       <form id="auth-form" novalidate autocomplete="off">
+        <!-- Hidden decoy inputs to absorb Chrome password manager autofill heuristics -->
+        <input type="text" name="fake_username_remembered" style="display:none !important;" tabindex="-1" autocomplete="off" />
+        <input type="password" name="fake_password_remembered" style="display:none !important;" tabindex="-1" autocomplete="off" />
+
         <div class="form-group">
           <label for="auth-email" class="form-label">Email</label>
           <input
             type="email"
             id="auth-email"
+            name="planner_auth_user_email"
             class="form-input"
-            autocomplete="off"
+            autocomplete="one-time-code"
             placeholder="name@example.com"
             required
           />
@@ -291,6 +296,7 @@
           <input
             type="password"
             id="auth-password"
+            name="planner_auth_user_token"
             class="form-input"
             autocomplete="new-password"
             placeholder="••••••••"
