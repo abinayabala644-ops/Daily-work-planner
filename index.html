@@ -2812,14 +2812,15 @@
       <h3 class="modal-title">Change Password</h3>
       <p class="modal-desc" id="change-pwd-desc">Enter your previous password and a new password below.</p>
 
-      <form id="change-password-form" novalidate>
+      <form id="change-password-form" autocomplete="off" novalidate>
         <div class="change-pwd-form-group">
           <label for="change-pwd-prev" class="change-pwd-label">Previous Password</label>
           <input
             type="password"
             id="change-pwd-prev"
             class="change-pwd-input"
-            autocomplete="current-password"
+            autocomplete="one-time-code"
+            data-lpignore="true"
             placeholder="Enter previous password"
             required
           />
@@ -2831,7 +2832,8 @@
             type="password"
             id="change-pwd-new"
             class="change-pwd-input"
-            autocomplete="new-password"
+            autocomplete="one-time-code"
+            data-lpignore="true"
             placeholder="At least 8 characters"
             required
           />
@@ -2843,7 +2845,8 @@
             type="password"
             id="change-pwd-confirm"
             class="change-pwd-input"
-            autocomplete="new-password"
+            autocomplete="one-time-code"
+            data-lpignore="true"
             placeholder="Confirm new password"
             required
           />
