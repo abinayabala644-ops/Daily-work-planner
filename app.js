@@ -30,6 +30,7 @@
   const MIN_SLOT_DURATION = 5;
 
   let currentUserId = "anonymous";
+  let currentUserEmail = "";
   let storageKey = "dailyPlanner:anonymous";
 
   // Safe ISO timestamp generator without using Date.prototype.toISOString directly for dates
@@ -236,12 +237,18 @@
   const btnTopChangePassword = document.getElementById('btn-top-change-password');
   const changePasswordDialog = document.getElementById('change-password-dialog');
   const changePasswordForm = document.getElementById('change-password-form');
+  const changePwdDesc = document.getElementById('change-pwd-desc');
+  const changePwdPrevInput = document.getElementById('change-pwd-prev');
   const changePwdNewInput = document.getElementById('change-pwd-new');
   const changePwdConfirmInput = document.getElementById('change-pwd-confirm');
   const changePwdShowToggle = document.getElementById('change-pwd-show-toggle');
+  const changePwdShowRow = document.getElementById('change-pwd-show-row');
   const changePwdMessage = document.getElementById('change-pwd-message');
+  const changePwdActions = document.getElementById('change-pwd-actions');
   const changePwdCancelBtn = document.getElementById('change-pwd-cancel-btn');
   const changePwdSubmitBtn = document.getElementById('change-pwd-submit-btn');
+  const changePwdOkActions = document.getElementById('change-pwd-ok-actions');
+  const changePwdOkBtn = document.getElementById('change-pwd-ok-btn');
 
   // --- TIME HELPERS ---
   function minutesToTimeString(minutes) {
@@ -3659,18 +3666,41 @@
     changePwdMessage.style.display = 'block';
   }
 
+  function resetChangePasswordDialogUI() {
+    clearChangePwdMessage();
+    if (changePwdPrevInput) {
+      changePwdPrevInput.value = '';
+      if (changePwdPrevInput.parentElement) changePwdPrevInput.parentElement.style.display = 'block';
+    }
+    if (changePwdNewInput) {
+      changePwdNewInput.value = '';
+      if (changePwdNewInput.parentElement) changePwdNewInput.parentElement.style.display = 'block';
+    }
+    if (changePwdConfirmInput) {
+      changePwdConfirmInput.value = '';
+      if (changePwdConfirmInput.parentElement) changePwdConfirmInput.parentElement.style.display = 'block';
+    }
+    if (changePwdShowToggle) {
+      changePwdShowToggle.checked = false;
+      if (changePwdPrevInput) changePwdPrevInput.type = 'password';
+      if (changePwdNewInput) changePwdNewInput.type = 'password';
+      if (changePwdConfirmInput) changePwdConfirmInput.type = 'password';
+    }
+    if (changePwdShowRow) changePwdShowRow.style.display = 'flex';
+    if (changePwdDesc) changePwdDesc.style.display = 'block';
+    if (changePwdActions) changePwdActions.style.display = 'flex';
+    if (changePwdOkActions) changePwdOkActions.style.display = 'none';
+    if (changePwdSubmitBtn) {
+      changePwdSubmitBtn.disabled = false;
+      changePwdSubmitBtn.textContent = 'Save';
+    }
+  }
+
   if (btnTopChangePassword && changePasswordDialog) {
     btnTopChangePassword.addEventListener('click', () => {
-      clearChangePwdMessage();
-      if (changePwdNewInput) changePwdNewInput.value = '';
-      if (changePwdConfirmInput) changePwdConfirmInput.value = '';
-      if (changePwdShowToggle) {
-        changePwdShowToggle.checked = false;
-        if (changePwdNewInput) changePwdNewInput.type = 'password';
-        if (changePwdConfirmInput) changePwdConfirmInput.type = 'password';
-      }
+      resetChangePasswordDialogUI();
       changePasswordDialog.showModal();
-      if (changePwdNewInput) changePwdNewInput.focus();
+      if (changePwdPrevInput) changePwdPrevInput.focus();
     });
   }
 
@@ -3683,6 +3713,7 @@
   if (changePwdShowToggle) {
     changePwdShowToggle.addEventListener('change', () => {
       const type = changePwdShowToggle.checked ? 'text' : 'password';
+      if (changePwdPrevInput) changePwdPrevInput.type = type;
       if (changePwdNewInput) changePwdNewInput.type = type;
       if (changePwdConfirmInput) changePwdConfirmInput.type = type;
     });
@@ -3693,8 +3724,15 @@
       e.preventDefault();
       clearChangePwdMessage();
 
+      const prevPwd = changePwdPrevInput ? changePwdPrevInput.value : '';
       const newPwd = changePwdNewInput ? changePwdNewInput.value : '';
       const confirmPwd = changePwdConfirmInput ? changePwdConfirmInput.value : '';
+
+      if (!prevPwd) {
+        showChangePwdError('Please enter your previous password.');
+        if (changePwdPrevInput) changePwdPrevInput.focus();
+        return;
+      }
 
       if (!newPwd) {
         showChangePwdError('Please enter a new password.');
@@ -3715,7 +3753,7 @@
       }
 
       if (newPwd !== confirmPwd) {
-        showChangePwdError('The passwords do not match.');
+        showChangePwdError('New password and confirm password do not match.');
         if (changePwdConfirmInput) changePwdConfirmInput.focus();
         return;
       }
@@ -3727,34 +3765,92 @@
 
       if (changePwdSubmitBtn) {
         changePwdSubmitBtn.disabled = true;
-        changePwdSubmitBtn.textContent = 'Updating…';
+        changePwdSubmitBtn.textContent = 'Validating…';
       }
 
       try {
-        const { error } = await supabaseClient.auth.updateUser({
+        // Re-authenticate user to validate previous password
+        let emailToVerify = currentUserEmail;
+        if (!emailToVerify) {
+          const { data: userData } = await supabaseClient.auth.getUser();
+          if (userData && userData.user) {
+            emailToVerify = userData.user.email || '';
+            currentUserEmail = emailToVerify;
+          }
+        }
+
+        if (!emailToVerify) {
+          showChangePwdError('Could not verify user account. Please log in again.');
+          return;
+        }
+
+        const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+          email: emailToVerify,
+          password: prevPwd,
+        });
+
+        if (signInError) {
+          showChangePwdError('Incorrect previous password.');
+          if (changePwdPrevInput) changePwdPrevInput.focus();
+          return;
+        }
+
+        // Previous password is valid, now securely update password
+        changePwdSubmitBtn.textContent = 'Saving…';
+        const { error: updateError } = await supabaseClient.auth.updateUser({
           password: newPwd,
         });
 
-        if (error) {
-          showChangePwdError('Could not update password: ' + (error.message || 'Please try again.'));
-        } else {
-          showChangePwdSuccess('Password changed successfully!');
-          if (changePwdNewInput) changePwdNewInput.value = '';
-          if (changePwdConfirmInput) changePwdConfirmInput.value = '';
-          setTimeout(() => {
-            if (changePasswordDialog && changePasswordDialog.open) {
-              changePasswordDialog.close();
-            }
-          }, 1500);
+        if (updateError) {
+          showChangePwdError(updateError.message || 'Could not update password. Please try again.');
+          return;
         }
+
+        // On successful update, hide input fields and show success message with OK button
+        if (changePwdPrevInput && changePwdPrevInput.parentElement) changePwdPrevInput.parentElement.style.display = 'none';
+        if (changePwdNewInput && changePwdNewInput.parentElement) changePwdNewInput.parentElement.style.display = 'none';
+        if (changePwdConfirmInput && changePwdConfirmInput.parentElement) changePwdConfirmInput.parentElement.style.display = 'none';
+        if (changePwdShowRow) changePwdShowRow.style.display = 'none';
+        if (changePwdDesc) changePwdDesc.style.display = 'none';
+        if (changePwdActions) changePwdActions.style.display = 'none';
+
+        showChangePwdSuccess('Your password has been changed successfully!');
+        if (changePwdOkActions) changePwdOkActions.style.display = 'flex';
+        if (changePwdOkBtn) changePwdOkBtn.focus();
       } catch (err) {
         showChangePwdError('An unexpected error occurred. Please try again.');
       } finally {
         if (changePwdSubmitBtn) {
           changePwdSubmitBtn.disabled = false;
-          changePwdSubmitBtn.textContent = 'Update Password';
+          changePwdSubmitBtn.textContent = 'Save';
         }
       }
+    });
+  }
+
+  // Handle OK button click after password change: log out and redirect to login
+  if (changePwdOkBtn) {
+    changePwdOkBtn.addEventListener('click', async () => {
+      flushPendingDebouncedSave();
+      if (supabaseClient) {
+        try {
+          await supabaseClient.auth.signOut();
+        } catch (e) {
+          console.warn('SignOut error:', e);
+        }
+      }
+      try {
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('sb-') || key.startsWith('dailyPlanner:')) {
+            localStorage.removeItem(key);
+          }
+        });
+        sessionStorage.clear();
+      } catch (e) {
+        console.warn('Clear auth storage error:', e);
+      }
+      state = { lastTimes: { startMinutes: MIN_WORK_TIME, endMinutes: MAX_WORK_TIME }, days: {} };
+      window.location.replace('login.html?fresh=true');
     });
   }
 
@@ -3809,6 +3905,7 @@
       }
 
       currentUserId = data.session.user.id;
+      currentUserEmail = data.session.user.email || "";
       storageKey = `dailyPlanner:${currentUserId}`;
 
       // Load user's saved plans BEFORE revealing view
