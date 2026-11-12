@@ -270,14 +270,14 @@
         <p id="auth-subtitle" class="login-subtitle">Sign in to continue</p>
       </div>
 
-      <form id="auth-form" novalidate>
+      <form id="auth-form" novalidate autocomplete="off">
         <div class="form-group">
           <label for="auth-email" class="form-label">Email</label>
           <input
             type="email"
             id="auth-email"
             class="form-input"
-            autocomplete="username"
+            autocomplete="off"
             placeholder="name@example.com"
             required
           />
@@ -292,7 +292,7 @@
             type="password"
             id="auth-password"
             class="form-input"
-            autocomplete="current-password"
+            autocomplete="new-password"
             placeholder="••••••••"
             required
           />
