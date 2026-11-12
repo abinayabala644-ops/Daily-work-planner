@@ -232,6 +232,17 @@
   // Log out button
   const btnLogout = document.getElementById('btn-logout');
 
+  // Change Password elements
+  const btnTopChangePassword = document.getElementById('btn-top-change-password');
+  const changePasswordDialog = document.getElementById('change-password-dialog');
+  const changePasswordForm = document.getElementById('change-password-form');
+  const changePwdNewInput = document.getElementById('change-pwd-new');
+  const changePwdConfirmInput = document.getElementById('change-pwd-confirm');
+  const changePwdShowToggle = document.getElementById('change-pwd-show-toggle');
+  const changePwdMessage = document.getElementById('change-pwd-message');
+  const changePwdCancelBtn = document.getElementById('change-pwd-cancel-btn');
+  const changePwdSubmitBtn = document.getElementById('change-pwd-submit-btn');
+
   // --- TIME HELPERS ---
   function minutesToTimeString(minutes) {
     const norm = ((minutes % 1440) + 1440) % 1440;
@@ -3608,7 +3619,7 @@
   });
 
   // Dialog backdrop close listeners
-  [settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog].filter(Boolean).forEach((diag) => {
+  [settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog, changePasswordDialog].filter(Boolean).forEach((diag) => {
     diag.addEventListener('click', (e) => {
       const rect = diag.getBoundingClientRect();
       const isInDialog =
@@ -3621,6 +3632,127 @@
       }
     });
   });
+
+  // Change Password Dialog functionality
+  function clearChangePwdMessage() {
+    if (!changePwdMessage) return;
+    changePwdMessage.textContent = '';
+    changePwdMessage.className = 'change-pwd-message';
+    changePwdMessage.style.display = 'none';
+  }
+
+  function showChangePwdError(msg) {
+    if (!changePwdMessage) return;
+    changePwdMessage.textContent = msg;
+    changePwdMessage.className = 'change-pwd-message error';
+    changePwdMessage.style.display = 'block';
+  }
+
+  function showChangePwdSuccess(msg) {
+    if (!changePwdMessage) return;
+    changePwdMessage.textContent = msg;
+    changePwdMessage.className = 'change-pwd-message success';
+    changePwdMessage.style.display = 'block';
+  }
+
+  if (btnTopChangePassword && changePasswordDialog) {
+    btnTopChangePassword.addEventListener('click', () => {
+      clearChangePwdMessage();
+      if (changePwdNewInput) changePwdNewInput.value = '';
+      if (changePwdConfirmInput) changePwdConfirmInput.value = '';
+      if (changePwdShowToggle) {
+        changePwdShowToggle.checked = false;
+        if (changePwdNewInput) changePwdNewInput.type = 'password';
+        if (changePwdConfirmInput) changePwdConfirmInput.type = 'password';
+      }
+      changePasswordDialog.showModal();
+      if (changePwdNewInput) changePwdNewInput.focus();
+    });
+  }
+
+  if (changePwdCancelBtn && changePasswordDialog) {
+    changePwdCancelBtn.addEventListener('click', () => {
+      changePasswordDialog.close();
+    });
+  }
+
+  if (changePwdShowToggle) {
+    changePwdShowToggle.addEventListener('change', () => {
+      const type = changePwdShowToggle.checked ? 'text' : 'password';
+      if (changePwdNewInput) changePwdNewInput.type = type;
+      if (changePwdConfirmInput) changePwdConfirmInput.type = type;
+    });
+  }
+
+  if (changePasswordForm) {
+    changePasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearChangePwdMessage();
+
+      const newPwd = changePwdNewInput ? changePwdNewInput.value : '';
+      const confirmPwd = changePwdConfirmInput ? changePwdConfirmInput.value : '';
+
+      if (!newPwd) {
+        showChangePwdError('Please enter a new password.');
+        if (changePwdNewInput) changePwdNewInput.focus();
+        return;
+      }
+
+      if (newPwd.length < 8) {
+        showChangePwdError('Password must be at least 8 characters.');
+        if (changePwdNewInput) changePwdNewInput.focus();
+        return;
+      }
+
+      if (!confirmPwd) {
+        showChangePwdError('Please confirm your new password.');
+        if (changePwdConfirmInput) changePwdConfirmInput.focus();
+        return;
+      }
+
+      if (newPwd !== confirmPwd) {
+        showChangePwdError('The passwords do not match.');
+        if (changePwdConfirmInput) changePwdConfirmInput.focus();
+        return;
+      }
+
+      if (!supabaseClient) {
+        showChangePwdError('Authentication is not available.');
+        return;
+      }
+
+      if (changePwdSubmitBtn) {
+        changePwdSubmitBtn.disabled = true;
+        changePwdSubmitBtn.textContent = 'Updating…';
+      }
+
+      try {
+        const { error } = await supabaseClient.auth.updateUser({
+          password: newPwd,
+        });
+
+        if (error) {
+          showChangePwdError('Could not update password: ' + (error.message || 'Please try again.'));
+        } else {
+          showChangePwdSuccess('Password changed successfully!');
+          if (changePwdNewInput) changePwdNewInput.value = '';
+          if (changePwdConfirmInput) changePwdConfirmInput.value = '';
+          setTimeout(() => {
+            if (changePasswordDialog && changePasswordDialog.open) {
+              changePasswordDialog.close();
+            }
+          }, 1500);
+        }
+      } catch (err) {
+        showChangePwdError('An unexpected error occurred. Please try again.');
+      } finally {
+        if (changePwdSubmitBtn) {
+          changePwdSubmitBtn.disabled = false;
+          changePwdSubmitBtn.textContent = 'Update Password';
+        }
+      }
+    });
+  }
 
   // Log out button: signs out and clears in-memory state; NEVER deletes stored plans
   if (btnLogout) {
