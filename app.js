@@ -1324,10 +1324,8 @@
     updateActivityNavButtonsState(tab);
 
     if (tab === 'today') {
-      // Choosing "Today Schedule" directly opens the Daily Work Planner entry page for TODAY
+      // Choosing "Today Schedule" directly opens the Daily Work Planner for TODAY
       const todayStr = getLocalDateKey(todayDate);
-      flushPendingDebouncedSave();
-      clearSummarySaveMessage();
       selectedDateKey = todayStr;
       updateDateButtonsState();
       initSettingsView();
