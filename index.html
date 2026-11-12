@@ -2810,9 +2810,21 @@
   <dialog id="change-password-dialog">
     <div class="modal-box">
       <h3 class="modal-title">Change Password</h3>
-      <p class="modal-desc">Enter and confirm your new password below.</p>
+      <p class="modal-desc" id="change-pwd-desc">Enter your previous password and a new password below.</p>
 
       <form id="change-password-form" novalidate>
+        <div class="change-pwd-form-group">
+          <label for="change-pwd-prev" class="change-pwd-label">Previous Password</label>
+          <input
+            type="password"
+            id="change-pwd-prev"
+            class="change-pwd-input"
+            autocomplete="current-password"
+            placeholder="Enter previous password"
+            required
+          />
+        </div>
+
         <div class="change-pwd-form-group">
           <label for="change-pwd-new" class="change-pwd-label">New Password</label>
           <input
@@ -2826,27 +2838,31 @@
         </div>
 
         <div class="change-pwd-form-group">
-          <label for="change-pwd-confirm" class="change-pwd-label">Confirm New Password</label>
+          <label for="change-pwd-confirm" class="change-pwd-label">Confirm Password</label>
           <input
             type="password"
             id="change-pwd-confirm"
             class="change-pwd-input"
             autocomplete="new-password"
-            placeholder="Re-enter new password"
+            placeholder="Confirm new password"
             required
           />
         </div>
 
-        <label class="change-pwd-show-row">
+        <label class="change-pwd-show-row" id="change-pwd-show-row">
           <input type="checkbox" id="change-pwd-show-toggle" class="change-pwd-checkbox" />
           <span class="change-pwd-show-label">Show password</span>
         </label>
 
         <div id="change-pwd-message" class="change-pwd-message" role="status" aria-live="polite"></div>
 
-        <div class="modal-actions">
+        <div class="modal-actions" id="change-pwd-actions">
           <button type="button" id="change-pwd-cancel-btn" class="btn btn-secondary">Cancel</button>
-          <button type="submit" id="change-pwd-submit-btn" class="btn btn-primary">Update Password</button>
+          <button type="submit" id="change-pwd-submit-btn" class="btn btn-primary">Save</button>
+        </div>
+
+        <div class="modal-actions" id="change-pwd-ok-actions" style="display: none; justify-content: center; margin-top: 16px;">
+          <button type="button" id="change-pwd-ok-btn" class="btn btn-primary" style="min-width: 120px;">OK</button>
         </div>
       </form>
     </div>
