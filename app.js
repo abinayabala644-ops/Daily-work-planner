@@ -3765,19 +3765,20 @@
           console.warn('SignOut error:', e);
         }
       }
-      // Clear Supabase session auth tokens from localStorage so login page never auto-redirects back to index.html
+      // Clear Supabase session auth tokens and user caches from localStorage and sessionStorage
       try {
         Object.keys(localStorage).forEach((key) => {
-          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          if (key.startsWith('sb-') || key.startsWith('dailyPlanner:')) {
             localStorage.removeItem(key);
           }
         });
+        sessionStorage.clear();
       } catch (e) {
         console.warn('Clear auth storage error:', e);
       }
       // Reset in-memory copy only
       state = { lastTimes: { startMinutes: MIN_WORK_TIME, endMinutes: MAX_WORK_TIME }, days: {} };
-      window.location.replace('login.html');
+      window.location.replace('login.html?fresh=true');
     });
   }
 

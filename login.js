@@ -379,4 +379,17 @@
 
   // Initial UI state setup
   updateModeUI();
+
+  // Reset/Empty inputs on load to prevent browser pre-filling remembered credentials
+  function resetLoginFormInputs() {
+    if (authForm) {
+      try { authForm.reset(); } catch (e) {}
+    }
+    if (emailInput && currentMode !== 'reset') emailInput.value = '';
+    if (passwordInput) passwordInput.value = '';
+  }
+
+  resetLoginFormInputs();
+  setTimeout(resetLoginFormInputs, 50);
+  setTimeout(resetLoginFormInputs, 200);
 })();
