@@ -111,6 +111,7 @@
     upcomingEventDetails: document.getElementById('view-upcoming-event-details'), // Page C
     prevSummary: document.getElementById('view-prev-summary'),
     upcomingDateSummary: document.getElementById('view-upcoming-date-summary'),
+    weekReview: document.getElementById('view-week-review'), // My Week Review
     settings: document.getElementById('view-settings'),
     slot: document.getElementById('view-slot'),
     summary: document.getElementById('view-summary'),
@@ -118,7 +119,13 @@
 
   // Top Bar Navigation Elements
   const btnTopMyWorkBoard = document.getElementById('btn-top-my-work-board');
+  const btnTopWeekReview = document.getElementById('btn-top-week-review');
   const btnHomeNext = document.getElementById('btn-home-next');
+
+  // My Week Review Elements
+  const btnActivityWeekReview = document.getElementById('btn-activity-week-review');
+  const weekReviewBackBtn = document.getElementById('week-review-back-btn');
+  const weekReviewContent = document.getElementById('week-review-content');
 
   // Previous Work Summary Screen Elements
   const prevSummaryNextBtn = document.getElementById('prev-summary-next-btn');
@@ -1768,6 +1775,334 @@
     });
   }
 
+  // Week Review Event Listeners
+  if (btnActivityWeekReview) {
+    btnActivityWeekReview.addEventListener('click', () => {
+      openWeekReview();
+    });
+  }
+
+  if (btnTopWeekReview) {
+    btnTopWeekReview.addEventListener('click', () => {
+      openWeekReview();
+    });
+  }
+
+  if (weekReviewBackBtn) {
+    weekReviewBackBtn.addEventListener('click', () => {
+      switchView('home');
+      renderHomeView();
+    });
+  }
+
+  // --- MY WEEK REVIEW SYSTEM ---
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function getCurrentWeekRange(refDate = todayDate) {
+    const day = refDate.getDay(); // 0 is Sun, 1 is Mon, ... 6 is Sat
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = addDays(refDate, diffToMonday);
+    const sunday = addDays(monday, 6);
+    return { monday, sunday };
+  }
+
+  async function openWeekReview() {
+    flushPendingDebouncedSave();
+    switchView('weekReview');
+    if (weekReviewContent) {
+      weekReviewContent.innerHTML = '<p class="activity-panel-message">Preparing your personal weekly story… ✨</p>';
+    }
+
+    const { monday, sunday } = getCurrentWeekRange(todayDate);
+    const mondayKey = getLocalDateKey(monday);
+    const sundayKey = getLocalDateKey(sunday);
+
+    try {
+      loadFromLocalStorage();
+      if (supabaseClient && currentUserId && currentUserId !== 'anonymous') {
+        await loadRange(mondayKey, sundayKey);
+      }
+    } catch (e) {
+      console.warn('Error loading week review data from Supabase:', e);
+    }
+
+    renderWeekReview(monday, sunday);
+  }
+
+  function renderWeekReview(monday, sunday) {
+    if (!weekReviewContent) return;
+    weekReviewContent.innerHTML = '';
+
+    const monthsShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const daysData = [];
+
+    let totalSlotsCount = 0;
+    let completedSlotsCount = 0;
+    let unfinishedSlotsCount = 0;
+    let unmarkedSlotsCount = 0;
+    let totalMinutesFocused = 0;
+
+    for (let i = 0; i < 7; i++) {
+      const dObj = addDays(monday, i);
+      const key = getLocalDateKey(dObj);
+      const dayData = state.days[key];
+      const validSlots = (dayData && Array.isArray(dayData.slots))
+        ? dayData.slots.filter(s => !isSlotEmpty(s))
+        : [];
+
+      validSlots.forEach(s => {
+        totalSlotsCount++;
+        const duration = (s.end !== null && s.start !== null && s.end > s.start) ? (s.end - s.start) : 0;
+        if (s.status === 'COMPLETED') {
+          completedSlotsCount++;
+          totalMinutesFocused += duration;
+        } else if (s.status === 'NOT_COMPLETED') {
+          unfinishedSlotsCount++;
+        } else {
+          unmarkedSlotsCount++;
+          totalMinutesFocused += duration;
+        }
+      });
+
+      daysData.push({
+        dObj,
+        key,
+        slots: validSlots,
+        dayName: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][i],
+      });
+    }
+
+    const completionRate = totalSlotsCount > 0 ? Math.round((completedSlotsCount / totalSlotsCount) * 100) : 0;
+    const hoursFocused = (totalMinutesFocused / 60).toFixed(1);
+    const fromStr = `${monday.getDate()} ${monthsShort[monday.getMonth()]}`;
+    const toStr = `${sunday.getDate()} ${monthsShort[sunday.getMonth()]} ${sunday.getFullYear()}`;
+
+    // Main Container
+    const container = document.createElement('div');
+    container.className = 'week-review-container';
+
+    // 1. Hero Card
+    const heroCard = document.createElement('div');
+    heroCard.className = 'week-hero-card';
+    heroCard.innerHTML = `
+      <div class="week-hero-emoji" aria-hidden="true">🌟</div>
+      <h2 class="week-hero-title">Your Weekly Journey</h2>
+      <p class="week-hero-range">🗓️ ${fromStr} – ${toStr} (Monday to Sunday)</p>
+      <div class="week-stats-row">
+        <div class="week-stat-pill">
+          <span class="week-stat-number">${totalSlotsCount}</span>
+          <span class="week-stat-label">🎯 Total Planned</span>
+        </div>
+        <div class="week-stat-pill">
+          <span class="week-stat-number" style="color: #16a34a;">${completedSlotsCount}</span>
+          <span class="week-stat-label">✅ Completed</span>
+        </div>
+        <div class="week-stat-pill">
+          <span class="week-stat-number" style="color: #dc2626;">${unfinishedSlotsCount}</span>
+          <span class="week-stat-label">⏳ Unfinished</span>
+        </div>
+        <div class="week-stat-pill">
+          <span class="week-stat-number" style="color: #9333ea;">${hoursFocused}h</span>
+          <span class="week-stat-label">⏱️ Focus Hours</span>
+        </div>
+        <div class="week-stat-pill">
+          <span class="week-stat-number" style="color: #2563eb;">${completionRate}%</span>
+          <span class="week-stat-label">📊 Completion</span>
+        </div>
+      </div>
+    `;
+    container.appendChild(heroCard);
+
+    // 2. Friendly Motivational Companion Card
+    let companionAvatar = "😊";
+    let companionTitle = "Your Friendly Companion";
+    let companionMessage = "";
+    let suggestions = [];
+
+    if (totalSlotsCount === 0) {
+      companionAvatar = "🌱";
+      companionTitle = "A Fresh Start Friend";
+      companionMessage = "Welcome to a fresh beginning! It looks like you haven’t logged any work slots for this week yet. That is completely okay — every day gives you a brand-new canvas! Use today as an opportunity to set one small goal, plan your first morning slot, and step forward with a fresh, positive mindset.";
+      suggestions = [
+        "Start simple: Schedule just 1 or 2 essential tasks each day to build steady momentum.",
+        "Use 30–45 minute time slots so your schedule feels light, flexible, and achievable.",
+        "Add a deliberate 'Break' slot in the afternoon to reward yourself and recharge."
+      ];
+    } else if (completionRate >= 70) {
+      companionAvatar = "🎉";
+      companionTitle = "Your Proud Cheerleader";
+      companionMessage = `Incredible work this week! You accomplished ${completedSlotsCount} out of ${totalSlotsCount} planned tasks (${completionRate}% completion rate!). Your focus and consistency are truly admirable. Take a deep breath and feel proud of the hard work and dedication you poured into your week!`;
+      suggestions = [
+        "Notice which time of the day felt easiest to complete tasks and protect those prime hours next week.",
+        "Don’t forget to celebrate your wins this weekend — resting well prepares you for another great week.",
+        "Keep up this wonderful consistency; you are building lifelong productive habits!"
+      ];
+    } else if (completionRate >= 35) {
+      companionAvatar = "💪";
+      companionTitle = "Your Supportive Coach";
+      companionMessage = `You showed up, put in real dedication, and accomplished ${completedSlotsCount} meaningful tasks totaling over ${hoursFocused} hours of focused work! While some items didn't get finished, every single slot you completed brought you closer to your goals. You are making real progress!`;
+      suggestions = [
+        "Tackle your most important task first thing in the morning when your mind is fresh.",
+        "If an unfinished task felt intimidating, break it into two smaller 30-minute steps.",
+        "Remember: consistency beats perfection every single time. Keep taking small steps!"
+      ];
+    } else {
+      companionAvatar = "🌿";
+      companionTitle = "Your Caring Mentor";
+      companionMessage = `You planned ${totalSlotsCount} tasks this week, and although several remained unfinished, please remember: missing a task is never the end of your journey! Life throws unexpected challenges our way, and setbacks are simply gentle reminders to adjust our pace. What matters most is that you're here, learning and ready to grow.`;
+      suggestions = [
+        "Give yourself grace: acknowledge what was outside your control and let go of stress.",
+        "Next week, try planning fewer slots (2–3 max) so you feel zero pressure and can finish them cleanly.",
+        "Treat each new day as a clean slate — you are always one focused decision away from a turnaround."
+      ];
+    }
+
+    const companionCard = document.createElement('div');
+    companionCard.className = 'week-companion-card';
+    companionCard.innerHTML = `
+      <div class="week-companion-header">
+        <div class="week-companion-avatar" aria-hidden="true">${companionAvatar}</div>
+        <div>
+          <div class="week-companion-name">${companionTitle}</div>
+          <div class="week-companion-role">Your Personal Growth Partner</div>
+        </div>
+      </div>
+      <p class="week-companion-message">${escapeHtml(companionMessage)}</p>
+      <div class="week-suggestions-box">
+        <div class="week-suggestions-title">
+          <span>💡 Friendly Suggestions for the Coming Week</span>
+        </div>
+        <ul class="week-suggestions-list">
+          ${suggestions.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+    container.appendChild(companionCard);
+
+    // 3. Weekly Story Chapters (Monday to Sunday)
+    const storySection = document.createElement('div');
+    storySection.className = 'week-story-section';
+
+    const storyHeading = document.createElement('h3');
+    storyHeading.className = 'week-story-heading';
+    storyHeading.innerHTML = `<span>📖</span> Chapters of Your Week`;
+    storySection.appendChild(storyHeading);
+
+    const chapterTitles = [
+      { prefix: "Chapter 1", emoji: "🌅", theme: "Monday — Setting the Tone" },
+      { prefix: "Chapter 2", emoji: "⚡", theme: "Tuesday — Building Momentum" },
+      { prefix: "Chapter 3", emoji: "🎯", theme: "Wednesday — The Mid-Week Anchor" },
+      { prefix: "Chapter 4", emoji: "🚀", theme: "Thursday — Pushing Forward" },
+      { prefix: "Chapter 5", emoji: "🏁", theme: "Friday — The Final Lap" },
+      { prefix: "Chapter 6", emoji: "🌿", theme: "Saturday — Weekend Reflection" },
+      { prefix: "Chapter 7", emoji: "☀️", theme: "Sunday — Rest & Renewal" },
+    ];
+
+    daysData.forEach((dayItem, idx) => {
+      const chapterInfo = chapterTitles[idx];
+      const dateFormatted = `${dayItem.dObj.getDate()} ${monthsShort[dayItem.dObj.getMonth()]}`;
+      const hasSlots = dayItem.slots.length > 0;
+
+      const chapterCard = document.createElement('div');
+      chapterCard.className = 'week-chapter-card';
+
+      if (!hasSlots) {
+        chapterCard.innerHTML = `
+          <div class="week-chapter-header">
+            <div class="week-chapter-title">
+              <span>${chapterInfo.emoji}</span>
+              <span>${chapterInfo.prefix}: ${chapterInfo.theme}</span>
+            </div>
+            <span class="week-chapter-date">${dateFormatted}</span>
+          </div>
+          <div class="week-chapter-empty">
+            <span>☕</span>
+            <span>A restful pause day. No scheduled slots were logged for this day. Rest and recovery are an essential part of productivity!</span>
+          </div>
+        `;
+      } else {
+        const completedDaySlots = dayItem.slots.filter(s => s.status === 'COMPLETED');
+        const unfinishedDaySlots = dayItem.slots.filter(s => s.status === 'NOT_COMPLETED');
+
+        let narrative = "";
+        if (completedDaySlots.length === dayItem.slots.length) {
+          narrative = `A stellar day! You completed every single planned task on ${dayItem.dayName}. You were focused, organized, and followed through from start to finish! 🌟`;
+        } else if (completedDaySlots.length > 0 && unfinishedDaySlots.length > 0) {
+          narrative = `You took on ${dayItem.slots.length} activities on ${dayItem.dayName}. You successfully finished ${completedDaySlots.length} task(s), and while ${unfinishedDaySlots.length} task(s) remained pending, you made meaningful progress! 👍`;
+        } else if (completedDaySlots.length > 0) {
+          narrative = `You had a productive session on ${dayItem.dayName}, finishing ${completedDaySlots.length} of your focus tasks! Every checked box is a victory. ✨`;
+        } else {
+          narrative = `You mapped out ${dayItem.slots.length} task(s) for ${dayItem.dayName}. Even though they didn't wrap up completely, planning ahead was already a positive step! 🌿`;
+        }
+
+        const taskItemsHtml = dayItem.slots.map(s => {
+          const taskLabel = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim() || "Planned Activity";
+          const timeLabel = (s.start !== null && s.end !== null) ? `${minutesToTimeString(s.start)} – ${minutesToTimeString(s.end)}` : "";
+          let itemClass = "unmarked";
+          let badgeText = "Planned";
+
+          if (s.status === 'COMPLETED') {
+            itemClass = "completed";
+            badgeText = "✓ Completed";
+          } else if (s.status === 'NOT_COMPLETED') {
+            itemClass = "unfinished";
+            badgeText = "⏳ Incomplete";
+          }
+
+          return `
+            <div class="week-task-item ${itemClass}">
+              <div class="week-task-left">
+                <span class="week-task-badge">${badgeText}</span>
+                <span class="week-task-text">${escapeHtml(taskLabel)}</span>
+              </div>
+              <span class="week-task-time">${escapeHtml(timeLabel)}</span>
+            </div>
+          `;
+        }).join('');
+
+        chapterCard.innerHTML = `
+          <div class="week-chapter-header">
+            <div class="week-chapter-title">
+              <span>${chapterInfo.emoji}</span>
+              <span>${chapterInfo.prefix}: ${chapterInfo.theme}</span>
+            </div>
+            <span class="week-chapter-date">${dateFormatted} • ${dayItem.slots.length} slot(s)</span>
+          </div>
+          <p class="week-chapter-narrative">${escapeHtml(narrative)}</p>
+          <div class="week-chapter-tasks">
+            ${taskItemsHtml}
+          </div>
+        `;
+      }
+
+      storySection.appendChild(chapterCard);
+    });
+
+    container.appendChild(storySection);
+
+    // 4. Motivational Ending Card (Exact quote requested by user)
+    const endingCard = document.createElement('div');
+    endingCard.className = 'week-motivational-ending';
+    endingCard.innerHTML = `
+      <div class="week-motivational-icon" aria-hidden="true">💪❤️</div>
+      <div class="week-motivational-quote">
+        &ldquo;Every small step takes you closer to your dream. Don't worry about what you missed this week. Learn from it, stay positive, and make next week even better! You can achieve your goals. Keep going! 💪❤️&rdquo;
+      </div>
+      <div class="week-motivational-tag">Your Motivational Compass</div>
+    `;
+    container.appendChild(endingCard);
+
+    weekReviewContent.appendChild(container);
+  }
+
   // --- TODAY'S WORK PROGRESS SYSTEM ON HOME ---
   let todayProgressTimer = null;
   let summaryRuleTimer = null;
@@ -2329,6 +2664,9 @@
     if (btnHomeNext) {
       // Home Next button in the top bar is only displayed on Home
       btnHomeNext.style.display = viewName === 'home' ? 'inline-flex' : 'none';
+    }
+    if (btnTopWeekReview) {
+      btnTopWeekReview.style.display = viewName === 'weekReview' ? 'none' : 'inline-flex';
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
