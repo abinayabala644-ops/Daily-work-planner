@@ -1293,6 +1293,7 @@
       width: 100%;
     }
     .home-title {
+      display: inline-block;
       font-size: 2.1rem;
       font-weight: 800;
       font-style: italic;
@@ -1302,7 +1303,9 @@
       -webkit-text-fill-color: transparent;
       margin: 0;
       letter-spacing: -0.5px;
-      line-height: 1.2;
+      line-height: 1.25;
+      padding-right: 0.25em;
+      padding-left: 0.05em;
     }
     .home-proverb {
       font-size: 1.15rem;
@@ -2393,6 +2396,10 @@
     /* =========================================================
        MY WEEK REVIEW STYLES
        ========================================================= */
+    #view-week-review,
+    #view-week-review * {
+      font-style: italic !important;
+    }
     .week-review-btn-wrap {
       margin-top: 14px;
       width: 100%;
@@ -2405,7 +2412,17 @@
       background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .week-review-heading-smiley {
+      width: 36px;
+      height: 36px;
+      vertical-align: middle;
       display: inline-block;
+      filter: drop-shadow(0 2px 4px rgba(219, 39, 119, 0.25));
     }
     .btn-activity-week-review {
       width: 100%;
@@ -2971,10 +2988,13 @@
 
     <!-- SEPARATE SCREEN: MY WEEK REVIEW -->
     <div id="view-week-review" class="card views">
-      <div class="header-row" style="margin-bottom: 16px;">
-        <div>
-          <h1 class="header-title week-review-stylish-h1">My Week Review</h1>
-          <p class="header-subtitle">Your weekly journey, friendly companion story &amp; feedback</p>
+      <div class="header-row" style="margin-bottom: 20px; justify-content: center; text-align: center;">
+        <div style="text-align: center; width: 100%;">
+          <h1 class="header-title week-review-stylish-h1">
+            <span>My Week Review</span>
+            <img src="images/happy.svg" alt="😊" class="week-review-heading-smiley" />
+          </h1>
+          <p class="header-subtitle" style="text-align: center; margin-top: 6px;">Your weekly journey, friendly companion story &amp; feedback</p>
         </div>
       </div>
 
