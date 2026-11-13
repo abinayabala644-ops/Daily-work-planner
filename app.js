@@ -2159,6 +2159,7 @@
 
     // Reset currentActivityTab so Home shows the default activity selection clean
     currentActivityTab = null;
+    updateActivityNavButtonsState(null);
 
     // If leaving a slot page, perform the exact cleanup as slot back button (clean up new empty slot)
     const dayData = getCurrentDayData();
