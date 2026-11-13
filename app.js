@@ -1894,7 +1894,7 @@
     heroCard.className = 'week-hero-card';
     heroCard.innerHTML = `
       <div class="week-hero-emoji" aria-hidden="true">🌟</div>
-      <h2 class="week-hero-title">Your Weekly Journey</h2>
+      <h2 class="week-hero-title">My Week Review</h2>
       <p class="week-hero-range">🗓️ ${fromStr} – ${toStr} (Monday to Sunday)</p>
       <div class="week-stats-row">
         <div class="week-stat-pill">
