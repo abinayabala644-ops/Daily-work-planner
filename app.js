@@ -119,11 +119,8 @@
 
   // Top Bar Navigation Elements
   const btnTopMyWorkBoard = document.getElementById('btn-top-my-work-board');
-  const btnTopWeekReview = document.getElementById('btn-top-week-review');
-  const btnHomeNext = document.getElementById('btn-home-next');
 
   // My Week Review Elements
-  const btnActivityWeekReview = document.getElementById('btn-activity-week-review');
   const weekReviewContent = document.getElementById('week-review-content');
 
   // Previous Work Summary Screen Elements
@@ -1774,18 +1771,6 @@
     });
   }
 
-  // Week Review Event Listeners
-  if (btnActivityWeekReview) {
-    btnActivityWeekReview.addEventListener('click', () => {
-      openWeekReview();
-    });
-  }
-
-  if (btnTopWeekReview) {
-    btnTopWeekReview.addEventListener('click', () => {
-      openWeekReview();
-    });
-  }
 
   // --- MY WEEK REVIEW SYSTEM ---
   function escapeHtml(str) {
@@ -2464,14 +2449,6 @@
     updateHomeUnfinishedBanner();
   }
 
-  if (btnHomeNext) {
-    btnHomeNext.addEventListener('click', () => {
-      selectedDateKey = getLocalDateKey(todayDate);
-      initSettingsView();
-      switchView('settings');
-      if (startInput) startInput.focus();
-    });
-  }
 
   async function handleGoToHome(e) {
     if (e && typeof e.preventDefault === 'function') {
@@ -2653,13 +2630,6 @@
     if (btnTopMyWorkBoard) {
       // Show on all signed-in screens except Home
       btnTopMyWorkBoard.style.display = viewName === 'home' ? 'none' : 'inline-flex';
-    }
-    if (btnHomeNext) {
-      // Home Next button in the top bar is only displayed on Home
-      btnHomeNext.style.display = viewName === 'home' ? 'inline-flex' : 'none';
-    }
-    if (btnTopWeekReview) {
-      btnTopWeekReview.style.display = viewName === 'weekReview' ? 'none' : 'inline-flex';
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
