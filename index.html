@@ -2374,7 +2374,10 @@
     #view-week-review * {
       font-style: italic !important;
     }
-
+    .week-review-btn-wrap {
+      margin-top: 14px;
+      width: 100%;
+    }
     .week-review-stylish-h1 {
       font-family: inherit;
       font-style: italic;
@@ -2394,6 +2397,69 @@
       vertical-align: middle;
       display: inline-block;
       filter: drop-shadow(0 2px 4px rgba(219, 39, 119, 0.25));
+    }
+    .btn-activity-week-review {
+      width: 100%;
+      min-height: 56px;
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: 1.5px solid #c084fc;
+      background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+      color: #581c87;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(168, 85, 247, 0.08);
+      text-align: left;
+    }
+    .btn-activity-week-review:hover {
+      background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
+      border-color: #a855f7;
+    }
+    .btn-activity-week-review:focus-visible {
+      outline: 2px solid #9333ea;
+      outline-offset: 2px;
+    }
+    .week-review-btn-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .week-review-btn-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(168, 85, 247, 0.2));
+    }
+    .week-review-btn-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .week-review-btn-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #581c87;
+      letter-spacing: -0.01em;
+    }
+    .week-review-btn-subtitle {
+      font-size: 0.82rem;
+      color: #7e22ce;
+      font-weight: 500;
+    }
+    .week-review-btn-arrow {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #9333ea;
+      margin-left: 12px;
+      transition: transform 0.2s ease;
+    }
+    .btn-activity-week-review:hover .week-review-btn-arrow {
+      transform: translateX(4px);
     }
 
     /* Week Review Page Components */
@@ -2785,6 +2851,19 @@
           </button>
         </div>
 
+        <!-- MY WEEK REVIEW BUTTON -->
+        <div class="week-review-btn-wrap">
+          <button type="button" id="btn-activity-week-review" class="btn-activity-week-review" aria-label="My Week Review">
+            <div class="week-review-btn-content">
+              <span class="week-review-btn-icon" aria-hidden="true">🌟</span>
+              <div class="week-review-btn-text">
+                <span class="week-review-btn-title">My Week Review</span>
+                <span class="week-review-btn-subtitle">Discover your weekly journey, friendly companion story &amp; tips</span>
+              </div>
+            </div>
+            <span class="week-review-btn-arrow" aria-hidden="true">&rarr;</span>
+          </button>
+        </div>
 
         <!-- TODAY'S WORK PROGRESS BOX -->
         <div id="home-today-progress-card" class="today-progress-card">

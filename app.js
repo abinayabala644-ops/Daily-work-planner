@@ -121,6 +121,7 @@
   const btnTopMyWorkBoard = document.getElementById('btn-top-my-work-board');
 
   // My Week Review Elements
+  const btnActivityWeekReview = document.getElementById('btn-activity-week-review');
   const weekReviewContent = document.getElementById('week-review-content');
 
   // Previous Work Summary Screen Elements
@@ -1771,6 +1772,13 @@
     });
   }
 
+
+  // Week Review Event Listeners
+  if (btnActivityWeekReview) {
+    btnActivityWeekReview.addEventListener('click', () => {
+      openWeekReview();
+    });
+  }
 
   // --- MY WEEK REVIEW SYSTEM ---
   function escapeHtml(str) {
