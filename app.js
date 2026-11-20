@@ -1889,140 +1889,7 @@
     const container = document.createElement('div');
     container.className = 'week-review-container';
 
-    // 1. Hero Card (Stats)
-    const heroCard = document.createElement('div');
-    heroCard.className = 'week-hero-card';
-    heroCard.innerHTML = `
-      <div class="week-hero-emoji" aria-hidden="true">🌟</div>
-      <h2 class="week-hero-title">My Week Review</h2>
-      <p class="week-hero-range">🗓️ ${fromStr} – ${toStr} (Monday to Sunday)</p>
-      <div class="week-stats-row">
-        <div class="week-stat-pill">
-          <span class="week-stat-number">${totalSlotsCount}</span>
-          <span class="week-stat-label">🎯 Total Planned</span>
-        </div>
-        <div class="week-stat-pill">
-          <span class="week-stat-number" style="color: #16a34a;">${completedSlotsCount}</span>
-          <span class="week-stat-label">✅ Completed</span>
-        </div>
-        <div class="week-stat-pill">
-          <span class="week-stat-number" style="color: #dc2626;">${unfinishedSlotsCount}</span>
-          <span class="week-stat-label">⏳ Unfinished</span>
-        </div>
-        <div class="week-stat-pill">
-          <span class="week-stat-number" style="color: #9333ea;">${hoursFocused}h</span>
-          <span class="week-stat-label">⏱️ Focus Hours</span>
-        </div>
-        <div class="week-stat-pill">
-          <span class="week-stat-number" style="color: #2563eb;">${completionRate}%</span>
-          <span class="week-stat-label">📊 Completion</span>
-        </div>
-      </div>
-    `;
-    container.appendChild(heroCard);
-
-    // 2. Chapters of Your Week (All 7 chapters preserved exactly)
-    const storySection = document.createElement('div');
-    storySection.className = 'week-story-section';
-
-    const storyHeading = document.createElement('h3');
-    storyHeading.className = 'week-story-heading';
-    storyHeading.innerHTML = `<span>📖</span> Chapters of Your Week`;
-    storySection.appendChild(storyHeading);
-
-    const chapterTitles = [
-      { prefix: "Chapter 1", emoji: "🌅", theme: "Monday — Setting the Tone" },
-      { prefix: "Chapter 2", emoji: "⚡", theme: "Tuesday — Building Momentum" },
-      { prefix: "Chapter 3", emoji: "🎯", theme: "Wednesday — The Mid-Week Anchor" },
-      { prefix: "Chapter 4", emoji: "🚀", theme: "Thursday — Pushing Forward" },
-      { prefix: "Chapter 5", emoji: "🏁", theme: "Friday — The Final Lap" },
-      { prefix: "Chapter 6", emoji: "🌿", theme: "Saturday — Weekend Reflection" },
-      { prefix: "Chapter 7", emoji: "☀️", theme: "Sunday — Rest & Renewal" },
-    ];
-
-    daysData.forEach((dayItem, idx) => {
-      const chapterInfo = chapterTitles[idx];
-      const dateFormatted = `${dayItem.dObj.getDate()} ${monthsShort[dayItem.dObj.getMonth()]}`;
-      const hasSlots = dayItem.slots.length > 0;
-
-      const chapterCard = document.createElement('div');
-      chapterCard.className = 'week-chapter-card';
-
-      if (!hasSlots) {
-        chapterCard.innerHTML = `
-          <div class="week-chapter-header">
-            <div class="week-chapter-title">
-              <span>${chapterInfo.emoji}</span>
-              <span>${chapterInfo.prefix}: ${chapterInfo.theme}</span>
-            </div>
-            <span class="week-chapter-date">${dateFormatted}</span>
-          </div>
-          <div class="week-chapter-empty">
-            <span>☕</span>
-            <span>A restful pause day. No scheduled slots were logged for this day. Rest and recovery are an essential part of productivity!</span>
-          </div>
-        `;
-      } else {
-        const completedDaySlots = dayItem.slots.filter(s => s.status === 'COMPLETED');
-        const unfinishedDaySlots = dayItem.slots.filter(s => s.status === 'NOT_COMPLETED');
-
-        let narrative = "";
-        if (completedDaySlots.length === dayItem.slots.length) {
-          narrative = `A stellar day! You completed every single planned task on ${dayItem.dayName}. You were focused, organized, and followed through from start to finish! 🌟`;
-        } else if (completedDaySlots.length > 0 && unfinishedDaySlots.length > 0) {
-          narrative = `You took on ${dayItem.slots.length} activities on ${dayItem.dayName}. You successfully finished ${completedDaySlots.length} task(s), and while ${unfinishedDaySlots.length} task(s) remained pending, you made meaningful progress! 👍`;
-        } else if (completedDaySlots.length > 0) {
-          narrative = `You had a productive session on ${dayItem.dayName}, finishing ${completedDaySlots.length} of your focus tasks! Every checked box is a victory. ✨`;
-        } else {
-          narrative = `You mapped out ${dayItem.slots.length} task(s) for ${dayItem.dayName}. Even though they didn't wrap up completely, planning ahead was already a positive step! 🌿`;
-        }
-
-        const taskItemsHtml = dayItem.slots.map(s => {
-          const taskLabel = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim() || "Planned Activity";
-          const timeLabel = (s.start !== null && s.end !== null) ? `${minutesToTimeString(s.start)} – ${minutesToTimeString(s.end)}` : "";
-          let itemClass = "unmarked";
-          let badgeText = "Planned";
-
-          if (s.status === 'COMPLETED') {
-            itemClass = "completed";
-            badgeText = "✓ Completed";
-          } else if (s.status === 'NOT_COMPLETED') {
-            itemClass = "unfinished";
-            badgeText = "⏳ Incomplete";
-          }
-
-          return `
-            <div class="week-task-item ${itemClass}">
-              <div class="week-task-left">
-                <span class="week-task-badge">${badgeText}</span>
-                <span class="week-task-text">${escapeHtml(taskLabel)}</span>
-              </div>
-              <span class="week-task-time">${escapeHtml(timeLabel)}</span>
-            </div>
-          `;
-        }).join('');
-
-        chapterCard.innerHTML = `
-          <div class="week-chapter-header">
-            <div class="week-chapter-title">
-              <span>${chapterInfo.emoji}</span>
-              <span>${chapterInfo.prefix}: ${chapterInfo.theme}</span>
-            </div>
-            <span class="week-chapter-date">${dateFormatted} • ${dayItem.slots.length} slot(s)</span>
-          </div>
-          <p class="week-chapter-narrative">${escapeHtml(narrative)}</p>
-          <div class="week-chapter-tasks">
-            ${taskItemsHtml}
-          </div>
-        `;
-      }
-
-      storySection.appendChild(chapterCard);
-    });
-
-    container.appendChild(storySection);
-
-    // 3. Final Section: Vintage Personal Diary Story Page (at the very end)
+    // 1. My Weekly Diary Story Section (Replaces the top stats box)
     const diaryBook = document.createElement('div');
     diaryBook.className = 'vintage-diary-book';
 
@@ -2155,6 +2022,108 @@
     storyBody.innerHTML = storyHtml;
     diaryBook.appendChild(storyBody);
     container.appendChild(diaryBook);
+
+    // 2. Chapters of Your Week (Displayed below the diary story, in order)
+    const storySection = document.createElement('div');
+    storySection.className = 'week-story-section';
+
+    const storyHeading = document.createElement('h3');
+    storyHeading.className = 'week-story-heading';
+    storyHeading.innerHTML = `<span>📖</span> Chapters of Your Week`;
+    storySection.appendChild(storyHeading);
+
+    const chapterTitles = [
+      { prefix: "Chapter 1", emoji: "🌅", theme: "Monday — Setting the Tone" },
+      { prefix: "Chapter 2", emoji: "⚡", theme: "Tuesday — Building Momentum" },
+      { prefix: "Chapter 3", emoji: "🎯", theme: "Wednesday — The Mid-Week Anchor" },
+      { prefix: "Chapter 4", emoji: "🚀", theme: "Thursday — Pushing Forward" },
+      { prefix: "Chapter 5", emoji: "🏁", theme: "Friday — The Final Lap" },
+      { prefix: "Chapter 6", emoji: "🌿", theme: "Saturday — Weekend Reflection" },
+      { prefix: "Chapter 7", emoji: "☀️", theme: "Sunday — Rest & Renewal" },
+    ];
+
+    daysData.forEach((dayItem, idx) => {
+      const chapterInfo = chapterTitles[idx];
+      const dateFormatted = `${dayItem.dObj.getDate()} ${monthsShort[dayItem.dObj.getMonth()]}`;
+      const hasSlots = dayItem.slots.length > 0;
+
+      const chapterCard = document.createElement('div');
+      chapterCard.className = 'week-chapter-card';
+
+      if (!hasSlots) {
+        chapterCard.innerHTML = `
+          <div class="week-chapter-header">
+            <div class="week-chapter-title">
+              <span>${chapterInfo.emoji}</span>
+              <span>${chapterInfo.prefix}: ${chapterInfo.theme}</span>
+            </div>
+            <span class="week-chapter-date">${dateFormatted}</span>
+          </div>
+          <div class="week-chapter-empty">
+            <span>☕</span>
+            <span>No work on this day.</span>
+          </div>
+        `;
+      } else {
+        const completedDaySlots = dayItem.slots.filter(s => s.status === 'COMPLETED');
+        const unfinishedDaySlots = dayItem.slots.filter(s => s.status === 'NOT_COMPLETED');
+
+        // Short, concise descriptions as requested
+        let narrative = "";
+        if (completedDaySlots.length === dayItem.slots.length) {
+          narrative = `Completed all ${completedDaySlots.length} task(s) today.`;
+        } else if (completedDaySlots.length > 0 && unfinishedDaySlots.length > 0) {
+          narrative = `Finished ${completedDaySlots.length} task(s), ${unfinishedDaySlots.length} task(s) remaining.`;
+        } else if (completedDaySlots.length > 0) {
+          narrative = `Completed ${completedDaySlots.length} focus task(s).`;
+        } else {
+          narrative = `Planned ${dayItem.slots.length} task(s) for today.`;
+        }
+
+        const taskItemsHtml = dayItem.slots.map(s => {
+          const taskLabel = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim() || "Planned Activity";
+          const timeLabel = (s.start !== null && s.end !== null) ? `${minutesToTimeString(s.start)} – ${minutesToTimeString(s.end)}` : "";
+          let itemClass = "unmarked";
+          let badgeText = "Planned";
+
+          if (s.status === 'COMPLETED') {
+            itemClass = "completed";
+            badgeText = "✓ Completed";
+          } else if (s.status === 'NOT_COMPLETED') {
+            itemClass = "unfinished";
+            badgeText = "⏳ Incomplete";
+          }
+
+          return `
+            <div class="week-task-item ${itemClass}">
+              <div class="week-task-left">
+                <span class="week-task-badge">${badgeText}</span>
+                <span class="week-task-text">${escapeHtml(taskLabel)}</span>
+              </div>
+              <span class="week-task-time">${escapeHtml(timeLabel)}</span>
+            </div>
+          `;
+        }).join('');
+
+        chapterCard.innerHTML = `
+          <div class="week-chapter-header">
+            <div class="week-chapter-title">
+              <span>${chapterInfo.emoji}</span>
+              <span>${chapterInfo.prefix}: ${chapterInfo.theme}</span>
+            </div>
+            <span class="week-chapter-date">${dateFormatted} • ${dayItem.slots.length} slot(s)</span>
+          </div>
+          <p class="week-chapter-narrative">${escapeHtml(narrative)}</p>
+          <div class="week-chapter-tasks">
+            ${taskItemsHtml}
+          </div>
+        `;
+      }
+
+      storySection.appendChild(chapterCard);
+    });
+
+    container.appendChild(storySection);
 
     weekReviewContent.appendChild(container);
   }

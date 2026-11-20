@@ -2543,24 +2543,26 @@
       text-align: left;
     }
     .week-story-heading {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: #0f172a;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: #4a2c11;
       display: flex;
       align-items: center;
       gap: 8px;
+      margin: 8px 0 2px 4px;
     }
     .week-chapter-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+      background: #fdfaf3; /* Matching warm cream diary paper */
+      border: 1px solid #e7dec8;
       border-radius: 14px;
       padding: 18px 20px;
       transition: all 0.15s ease;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      box-shadow: 0 1px 3px rgba(120, 80, 40, 0.05);
     }
     .week-chapter-card:hover {
-      border-color: #cbd5e1;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      border-color: #d6c7a7;
+      box-shadow: 0 4px 10px rgba(120, 80, 40, 0.08);
     }
     .week-chapter-header {
       display: flex;
@@ -2568,54 +2570,58 @@
       align-items: baseline;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .week-chapter-title {
-      font-size: 1rem;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.45rem;
       font-weight: 700;
-      color: #0f172a;
+      color: #4a2c11;
       display: flex;
       align-items: center;
       gap: 8px;
     }
     .week-chapter-date {
-      font-size: 0.82rem;
-      color: #64748b;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.15rem;
+      color: #8c6239;
       font-weight: 600;
     }
     .week-chapter-narrative {
-      font-size: 0.94rem;
-      color: #334155;
-      line-height: 1.55;
-      margin-bottom: 12px;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.35rem;
+      line-height: 1.6;
+      color: #2b1810;
+      margin-bottom: 10px;
     }
     .week-chapter-tasks {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin-top: 8px;
+      margin-top: 6px;
     }
     .week-task-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      padding: 8px 12px;
+      padding: 6px 12px;
       border-radius: 8px;
-      font-size: 0.88rem;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.25rem;
     }
     .week-task-item.completed {
-      background: #f0fdf4;
+      background: rgba(187, 247, 208, 0.45);
       border: 1px solid #bbf7d0;
       color: #14532d;
     }
     .week-task-item.unfinished {
-      background: #fef2f2;
+      background: rgba(254, 202, 202, 0.4);
       border: 1px solid #fecaca;
       color: #7f1d1d;
     }
     .week-task-item.unmarked {
-      background: #f8fafc;
+      background: rgba(241, 245, 249, 0.6);
       border: 1px solid #e2e8f0;
       color: #334155;
     }
@@ -2627,10 +2633,11 @@
       min-width: 0;
     }
     .week-task-badge {
-      font-size: 0.76rem;
+      font-family: inherit;
+      font-size: 1.05rem;
       font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
       flex-shrink: 0;
     }
     .week-task-item.completed .week-task-badge {
@@ -2647,25 +2654,27 @@
     }
     .week-task-text {
       flex: 1;
-      font-weight: 500;
+      font-weight: 600;
       word-break: break-word;
     }
     .week-task-time {
-      font-size: 0.78rem;
-      color: #64748b;
+      font-size: 1.1rem;
+      color: #8c6239;
       font-weight: 600;
       white-space: nowrap;
     }
     .week-chapter-empty {
-      background: #fafaf9;
-      border: 1px dashed #e7e5e4;
-      color: #78716c;
-      font-size: 0.9rem;
-      padding: 14px 18px;
-      border-radius: 12px;
+      background: rgba(247, 241, 227, 0.6);
+      border: 1px dashed #d6c7a7;
+      color: #6b4e31;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     /* Vintage Diary Book Page Styling */
