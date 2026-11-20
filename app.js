@@ -197,6 +197,21 @@
   const summarySaveMessage = document.getElementById('summary-save-message');
   const summarySaveHint = document.getElementById('summary-save-hint');
   const summarySaveBtn = document.getElementById('summary-save-btn');
+  const summaryNextBtn = document.getElementById('summary-next-btn');
+
+  // Edit Slot Dialog Elements
+  const summaryEditSlotDialog = document.getElementById('summary-edit-slot-dialog');
+  const summaryEditDialogTitle = document.getElementById('summary-edit-dialog-title');
+  const summaryEditStartInput = document.getElementById('summary-edit-start-input');
+  const summaryEditEndInput = document.getElementById('summary-edit-end-input');
+  const summaryEditTaskInput = document.getElementById('summary-edit-task-input');
+  const summaryEditStartError = document.getElementById('summary-edit-start-error');
+  const summaryEditEndError = document.getElementById('summary-edit-end-error');
+  const summaryEditDialogSaveBtn = document.getElementById('summary-edit-dialog-save-btn');
+  const summaryEditDialogCancelBtn = document.getElementById('summary-edit-dialog-cancel-btn');
+  const summaryEditDialogCloseBtn = document.getElementById('summary-edit-dialog-close-btn');
+
+  let currentEditingSlotIndex = null;
 
   // Calendar Dialog Elements
   const calendarDialog = document.getElementById('calendar-dialog');
@@ -3013,9 +3028,17 @@
 
     // 3. Work for this slot
     slotTaskInput.value = slot.taskText || slot.text || "";
+    adjustSlotTaskInputHeight();
 
     // Update validation and buttons state
     updateSlotValidationUI();
+  }
+
+  function adjustSlotTaskInputHeight() {
+    if (!slotTaskInput) return;
+    slotTaskInput.style.height = "auto";
+    const newHeight = Math.max(48, slotTaskInput.scrollHeight);
+    slotTaskInput.style.height = newHeight + "px";
   }
 
   function populateFinishedByDropdown(slot, startMinutes, dayEndMinutes) {
@@ -3200,6 +3223,7 @@
   });
 
   slotTaskInput.addEventListener('input', () => {
+    adjustSlotTaskInputHeight();
     clearSummarySaveMessage();
     const dayData = getCurrentDayData();
     if (dayData && dayData.slots[currentSlotIndex]) {
@@ -3460,53 +3484,76 @@
 
     // Render cards using textContent exclusively for user text
     summarySlotsList.innerHTML = "";
-    slotsWithTimes.forEach(({ slot, slotNumber, startMinutes, endMinutes }) => {
+    slotsWithTimes.forEach(({ slot, slotNumber, startMinutes, endMinutes }, slotIndex) => {
       const card = document.createElement('div');
       card.className = "summary-slot-card";
       card.dataset.startMinutes = String(startMinutes);
+      card.dataset.slotIndex = String(slotIndex);
 
       const slotStartStr = formatMinutesTo12Hour(startMinutes);
       const slotEndStr = formatMinutesTo12Hour(endMinutes);
+      const durationMinutes = Math.max(0, endMinutes - startMinutes);
 
-      const taskContainer = document.createElement('div');
-      taskContainer.style.cssText = "font-size: 0.92rem; line-height: 1.5; color: var(--slate-800); white-space: pre-wrap; word-break: break-word;";
+      // Row 1: Time row (Badge + Time text + Duration)
+      const timeRow = document.createElement('div');
+      timeRow.className = "summary-slot-time-row";
 
+      const badgeSpan = document.createElement('span');
+      badgeSpan.className = "summary-slot-badge";
+      badgeSpan.textContent = `Slot ${slotNumber}`;
+
+      const timeText = document.createElement('span');
+      timeText.className = "summary-slot-time-text";
+      timeText.textContent = `${slotStartStr} – ${slotEndStr}`;
+
+      const durSpan = document.createElement('span');
+      durSpan.className = "summary-slot-duration-pill";
+      durSpan.textContent = `${durationMinutes}m`;
+
+      timeRow.appendChild(badgeSpan);
+      timeRow.appendChild(timeText);
+      timeRow.appendChild(durSpan);
+      card.appendChild(timeRow);
+
+      // Row 2: Task Description Row (Next line after time)
+      const taskRow = document.createElement('div');
+      taskRow.className = "summary-slot-task-row";
+
+      const taskTextEl = document.createElement('div');
+      taskTextEl.className = "summary-slot-task-text";
       if (slot.taskText && slot.taskText.trim().length > 0) {
-        taskContainer.textContent = slot.taskText;
+        taskTextEl.textContent = slot.taskText;
       } else {
         const emptySpan = document.createElement('span');
         emptySpan.style.cssText = "color: var(--slate-400); font-style: italic;";
         emptySpan.textContent = "No task written";
-        taskContainer.appendChild(emptySpan);
+        taskTextEl.appendChild(emptySpan);
       }
+      taskRow.appendChild(taskTextEl);
+      card.appendChild(taskRow);
 
-      const cardBody = document.createElement('div');
+      // Row 3: Action Buttons Row (Below the task text: Edit, Completed, Not Completed)
+      const buttonsRow = document.createElement('div');
+      buttonsRow.className = "summary-slot-buttons-row";
 
-      const metaRow = document.createElement('div');
-      metaRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;";
+      // 1. Edit Button
+      const editBtn = document.createElement('button');
+      editBtn.type = "button";
+      editBtn.className = "btn-summary-slot-edit";
+      editBtn.setAttribute('aria-label', `Edit Slot ${slotNumber}`);
+      editBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        </svg>
+        <span>Edit</span>
+      `;
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditSlotModal(slotIndex);
+      });
 
-      const badgeSpan = document.createElement('span');
-      badgeSpan.style.cssText = "font-size: 0.75rem; font-weight: 700; background: var(--slate-200); color: var(--slate-800); padding: 2px 8px; border-radius: 9999px;";
-      badgeSpan.textContent = `Slot ${slotNumber}`;
-
-      const durationMinutes = Math.max(0, endMinutes - startMinutes);
-      const durSpan = document.createElement('span');
-      durSpan.style.cssText = "font-size: 0.75rem; color: var(--slate-500); font-weight: 600;";
-      durSpan.textContent = `${durationMinutes} min`;
-
-      metaRow.appendChild(badgeSpan);
-      metaRow.appendChild(durSpan);
-
-      const timeRangeDiv = document.createElement('div');
-      timeRangeDiv.style.cssText = "font-family: monospace; font-weight: 700; color: var(--slate-900); font-size: 1rem; margin-bottom: 8px;";
-      timeRangeDiv.textContent = `${slotStartStr} – ${slotEndStr}`;
-
-      cardBody.appendChild(metaRow);
-      cardBody.appendChild(timeRangeDiv);
-      cardBody.appendChild(taskContainer);
-      card.appendChild(cardBody);
-
-      // Status Buttons: ✓ Completed and ✗ Not Completed
+      // 2. Status Buttons: ✓ Completed and ✗ Not Completed
       const btnGroup = document.createElement('div');
       btnGroup.className = "slot-status-btn-group";
 
@@ -3522,14 +3569,21 @@
       btnNotCompleted.innerHTML = `<span>✗ Not Completed</span>`;
       btnNotCompleted.setAttribute('aria-label', `Mark slot ${slotNumber} Not Completed`);
 
-      const markMessageEl = document.createElement('div');
-      markMessageEl.style.cssText = "font-size: 0.82rem; font-weight: 600; margin-top: 6px; width: 100%;";
+      btnGroup.appendChild(btnCompleted);
+      btnGroup.appendChild(btnNotCompleted);
 
+      buttonsRow.appendChild(editBtn);
+      buttonsRow.appendChild(btnGroup);
+      card.appendChild(buttonsRow);
+
+      // Warning message container (only for error/time restriction alerts, no status text)
       const markWarningEl = document.createElement('div');
       markWarningEl.className = 'slot-mark-time-warning';
       markWarningEl.setAttribute('role', 'status');
       markWarningEl.setAttribute('aria-live', 'polite');
       markWarningEl.style.display = 'none';
+
+      card.appendChild(markWarningEl);
 
       let warningDismissTimer = null;
 
@@ -3553,12 +3607,14 @@
 
       btnGroup.clearSlotWarning = clearSlotWarning;
 
-      // formatMarkedAtMessage is declared in outer scope
-
       function updateSlotCardButtons() {
         const currentStatus = slot.status || "NONE";
         const isComp = currentStatus === "COMPLETED";
         const isNotComp = currentStatus === "NOT_COMPLETED";
+
+        // Toggle card style class
+        card.classList.toggle('status-not-completed', isNotComp);
+        card.classList.toggle('status-unmarked', !isComp && !isNotComp);
 
         btnCompleted.classList.toggle('completed-active', isComp);
         btnCompleted.setAttribute('aria-pressed', String(isComp));
@@ -3566,14 +3622,9 @@
         btnNotCompleted.classList.toggle('not-completed-active', isNotComp);
         btnNotCompleted.setAttribute('aria-pressed', String(isNotComp));
 
-        const msgInfo = formatMarkedAtMessage(currentStatus, slot.markedAt, selectedDateKey);
-        markMessageEl.textContent = msgInfo.text;
-        markMessageEl.style.color = msgInfo.muted ? "var(--slate-500)" : "var(--slate-800)";
-
         // Evaluate whether this slot can be marked right now
         const canMark = canSlotBeMarkedNow(startMinutes);
         if (!canMark) {
-          // If already active, the user can turn it off so keep that active one not muted
           if (!isComp) btnCompleted.setAttribute('aria-disabled', 'true');
           else btnCompleted.removeAttribute('aria-disabled');
 
@@ -3642,18 +3693,145 @@
       });
 
       updateSlotCardButtons();
-
-      btnGroup.appendChild(btnCompleted);
-      btnGroup.appendChild(btnNotCompleted);
-      btnGroup.appendChild(markMessageEl);
-      btnGroup.appendChild(markWarningEl);
-      card.appendChild(btnGroup);
-
       summarySlotsList.appendChild(card);
     });
 
     updateSummaryResult();
     updateSummarySaveState();
+  }
+
+  // --- SLOT EDITING DIALOG LOGIC ---
+  function openEditSlotModal(slotIndex) {
+    const dayData = getCurrentDayData();
+    if (!dayData || !dayData.slots || !dayData.slots[slotIndex]) return;
+
+    currentEditingSlotIndex = slotIndex;
+    const slot = dayData.slots[slotIndex];
+    const sStart = getEffectiveSlotStart(dayData, slotIndex);
+    const sEnd = typeof slot.end === "number" ? slot.end : sStart;
+
+    if (summaryEditDialogTitle) {
+      summaryEditDialogTitle.textContent = `Edit Slot ${slotIndex + 1}`;
+    }
+    if (summaryEditStartInput) {
+      summaryEditStartInput.value = formatMinutesTo12Hour(sStart);
+    }
+    if (summaryEditEndInput) {
+      summaryEditEndInput.value = formatMinutesTo12Hour(sEnd);
+    }
+    if (summaryEditTaskInput) {
+      summaryEditTaskInput.value = slot.taskText || slot.text || "";
+    }
+    if (summaryEditStartError) {
+      summaryEditStartError.textContent = "";
+      summaryEditStartError.style.display = "none";
+    }
+    if (summaryEditEndError) {
+      summaryEditEndError.textContent = "";
+      summaryEditEndError.style.display = "none";
+    }
+
+    if (summaryEditSlotDialog) {
+      if (typeof summaryEditSlotDialog.showModal === "function") {
+        summaryEditSlotDialog.showModal();
+      } else {
+        summaryEditSlotDialog.setAttribute("open", "");
+      }
+      summaryEditStartInput.focus();
+    }
+  }
+
+  function closeEditSlotModal() {
+    currentEditingSlotIndex = null;
+    if (summaryEditSlotDialog) {
+      if (typeof summaryEditSlotDialog.close === "function") {
+        summaryEditSlotDialog.close();
+      } else {
+        summaryEditSlotDialog.removeAttribute("open");
+      }
+    }
+  }
+
+  if (summaryEditDialogCloseBtn) {
+    summaryEditDialogCloseBtn.addEventListener('click', closeEditSlotModal);
+  }
+  if (summaryEditDialogCancelBtn) {
+    summaryEditDialogCancelBtn.addEventListener('click', closeEditSlotModal);
+  }
+
+  if (summaryEditDialogSaveBtn) {
+    summaryEditDialogSaveBtn.addEventListener('click', () => {
+      const dayData = getCurrentDayData();
+      if (!dayData || currentEditingSlotIndex === null) return;
+
+      const idx = currentEditingSlotIndex;
+      const startParsed = parseFlexibleTime(summaryEditStartInput.value);
+      const endParsed = parseFlexibleTime(summaryEditEndInput.value);
+      const newTaskText = (summaryEditTaskInput.value || "").trim();
+
+      let hasError = false;
+
+      if (startParsed.error || startParsed.minutes === null) {
+        summaryEditStartError.textContent = "Please enter a valid time (e.g. 9:00 AM).";
+        summaryEditStartError.style.display = "block";
+        hasError = true;
+      } else {
+        summaryEditStartError.style.display = "none";
+      }
+
+      if (endParsed.error || endParsed.minutes === null) {
+        summaryEditEndError.textContent = "Please enter a valid time (e.g. 10:30 AM).";
+        summaryEditEndError.style.display = "block";
+        hasError = true;
+      } else if (startParsed.minutes !== null && endParsed.minutes <= startParsed.minutes) {
+        summaryEditEndError.textContent = "Ending time must be after starting time.";
+        summaryEditEndError.style.display = "block";
+        hasError = true;
+      } else {
+        summaryEditEndError.style.display = "none";
+      }
+
+      if (hasError) return;
+
+      const newStart = startParsed.minutes;
+      const newEnd = endParsed.minutes;
+      const targetSlot = dayData.slots[idx];
+
+      targetSlot.start = newStart;
+      targetSlot.end = newEnd;
+      targetSlot.taskText = newTaskText;
+      targetSlot.text = newTaskText;
+
+      // If editing slot 0, update day's startMinutes if start changed
+      if (idx === 0) {
+        dayData.startMinutes = newStart;
+      }
+
+      // Automatically update the remaining related time slots sequentially without overlapping
+      let prevEnd = newEnd;
+      for (let j = idx + 1; j < dayData.slots.length; j++) {
+        const nextSlot = dayData.slots[j];
+        const prevDuration = (typeof nextSlot.end === "number" && typeof nextSlot.start === "number" && nextSlot.end > nextSlot.start)
+          ? (nextSlot.end - nextSlot.start)
+          : (nextSlot.end ? Math.max(30, nextSlot.end - prevEnd) : 60);
+
+        nextSlot.start = prevEnd;
+        nextSlot.end = prevEnd + prevDuration;
+        prevEnd = nextSlot.end;
+      }
+
+      // If the last slot ends after dayData.endMinutes, adjust dayData.endMinutes
+      const lastSlot = dayData.slots[dayData.slots.length - 1];
+      if (lastSlot && typeof lastSlot.end === "number" && lastSlot.end > dayData.endMinutes) {
+        dayData.endMinutes = lastSlot.end;
+      }
+
+      // Save immediately to persistent storage
+      saveStorage(selectedDateKey);
+      closeEditSlotModal();
+      renderSummaryView();
+      showSaveSuccessMessage();
+    });
   }
 
   summaryContinuePlanningBtn.addEventListener('click', () => {
@@ -3860,21 +4038,31 @@
       // 1. Save to local storage under key including signed-in user id
       saveToLocalStorage();
 
+      const serializedSlots = (dayData.slots || []).map((s, idx) => ({
+        id: s.id || `slot-${idx + 1}`,
+        start: typeof s.start === "number" ? s.start : null,
+        end: typeof s.end === "number" ? s.end : null,
+        text: typeof s.taskText === "string" ? s.taskText : (s.text || ""),
+        taskText: typeof s.taskText === "string" ? s.taskText : (s.text || ""),
+        status: s.status || "NONE",
+        markedAt: s.markedAt || null,
+      }));
+
       // 2. Upsert to Supabase planner_days if signed in
       if (supabaseClient && currentUserId && currentUserId !== "anonymous") {
-        const { error } = await supabaseClient
-          .from('planner_days')
-          .upsert({
-            user_id: currentUserId,
-            day: selectedDateKey,
-            start_min: dayData.startMinutes,
-            end_min: dayData.endMinutes,
-            slots: dayData.slots,
-            saved_at: nowIso,
-          }, { onConflict: 'user_id,day' });
-
-        if (error) {
-          throw error;
+        try {
+          await supabaseClient
+            .from('planner_days')
+            .upsert({
+              user_id: currentUserId,
+              day: selectedDateKey,
+              start_min: dayData.startMinutes,
+              end_min: dayData.endMinutes,
+              slots: serializedSlots,
+              saved_at: nowIso,
+            }, { onConflict: 'user_id,day' });
+        } catch (supaErr) {
+          console.warn("Supabase background save warning (saved locally):", supaErr);
         }
       }
 
@@ -3892,6 +4080,12 @@
 
   if (summarySaveBtn) {
     summarySaveBtn.addEventListener('click', handleSaveDay);
+  }
+
+  if (summaryNextBtn) {
+    summaryNextBtn.addEventListener('click', () => {
+      openWeekReview();
+    });
   }
 
   // --- MONTHLY CALENDAR DIALOG ---
