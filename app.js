@@ -238,7 +238,8 @@
   // Log out button
   const btnLogout = document.getElementById('btn-logout');
 
-  // Change Password elements
+  // Top buttons
+  const btnTopDailySummary = document.getElementById('btn-top-daily-summary');
   const btnTopChangePassword = document.getElementById('btn-top-change-password');
   const changePasswordDialog = document.getElementById('change-password-dialog');
   const changePasswordForm = document.getElementById('change-password-form');
@@ -2679,9 +2680,12 @@
       // Show on all signed-in screens except Home
       btnTopMyWorkBoard.style.display = viewName === 'home' ? 'none' : 'inline-flex';
     }
+    if (btnTopDailySummary) {
+      // Show on every page except Home / My Work Board
+      btnTopDailySummary.style.display = viewName === 'home' ? 'none' : 'inline-flex';
+    }
     if (btnTopChangePassword) {
-      // Show on all signed-in screens except My Week Review
-      btnTopChangePassword.style.display = viewName === 'weekReview' ? 'none' : 'inline-flex';
+      btnTopChangePassword.style.display = 'none';
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4058,6 +4062,16 @@
       changePwdSubmitBtn.disabled = false;
       changePwdSubmitBtn.textContent = 'Save';
     }
+  }
+
+  if (btnTopDailySummary) {
+    btnTopDailySummary.addEventListener('click', () => {
+      renderSummaryView();
+      switchView('summary');
+      if (summaryHeaderTitle) {
+        summaryHeaderTitle.focus();
+      }
+    });
   }
 
   if (btnTopChangePassword && changePasswordDialog) {
