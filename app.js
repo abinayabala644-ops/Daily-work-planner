@@ -2639,6 +2639,10 @@
       // Show on all signed-in screens except Home
       btnTopMyWorkBoard.style.display = viewName === 'home' ? 'none' : 'inline-flex';
     }
+    if (btnTopChangePassword) {
+      // Show on all signed-in screens except My Week Review
+      btnTopChangePassword.style.display = viewName === 'weekReview' ? 'none' : 'inline-flex';
+    }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

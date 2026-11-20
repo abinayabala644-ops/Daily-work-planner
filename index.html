@@ -6,7 +6,7 @@
   <title>Daily Work Planner | User-Controlled Schedule</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
   <style>
     /* Prevent flash of unauthenticated planner content */
     html {
@@ -16,26 +16,55 @@
       visibility: visible;
     }
 
-    .top-auth-bar {
+    .top-auth-area {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+      width: 100%;
+    }
+
+    .top-heading-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .app-title {
+      margin: 0;
+      font-family: inherit;
+      font-style: italic;
+      font-weight: 800;
+      font-size: clamp(1.5rem, 4.5vw, 2rem);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      color: #7c3aed; /* Fallback solid color (4.5:1+ contrast on light background) */
+      background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      user-select: none;
+      word-break: break-word;
+    }
+
+    .app-title-smiley {
+      width: 28px;
+      height: 28px;
+      vertical-align: middle;
+      display: inline-block;
+      flex-shrink: 0;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(219, 39, 119, 0.25));
+    }
+
+    .top-buttons-row {
       display: flex;
       justify-content: flex-end;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-
-    .top-auth-left {
-      margin-right: auto;
-      display: flex;
-      align-items: center;
       gap: 8px;
-    }
-
-    .top-auth-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      flex-wrap: wrap;
+      width: 100%;
     }
 
     .btn-top-board {
@@ -2768,22 +2797,27 @@
 </head>
 <body>
   <div class="container">
-    <!-- TOP THIN BAR WITH LOG OUT AND NAVIGATION BUTTONS -->
-    <div class="top-auth-bar">
-      <div class="top-auth-left">
-        <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;" aria-label="Return to My Work Board">
-          My Work Board
-        </button>
+    <!-- TOP AREA: ROW 1 HEADING, ROW 2 RIGHT-ALIGNED BUTTONS -->
+    <header class="top-auth-area">
+      <!-- Row 1: Heading -->
+      <div class="top-heading-row">
+        <p class="app-title">Daily Work Planner</p>
+        <img src="images/happy.svg" alt="" class="app-title-smiley" aria-hidden="true" />
       </div>
-      <div class="top-auth-right">
+
+      <!-- Row 2: Right-aligned buttons -->
+      <div class="top-buttons-row">
         <button type="button" id="btn-top-change-password" class="btn-top-change-pwd" aria-label="Change Account Password">
           Change Password
+        </button>
+        <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;" aria-label="Return to My Work Board">
+          My Work Board
         </button>
         <button type="button" id="btn-logout" class="btn-logout" aria-label="Log out of Daily Work Planner">
           Log out
         </button>
       </div>
-    </div>
+    </header>
 
     <!-- IN-APP REMINDER BANNER -->
     <div id="app-reminder-banner" class="reminder-banner" role="status" aria-live="polite" style="display: none;">
