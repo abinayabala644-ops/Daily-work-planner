@@ -2696,11 +2696,12 @@
       btnTopMyWorkBoard.style.display = viewName === 'home' ? 'none' : 'inline-flex';
     }
     if (btnTopDailySummary) {
-      // Show on every page except Home / My Work Board
-      btnTopDailySummary.style.display = viewName === 'home' ? 'none' : 'inline-flex';
+      // Show on other planner pages, but hide on Home / My Work Board and on Daily Work Summary itself
+      btnTopDailySummary.style.display = (viewName === 'home' || viewName === 'summary') ? 'none' : 'inline-flex';
     }
     if (btnTopChangePassword) {
-      btnTopChangePassword.style.display = 'none';
+      // Show ONLY on Home (My Work Board) page, never on other pages
+      btnTopChangePassword.style.display = viewName === 'home' ? 'inline-flex' : 'none';
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4254,7 +4255,7 @@
     if (changePwdOkActions) changePwdOkActions.style.display = 'none';
     if (changePwdSubmitBtn) {
       changePwdSubmitBtn.disabled = false;
-      changePwdSubmitBtn.textContent = 'Save';
+      changePwdSubmitBtn.textContent = 'Save Password';
     }
   }
 
