@@ -2700,7 +2700,8 @@
       btnTopDailySummary.style.display = (viewName === 'home' || viewName === 'summary') ? 'none' : 'inline-flex';
     }
     if (btnTopChangePassword) {
-      btnTopChangePassword.style.display = 'none';
+      // Show ONLY on Home (My Work Board) page, never on other pages
+      btnTopChangePassword.style.display = viewName === 'home' ? 'inline-flex' : 'none';
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
