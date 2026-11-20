@@ -2700,7 +2700,8 @@
       btnTopDailySummary.style.display = (viewName === 'home' || viewName === 'summary') ? 'none' : 'inline-flex';
     }
     if (btnTopChangePassword) {
-      btnTopChangePassword.style.display = 'none';
+      // Show on Home (My Work Board) page
+      btnTopChangePassword.style.display = viewName === 'home' ? 'inline-flex' : 'none';
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4254,7 +4255,7 @@
     if (changePwdOkActions) changePwdOkActions.style.display = 'none';
     if (changePwdSubmitBtn) {
       changePwdSubmitBtn.disabled = false;
-      changePwdSubmitBtn.textContent = 'Save';
+      changePwdSubmitBtn.textContent = 'Save Password';
     }
   }
 

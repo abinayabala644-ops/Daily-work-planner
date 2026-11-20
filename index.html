@@ -214,7 +214,8 @@
       outline-offset: 2px;
     }
 
-    .btn-top-summary {
+    .btn-top-summary,
+    .btn-top-change-pwd {
       min-height: 44px;
       padding: 8px 16px;
       font-size: 0.88rem;
@@ -231,13 +232,15 @@
       justify-content: center;
     }
 
-    .btn-top-summary:hover {
+    .btn-top-summary:hover,
+    .btn-top-change-pwd:hover {
       background: var(--slate-100);
       color: var(--slate-900);
       border-color: var(--slate-400);
     }
 
-    .btn-top-summary:focus-visible {
+    .btn-top-summary:focus-visible,
+    .btn-top-change-pwd:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
     }
@@ -3012,6 +3015,9 @@
 
       <!-- Row 2: Right-aligned buttons -->
       <div class="top-buttons-row">
+        <button type="button" id="btn-top-change-password" class="btn-top-change-pwd" style="display: none;" aria-label="Change Password">
+          Change Password
+        </button>
         <button type="button" id="btn-top-daily-summary" class="btn-top-summary" style="display: none;" aria-label="Open Daily Work Summary">
           Daily Work Summary
         </button>
@@ -3477,31 +3483,31 @@
   <dialog id="change-password-dialog">
     <div class="modal-box">
       <h3 class="modal-title">Change Password</h3>
-      <p class="modal-desc" id="change-pwd-desc">Enter your previous password and a new password below.</p>
+      <p class="modal-desc" id="change-pwd-desc">Enter your current password, edit new password, and confirm password below.</p>
 
       <form id="change-password-form" autocomplete="off" novalidate>
         <div class="change-pwd-form-group">
-          <label for="change-pwd-prev" class="change-pwd-label">Previous Password</label>
+          <label for="change-pwd-prev" class="change-pwd-label">Current Password</label>
           <input
             type="password"
             id="change-pwd-prev"
             class="change-pwd-input"
             autocomplete="one-time-code"
             data-lpignore="true"
-            placeholder="Enter previous password"
+            placeholder="Enter current password"
             required
           />
         </div>
 
         <div class="change-pwd-form-group">
-          <label for="change-pwd-new" class="change-pwd-label">New Password</label>
+          <label for="change-pwd-new" class="change-pwd-label">Edit Password</label>
           <input
             type="password"
             id="change-pwd-new"
             class="change-pwd-input"
             autocomplete="one-time-code"
             data-lpignore="true"
-            placeholder="At least 8 characters"
+            placeholder="Enter new password (at least 8 characters)"
             required
           />
         </div>
@@ -3528,7 +3534,7 @@
 
         <div class="modal-actions" id="change-pwd-actions">
           <button type="button" id="change-pwd-cancel-btn" class="btn btn-secondary">Cancel</button>
-          <button type="submit" id="change-pwd-submit-btn" class="btn btn-primary">Save</button>
+          <button type="submit" id="change-pwd-submit-btn" class="btn btn-primary">Save Password</button>
         </div>
 
         <div class="modal-actions" id="change-pwd-ok-actions" style="display: none; justify-content: center; margin-top: 16px;">
