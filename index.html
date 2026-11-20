@@ -214,7 +214,7 @@
       outline-offset: 2px;
     }
 
-    .btn-top-change-pwd {
+    .btn-top-summary {
       min-height: 44px;
       padding: 8px 16px;
       font-size: 0.88rem;
@@ -231,13 +231,13 @@
       justify-content: center;
     }
 
-    .btn-top-change-pwd:hover {
+    .btn-top-summary:hover {
       background: var(--slate-100);
       color: var(--slate-900);
       border-color: var(--slate-400);
     }
 
-    .btn-top-change-pwd:focus-visible {
+    .btn-top-summary:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
     }
@@ -670,8 +670,9 @@
 
     .textarea-box {
       width: 100%;
-      min-height: 120px;
-      padding: 12px 14px;
+      min-height: 48px;
+      height: auto;
+      padding: 10px 14px;
       font-size: 1rem;
       border: 1px solid var(--slate-300);
       border-radius: 10px;
@@ -679,6 +680,8 @@
       font-family: inherit;
       resize: vertical;
       line-height: 1.5;
+      overflow-y: hidden;
+      box-sizing: border-box;
     }
 
     .textarea-box:focus-visible {
@@ -800,12 +803,12 @@
       border: 1px solid var(--slate-200);
       border-left: 6px solid var(--emerald-600);
       background: #ffffff;
-      padding: 20px;
-      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+      padding: 12px 18px;
+      box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.05);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 10px;
       animation: fadeInCard 0.35s ease-in-out;
     }
 
@@ -836,7 +839,7 @@
 
     .result-image-wrapper {
       width: 100%;
-      max-width: 380px;
+      max-width: 220px;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -844,17 +847,16 @@
 
     .result-image {
       width: 100%;
-      max-width: 380px;
+      max-width: 220px;
+      max-height: 135px;
       height: auto;
       object-fit: contain;
-      aspect-ratio: 500 / 320;
       display: block;
-      border-radius: 14px;
-      box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
     }
 
     .result-message {
-      font-size: 1.65rem;
+      font-size: 1.25rem;
       font-weight: 800;
       color: var(--slate-900);
       letter-spacing: -0.02em;
@@ -866,20 +868,25 @@
       .result-card {
         flex-direction: row;
         align-items: center;
-        justify-content: flex-start;
-        padding: 24px;
-        gap: 24px;
+        justify-content: center;
+        padding: 12px 24px;
+        gap: 20px;
       }
 
       .result-image-wrapper {
         flex: 0 0 auto;
-        width: 320px;
-        max-width: 320px;
+        width: 180px;
+        max-width: 180px;
+      }
+
+      .result-image {
+        max-height: 120px;
       }
 
       .result-message {
         text-align: left;
         flex: 1;
+        font-size: 1.25rem;
       }
     }
 
@@ -1128,45 +1135,152 @@
       gap: 5px;
     }
 
-    /* Summary Page Styles */
+    /* Summary Page Styles - Today's Work Progress Style */
     .summary-slots-grid {
-      display: grid;
-      grid-template-columns: 1fr;
+      display: flex;
+      flex-direction: column;
       gap: 12px;
+      width: 100%;
       margin-bottom: 24px;
     }
 
-    @media (min-width: 600px) {
-      .summary-slots-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
     .summary-slot-card {
-      padding: 16px 18px;
+      width: 100%;
+      min-height: 48px;
+      padding: 14px 18px;
       border-radius: 12px;
-      border: 1px solid var(--slate-200);
-      background: var(--slate-50);
+      border: 1px solid #86efac;
+      border-left: 6px solid #16a34a;
+      background: #f0fdf4;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      gap: 14px;
+      gap: 12px;
+      box-sizing: border-box;
+      transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .summary-slot-card:hover {
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .summary-slot-card.status-not-completed {
+      border-color: #fca5a5;
+      border-left-color: #dc2626;
+      background: #fef2f2;
+    }
+
+    .summary-slot-card.status-unmarked {
+      border-color: #e2e8f0;
+      border-left-color: #94a3b8;
+      background: #f8fafc;
+    }
+
+    .summary-slot-time-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .summary-slot-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      line-height: 1.2;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .summary-slot-duration-pill {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--slate-600);
+      background: rgba(0, 0, 0, 0.05);
+      padding: 2px 7px;
+      border-radius: 9999px;
+    }
+
+    .summary-slot-time-text {
+      font-family: inherit;
+      font-size: 1.08rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.2px;
+      white-space: nowrap;
+    }
+
+    .summary-slot-task-row {
+      width: 100%;
+      display: block;
+      margin: 2px 0;
+    }
+
+    .summary-slot-task-text {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1e293b;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      display: block;
+      width: 100%;
+    }
+
+    .summary-slot-buttons-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    .btn-summary-slot-edit {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #334155;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      min-height: 36px;
+    }
+
+    .btn-summary-slot-edit:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+      border-color: #94a3b8;
+    }
+
+    .btn-summary-slot-edit:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 1px;
     }
 
     .slot-status-btn-group {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      padding-top: 10px;
-      border-top: 1px solid var(--slate-200);
+      align-items: center;
     }
 
     .slot-status-btn {
-      flex: 1 1 120px;
-      min-height: 44px;
-      min-width: 44px;
-      padding: 8px 12px;
-      font-size: 0.88rem;
+      min-height: 36px;
+      padding: 6px 12px;
+      font-size: 0.82rem;
       font-weight: 700;
       border-radius: 8px;
       border: 1px solid var(--slate-300);
@@ -1177,8 +1291,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
       text-align: center;
+      white-space: nowrap;
     }
 
     .slot-status-btn:focus-visible {
@@ -1187,15 +1302,68 @@
     }
 
     .slot-status-btn.completed-active {
-      background: var(--emerald-700);
+      background: #15803d;
       color: #ffffff;
-      border-color: var(--emerald-700);
+      border-color: #15803d;
     }
 
     .slot-status-btn.not-completed-active {
-      background: var(--rose-600);
+      background: #dc2626;
       color: #ffffff;
-      border-color: var(--rose-600);
+      border-color: #dc2626;
+    }
+
+    .summary-slot-footer-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    /* Modal / Dialog for Slot Editing */
+    .summary-edit-modal-box {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--slate-200);
+      max-width: 440px;
+      width: 90vw;
+    }
+
+    .summary-edit-field {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .summary-edit-field label {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--slate-800);
+    }
+
+    .summary-edit-field input,
+    .summary-edit-field textarea {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--slate-300);
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    .summary-edit-field input:focus-visible,
+    .summary-edit-field textarea:focus-visible {
+      outline: 2px solid var(--slate-900);
+      border-color: var(--slate-900);
+    }
+
+    .summary-edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
     }
 
     .views {
@@ -2543,24 +2711,26 @@
       text-align: left;
     }
     .week-story-heading {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: #0f172a;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: #4a2c11;
       display: flex;
       align-items: center;
       gap: 8px;
+      margin: 8px 0 2px 4px;
     }
     .week-chapter-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+      background: #fdfaf3; /* Matching warm cream diary paper */
+      border: 1px solid #e7dec8;
       border-radius: 14px;
       padding: 18px 20px;
       transition: all 0.15s ease;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      box-shadow: 0 1px 3px rgba(120, 80, 40, 0.05);
     }
     .week-chapter-card:hover {
-      border-color: #cbd5e1;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      border-color: #d6c7a7;
+      box-shadow: 0 4px 10px rgba(120, 80, 40, 0.08);
     }
     .week-chapter-header {
       display: flex;
@@ -2568,54 +2738,58 @@
       align-items: baseline;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .week-chapter-title {
-      font-size: 1rem;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.45rem;
       font-weight: 700;
-      color: #0f172a;
+      color: #4a2c11;
       display: flex;
       align-items: center;
       gap: 8px;
     }
     .week-chapter-date {
-      font-size: 0.82rem;
-      color: #64748b;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.15rem;
+      color: #8c6239;
       font-weight: 600;
     }
     .week-chapter-narrative {
-      font-size: 0.94rem;
-      color: #334155;
-      line-height: 1.55;
-      margin-bottom: 12px;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.35rem;
+      line-height: 1.6;
+      color: #2b1810;
+      margin-bottom: 10px;
     }
     .week-chapter-tasks {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin-top: 8px;
+      margin-top: 6px;
     }
     .week-task-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      padding: 8px 12px;
+      padding: 6px 12px;
       border-radius: 8px;
-      font-size: 0.88rem;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.25rem;
     }
     .week-task-item.completed {
-      background: #f0fdf4;
+      background: rgba(187, 247, 208, 0.45);
       border: 1px solid #bbf7d0;
       color: #14532d;
     }
     .week-task-item.unfinished {
-      background: #fef2f2;
+      background: rgba(254, 202, 202, 0.4);
       border: 1px solid #fecaca;
       color: #7f1d1d;
     }
     .week-task-item.unmarked {
-      background: #f8fafc;
+      background: rgba(241, 245, 249, 0.6);
       border: 1px solid #e2e8f0;
       color: #334155;
     }
@@ -2627,10 +2801,11 @@
       min-width: 0;
     }
     .week-task-badge {
-      font-size: 0.76rem;
+      font-family: inherit;
+      font-size: 1.05rem;
       font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
       flex-shrink: 0;
     }
     .week-task-item.completed .week-task-badge {
@@ -2647,25 +2822,27 @@
     }
     .week-task-text {
       flex: 1;
-      font-weight: 500;
+      font-weight: 600;
       word-break: break-word;
     }
     .week-task-time {
-      font-size: 0.78rem;
-      color: #64748b;
+      font-size: 1.1rem;
+      color: #8c6239;
       font-weight: 600;
       white-space: nowrap;
     }
     .week-chapter-empty {
-      background: #fafaf9;
-      border: 1px dashed #e7e5e4;
-      color: #78716c;
-      font-size: 0.9rem;
-      padding: 14px 18px;
-      border-radius: 12px;
+      background: rgba(247, 241, 227, 0.6);
+      border: 1px dashed #d6c7a7;
+      color: #6b4e31;
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     /* Vintage Diary Book Page Styling */
@@ -2835,8 +3012,8 @@
 
       <!-- Row 2: Right-aligned buttons -->
       <div class="top-buttons-row">
-        <button type="button" id="btn-top-change-password" class="btn-top-change-pwd" aria-label="Change Account Password">
-          Change Password
+        <button type="button" id="btn-top-daily-summary" class="btn-top-summary" style="display: none;" aria-label="Open Daily Work Summary">
+          Daily Work Summary
         </button>
         <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;" aria-label="Return to My Work Board">
           My Work Board
@@ -3026,11 +3203,11 @@
     <!-- PAGE 1: SCHEDULE SETUP -->
     <div id="view-settings" class="card views">
       <div class="header-row">
-        <div>
-          <h1 class="header-title">Daily Work Planner</h1>
-          <p class="header-subtitle">Plan your day one slot at a time</p>
-        </div>
-        <div class="header-actions">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div>
+            <h1 class="header-title">Daily Work Planner</h1>
+            <p class="header-subtitle">Plan your day one slot at a time</p>
+          </div>
           <button type="button" id="calendar-toggle-btn" class="btn-icon" aria-label="Open monthly calendar" title="Open monthly calendar">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -3038,9 +3215,6 @@
               <line x1="8" y1="2" x2="8" y2="6"></line>
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
-          </button>
-          <button type="button" id="settings-next-btn" class="btn btn-top-right">
-            Next &rarr;
           </button>
         </div>
       </div>
@@ -3063,7 +3237,12 @@
 
       <div class="form-group">
         <label for="ending-time-input" class="form-label">Ending Time</label>
-        <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 2:00 PM" id="ending-time-input" value="6:00 PM" class="time-input" aria-describedby="error-end-time" />
+        <div style="display: flex; align-items: center; gap: 14px; width: 100%;">
+          <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 2:00 PM" id="ending-time-input" value="6:00 PM" class="time-input" aria-describedby="error-end-time" style="flex: 1 1 auto; margin-bottom: 0;" />
+          <button type="button" id="settings-next-btn" class="btn btn-top-right" style="min-height: 44px; min-width: 100px;">
+            Next &rarr;
+          </button>
+        </div>
         <p id="error-end-time" class="field-error-text" style="display: none;"></p>
       </div>
     </div>
@@ -3176,14 +3355,49 @@
 
             <div id="summary-result-area" class="summary-result-area" aria-live="polite"></div>
 
-      <!-- Save Section at very end of Summary page -->
+      <!-- Save and Next Section at very end of Summary page -->
       <div id="summary-save-section" class="summary-save-section">
         <div id="summary-save-message" role="status" aria-live="polite" style="display: none;"></div>
         <p id="summary-save-hint" class="summary-save-hint">Press Save to store this day.</p>
-        <button type="button" id="summary-save-btn" class="btn-summary-save">Save</button>
+        <div style="display: flex; gap: 12px; width: 100%;">
+          <button type="button" id="summary-save-btn" class="btn-summary-save" style="flex: 1 1 50%;">Save</button>
+          <button type="button" id="summary-next-btn" class="btn btn-primary" style="flex: 1 1 50%; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; border-radius: 10px;">Next &rarr;</button>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Native Dialog: Edit Slot Modal -->
+  <dialog id="summary-edit-slot-dialog">
+    <div class="summary-edit-modal-box">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <h2 id="summary-edit-dialog-title" style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #0f172a;">Edit Slot</h2>
+        <button type="button" id="summary-edit-dialog-close-btn" class="calendar-close-btn" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <div class="summary-edit-field">
+        <label for="summary-edit-start-input">Starting Time</label>
+        <input type="text" id="summary-edit-start-input" placeholder="e.g. 9:00 AM" />
+        <div id="summary-edit-start-error" class="field-error-text" style="display: none;"></div>
+      </div>
+
+      <div class="summary-edit-field">
+        <label for="summary-edit-end-input">Ending Time</label>
+        <input type="text" id="summary-edit-end-input" placeholder="e.g. 10:30 AM" />
+        <div id="summary-edit-end-error" class="field-error-text" style="display: none;"></div>
+      </div>
+
+      <div class="summary-edit-field">
+        <label for="summary-edit-task-input">Today's Task</label>
+        <textarea id="summary-edit-task-input" rows="3" placeholder="What are you working on?"></textarea>
+      </div>
+
+      <div class="summary-edit-actions">
+        <button type="button" id="summary-edit-dialog-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="summary-edit-dialog-save-btn" class="btn btn-primary">Apply & Save</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Native Dialog: Monthly Calendar -->
   <dialog id="calendar-dialog">
