@@ -18,24 +18,58 @@
 
     .top-auth-bar {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
+      width: 100%;
       flex-wrap: wrap;
     }
 
-    .top-auth-left {
-      margin-right: auto;
-      display: flex;
+    .top-heading-row {
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+
+    .app-title {
+      margin: 0;
+      font-family: inherit;
+      font-style: italic;
+      font-weight: 800;
+      font-size: clamp(1.4rem, 4vw, 1.85rem);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      color: #7c3aed; /* Fallback solid color (4.5:1+ contrast on light background) */
+      background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      user-select: none;
+      word-break: break-word;
+    }
+
+    .app-title-smiley {
+      width: 28px;
+      height: 28px;
+      vertical-align: middle;
+      display: inline-block;
+      flex-shrink: 0;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(219, 39, 119, 0.25));
+    }
+
+    .top-auth-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .top-auth-right {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 10px;
+      margin-left: auto;
     }
 
     .btn-top-board {
@@ -2398,6 +2432,10 @@
     <!-- TOP THIN BAR WITH LOG OUT AND NAVIGATION BUTTONS -->
     <div class="top-auth-bar">
       <div class="top-auth-left">
+        <div class="top-heading-row">
+          <p class="app-title">Daily Work Planner</p>
+          <img src="images/happy.svg" alt="" class="app-title-smiley" aria-hidden="true" />
+        </div>
         <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;" aria-label="Return to My Work Board">
           My Work Board
         </button>
