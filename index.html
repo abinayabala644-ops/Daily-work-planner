@@ -6,7 +6,7 @@
   <title>Daily Work Planner | User-Controlled Schedule</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
   <style>
     /* Prevent flash of unauthenticated planner content */
     html {
@@ -16,26 +16,56 @@
       visibility: visible;
     }
 
-    .top-auth-bar {
+    .top-auth-area {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
+      width: 100%;
       flex-wrap: wrap;
     }
 
-    .top-auth-left {
-      margin-right: auto;
-      display: flex;
+    .top-heading-row {
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
+      justify-content: flex-start;
+      gap: 10px;
     }
 
-    .top-auth-right {
-      display: flex;
+    .app-title {
+      margin: 0;
+      font-family: inherit;
+      font-style: italic;
+      font-weight: 800;
+      font-size: clamp(1.4rem, 4vw, 1.85rem);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      color: #7c3aed; /* Fallback solid color (4.5:1+ contrast on light background) */
+      background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      user-select: none;
+      word-break: break-word;
+    }
+
+    .app-title-smiley {
+      width: 28px;
+      height: 28px;
+      vertical-align: middle;
+      display: inline-block;
+      flex-shrink: 0;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(219, 39, 119, 0.25));
+    }
+
+    .top-buttons-row {
+      display: inline-flex;
+      justify-content: flex-end;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-left: auto;
     }
 
     .btn-top-board {
@@ -2368,35 +2398,11 @@
     }
 
     /* =========================================================
-       MY WEEK REVIEW STYLES
+       MY WEEK REVIEW STYLES - VINTAGE PERSONAL DIARY STORY
        ========================================================= */
-    #view-week-review,
-    #view-week-review * {
-      font-style: italic !important;
-    }
     .week-review-btn-wrap {
       margin-top: 14px;
       width: 100%;
-    }
-    .week-review-stylish-h1 {
-      font-family: inherit;
-      font-style: italic;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-    .week-review-heading-smiley {
-      width: 36px;
-      height: 36px;
-      vertical-align: middle;
-      display: inline-block;
-      filter: drop-shadow(0 2px 4px rgba(219, 39, 119, 0.25));
     }
     .btn-activity-week-review {
       width: 100%;
@@ -2462,7 +2468,7 @@
       transform: translateX(4px);
     }
 
-    /* Week Review Page Components */
+    /* Week Review Page Container */
     .week-review-container {
       display: flex;
       flex-direction: column;
@@ -2527,73 +2533,6 @@
       color: #64748b;
       margin-top: 2px;
       text-align: center;
-    }
-
-    /* Friendly Companion Card */
-    .week-companion-card {
-      background: #ffffff;
-      border: 1.5px solid #cbd5e1;
-      border-left: 6px solid #8b5cf6;
-      border-radius: 14px;
-      padding: 20px 22px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      text-align: left;
-    }
-    .week-companion-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-    .week-companion-avatar {
-      font-size: 2rem;
-      background: #ede9fe;
-      border-radius: 50%;
-      width: 48px;
-      height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .week-companion-name {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: #1e293b;
-    }
-    .week-companion-role {
-      font-size: 0.8rem;
-      color: #64748b;
-      font-weight: 500;
-    }
-    .week-companion-message {
-      font-size: 0.98rem;
-      line-height: 1.6;
-      color: #334155;
-      margin-bottom: 14px;
-    }
-    .week-suggestions-box {
-      background: #f8fafc;
-      border: 1px dashed #cbd5e1;
-      border-radius: 10px;
-      padding: 14px;
-      margin-top: 10px;
-    }
-    .week-suggestions-title {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: #475569;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .week-suggestions-list {
-      margin: 0;
-      padding-left: 20px;
-      font-size: 0.88rem;
-      color: #475569;
-      line-height: 1.5;
     }
 
     /* Chapters / Story Timeline */
@@ -2717,8 +2656,6 @@
       font-weight: 600;
       white-space: nowrap;
     }
-
-    /* Rest / Empty Day Card */
     .week-chapter-empty {
       background: #fafaf9;
       border: 1px dashed #e7e5e4;
@@ -2731,36 +2668,156 @@
       gap: 10px;
     }
 
-    /* Motivational Ending Card */
-    .week-motivational-ending {
-      background: linear-gradient(135deg, #fdf2f8 0%, #fef3c7 50%, #eff6ff 100%);
-      border: 2px solid #fbcfe8;
+    /* Vintage Diary Book Page Styling */
+    .vintage-diary-book {
+      position: relative;
+      background: #fdfaf3; /* Warm ivory/cream paper */
+      border: 1px solid #e7dec8;
       border-radius: 18px;
-      padding: 26px 24px;
+      box-shadow: 
+        0 4px 20px rgba(120, 80, 40, 0.08),
+        0 1px 3px rgba(0, 0, 0, 0.05),
+        inset 0 0 40px rgba(220, 205, 175, 0.25);
+      padding: 34px 26px 40px 28px;
+      overflow: hidden;
+      margin-top: 14px;
+    }
+
+    .diary-header-decor {
       text-align: center;
-      box-shadow: 0 4px 20px rgba(236, 72, 153, 0.08);
-      margin-top: 10px;
+      margin-bottom: 18px;
+      position: relative;
     }
-    .week-motivational-icon {
-      font-size: 2.4rem;
-      margin-bottom: 10px;
+    .diary-top-stickers {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .diary-sticker-icon {
+      font-size: 1.85rem;
       display: inline-block;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
     }
-    .week-motivational-quote {
-      font-size: 1.15rem;
+    .diary-title-handwritten {
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: clamp(2.1rem, 5vw, 2.75rem);
       font-weight: 700;
-      line-height: 1.6;
-      color: #831843;
-      max-width: 640px;
-      margin: 0 auto;
+      color: #4a2c11; /* Warm vintage dark sepia ink */
+      margin: 0;
+      line-height: 1.2;
+      letter-spacing: 0.01em;
     }
-    .week-motivational-tag {
-      margin-top: 12px;
-      font-size: 0.85rem;
+    .diary-date-stamp {
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #8c6239;
+      margin-top: 4px;
+    }
+
+    /* Diary Stats Ribbon */
+    .diary-stats-ribbon {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin: 14px 0 24px 0;
+      padding: 10px 14px;
+      background: rgba(247, 241, 227, 0.75);
+      border-radius: 12px;
+      border: 1px dashed #d6c7a7;
+    }
+    .diary-stat-tag {
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.25rem;
       font-weight: 700;
-      color: #be185d;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      color: #3e2723;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Natural Notebook Writing Lines */
+    .diary-story-body {
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: clamp(1.35rem, 3.4vw, 1.55rem);
+      line-height: 2.15; /* Generous notebook line spacing */
+      color: #2b1810; /* Soft dark fountain pen ink */
+      text-align: left;
+      /* Subtle notebook horizontal lines */
+      background-image: linear-gradient(to bottom, transparent 96%, rgba(195, 175, 140, 0.35) 96%);
+      background-size: 100% 2.15em;
+      background-repeat: repeat-y;
+      padding: 6px 4px 10px 6px;
+      word-break: break-word;
+    }
+
+    .diary-paragraph {
+      margin-bottom: 1.5em;
+      text-indent: 1.2em;
+    }
+
+    .diary-paragraph:first-child {
+      text-indent: 0;
+    }
+
+    .diary-highlight-completed {
+      color: #1e6935;
+      font-weight: 700;
+      background: rgba(187, 247, 208, 0.45);
+      padding: 0 4px;
+      border-radius: 4px;
+    }
+
+    .diary-highlight-missed {
+      color: #991b1b;
+      font-weight: 700;
+      background: rgba(254, 202, 202, 0.4);
+      padding: 0 4px;
+      border-radius: 4px;
+    }
+
+    /* Cute Decorative Interlude Dividers */
+    .diary-decor-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin: 1.2em 0;
+      user-select: none;
+    }
+    .diary-decor-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(180, 150, 110, 0.4), transparent);
+    }
+    .diary-decor-icons {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.4rem;
+    }
+
+    /* Vintage handwritten sign-off */
+    .diary-signoff {
+      margin-top: 2em;
+      text-align: right;
+      padding-right: 14px;
+    }
+    .diary-signoff-line {
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #5c3818;
+    }
+    .diary-signature {
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #8b3a1d;
+      margin-top: 2px;
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
@@ -2768,22 +2825,27 @@
 </head>
 <body>
   <div class="container">
-    <!-- TOP THIN BAR WITH LOG OUT AND NAVIGATION BUTTONS -->
-    <div class="top-auth-bar">
-      <div class="top-auth-left">
-        <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;" aria-label="Return to My Work Board">
-          My Work Board
-        </button>
+    <!-- TOP AREA: ROW 1 HEADING, ROW 2 RIGHT-ALIGNED BUTTONS -->
+    <header class="top-auth-area">
+      <!-- Row 1: Heading -->
+      <div class="top-heading-row">
+        <p class="app-title">Daily Work Planner</p>
+        <img src="images/happy.svg" alt="" class="app-title-smiley" aria-hidden="true" />
       </div>
-      <div class="top-auth-right">
+
+      <!-- Row 2: Right-aligned buttons -->
+      <div class="top-buttons-row">
         <button type="button" id="btn-top-change-password" class="btn-top-change-pwd" aria-label="Change Account Password">
           Change Password
+        </button>
+        <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;" aria-label="Return to My Work Board">
+          My Work Board
         </button>
         <button type="button" id="btn-logout" class="btn-logout" aria-label="Log out of Daily Work Planner">
           Log out
         </button>
       </div>
-    </div>
+    </header>
 
     <!-- IN-APP REMINDER BANNER -->
     <div id="app-reminder-banner" class="reminder-banner" role="status" aria-live="polite" style="display: none;">
@@ -2956,16 +3018,6 @@
 
     <!-- SEPARATE SCREEN: MY WEEK REVIEW -->
     <div id="view-week-review" class="card views">
-      <div class="header-row" style="margin-bottom: 20px; justify-content: center; text-align: center;">
-        <div style="text-align: center; width: 100%;">
-          <h1 class="header-title week-review-stylish-h1">
-            <span>My Week Review</span>
-            <img src="images/happy.svg" alt="😊" class="week-review-heading-smiley" />
-          </h1>
-          <p class="header-subtitle" style="text-align: center; margin-top: 6px;">Your weekly journey, friendly companion story &amp; feedback</p>
-        </div>
-      </div>
-
       <div id="week-review-content" class="week-review-content" aria-live="polite">
         <!-- Loaded dynamically by renderWeekReview() in app.js -->
       </div>
@@ -3111,7 +3163,7 @@
 
       <!-- Empty Day State on Summary -->
       <div id="summary-empty-state" class="empty-summary-card" style="display: none;">
-        <p class="empty-summary-message">No plan saved for this date</p>
+        <p id="summary-empty-message" class="empty-summary-message">No plan saved for this date</p>
         <button type="button" id="summary-plan-this-day-btn" class="btn-plan-this-day">
           Plan this day
         </button>
