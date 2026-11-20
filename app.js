@@ -111,7 +111,6 @@
     upcomingEventDetails: document.getElementById('view-upcoming-event-details'), // Page C
     prevSummary: document.getElementById('view-prev-summary'),
     upcomingDateSummary: document.getElementById('view-upcoming-date-summary'),
-    weekReview: document.getElementById('view-week-review'), // My Week Review
     settings: document.getElementById('view-settings'),
     slot: document.getElementById('view-slot'),
     summary: document.getElementById('view-summary'),
@@ -119,10 +118,7 @@
 
   // Top Bar Navigation Elements
   const btnTopMyWorkBoard = document.getElementById('btn-top-my-work-board');
-
-  // My Week Review Elements
-  const btnActivityWeekReview = document.getElementById('btn-activity-week-review');
-  const weekReviewContent = document.getElementById('week-review-content');
+  const btnHomeNext = document.getElementById('btn-home-next');
 
   // Previous Work Summary Screen Elements
   const prevSummaryNextBtn = document.getElementById('prev-summary-next-btn');
@@ -184,7 +180,6 @@
   const summaryUnfinishedBanner = document.getElementById('summary-unfinished-banner');
   const summaryContinuePlanningBtn = document.getElementById('summary-continue-planning-btn');
   const summaryEmptyState = document.getElementById('summary-empty-state');
-  const summaryEmptyMessage = document.getElementById('summary-empty-message');
   const summaryPlanThisDayBtn = document.getElementById('summary-plan-this-day-btn');
   const summaryCalendarToggleBtn = document.getElementById('summary-calendar-toggle-btn');
   const summaryBackBtn = document.getElementById('summary-back-btn');
@@ -1773,392 +1768,6 @@
     });
   }
 
-
-  // Week Review Event Listeners
-  if (btnActivityWeekReview) {
-    btnActivityWeekReview.addEventListener('click', () => {
-      openWeekReview();
-    });
-  }
-
-  // --- MY WEEK REVIEW SYSTEM ---
-  function escapeHtml(str) {
-    if (typeof str !== 'string') return '';
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  function getCurrentWeekRange(refDate = todayDate) {
-    const day = refDate.getDay(); // 0 is Sun, 1 is Mon, ... 6 is Sat
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    const monday = addDays(refDate, diffToMonday);
-    const sunday = addDays(monday, 6);
-    return { monday, sunday };
-  }
-
-  async function openWeekReview() {
-    flushPendingDebouncedSave();
-    switchView('weekReview');
-    if (weekReviewContent) {
-      weekReviewContent.innerHTML = '<p class="activity-panel-message">Preparing your personal weekly story… ✨</p>';
-    }
-
-    const { monday, sunday } = getCurrentWeekRange(todayDate);
-    const mondayKey = getLocalDateKey(monday);
-    const sundayKey = getLocalDateKey(sunday);
-
-    try {
-      loadFromLocalStorage();
-      if (supabaseClient && currentUserId && currentUserId !== 'anonymous') {
-        await loadRange(mondayKey, sundayKey);
-      }
-    } catch (e) {
-      console.warn('Error loading week review data from Supabase:', e);
-    }
-
-    renderWeekReview(monday, sunday);
-  }
-
-  function renderWeekReview(monday, sunday) {
-    if (!weekReviewContent) return;
-    weekReviewContent.innerHTML = '';
-
-    const monthsShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const daysData = [];
-
-    let totalSlotsCount = 0;
-    let completedSlotsCount = 0;
-    let unfinishedSlotsCount = 0;
-    let unmarkedSlotsCount = 0;
-    let totalMinutesFocused = 0;
-
-    const allCompletedTasks = [];
-    const allMissedTasks = [];
-
-    for (let i = 0; i < 7; i++) {
-      const dObj = addDays(monday, i);
-      const key = getLocalDateKey(dObj);
-      const dayData = state.days[key];
-      const validSlots = (dayData && Array.isArray(dayData.slots))
-        ? dayData.slots.filter(s => !isSlotEmpty(s))
-        : [];
-
-      const dayCompleted = [];
-      const dayMissed = [];
-
-      validSlots.forEach(s => {
-        totalSlotsCount++;
-        const duration = (s.end !== null && s.start !== null && s.end > s.start) ? (s.end - s.start) : 0;
-        const taskLabel = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim() || "Focus Task";
-
-        if (s.status === 'COMPLETED') {
-          completedSlotsCount++;
-          totalMinutesFocused += duration;
-          allCompletedTasks.push(taskLabel);
-          dayCompleted.push(taskLabel);
-        } else if (s.status === 'NOT_COMPLETED') {
-          unfinishedSlotsCount++;
-          allMissedTasks.push(taskLabel);
-          dayMissed.push(taskLabel);
-        } else {
-          unmarkedSlotsCount++;
-          totalMinutesFocused += duration;
-        }
-      });
-
-      daysData.push({
-        dObj,
-        key,
-        slots: validSlots,
-        dayName: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][i],
-        completed: dayCompleted,
-        missed: dayMissed
-      });
-    }
-
-    const completionRate = totalSlotsCount > 0 ? Math.round((completedSlotsCount / totalSlotsCount) * 100) : 0;
-    const hoursFocused = (totalMinutesFocused / 60).toFixed(1);
-    const fromStr = `${monday.getDate()} ${monthsShort[monday.getMonth()]}`;
-    const toStr = `${sunday.getDate()} ${monthsShort[sunday.getMonth()]} ${sunday.getFullYear()}`;
-
-    // Main Container
-    const container = document.createElement('div');
-    container.className = 'week-review-container';
-
-    // 1. Hero Card (Stats)
-    const heroCard = document.createElement('div');
-    heroCard.className = 'week-hero-card';
-    heroCard.innerHTML = `
-      <div class="week-hero-emoji" aria-hidden="true">🌟</div>
-      <h2 class="week-hero-title">My Week Review</h2>
-      <p class="week-hero-range">🗓️ ${fromStr} – ${toStr} (Monday to Sunday)</p>
-      <div class="week-stats-row">
-        <div class="week-stat-pill">
-          <span class="week-stat-number">${totalSlotsCount}</span>
-          <span class="week-stat-label">🎯 Total Planned</span>
-        </div>
-        <div class="week-stat-pill">
-          <span class="week-stat-number" style="color: #16a34a;">${completedSlotsCount}</span>
-          <span class="week-stat-label">✅ Completed</span>
-        </div>
-        <div class="week-stat-pill">
-          <span class="week-stat-number" style="color: #dc2626;">${unfinishedSlotsCount}</span>
-          <span class="week-stat-label">⏳ Unfinished</span>
-        </div>
-        <div class="week-stat-pill">
-          <span class="week-stat-number" style="color: #9333ea;">${hoursFocused}h</span>
-          <span class="week-stat-label">⏱️ Focus Hours</span>
-        </div>
-        <div class="week-stat-pill">
-          <span class="week-stat-number" style="color: #2563eb;">${completionRate}%</span>
-          <span class="week-stat-label">📊 Completion</span>
-        </div>
-      </div>
-    `;
-    container.appendChild(heroCard);
-
-    // 2. Chapters of Your Week (All 7 chapters preserved exactly)
-    const storySection = document.createElement('div');
-    storySection.className = 'week-story-section';
-
-    const storyHeading = document.createElement('h3');
-    storyHeading.className = 'week-story-heading';
-    storyHeading.innerHTML = `<span>📖</span> Chapters of Your Week`;
-    storySection.appendChild(storyHeading);
-
-    const chapterTitles = [
-      { prefix: "Chapter 1", emoji: "🌅", theme: "Monday — Setting the Tone" },
-      { prefix: "Chapter 2", emoji: "⚡", theme: "Tuesday — Building Momentum" },
-      { prefix: "Chapter 3", emoji: "🎯", theme: "Wednesday — The Mid-Week Anchor" },
-      { prefix: "Chapter 4", emoji: "🚀", theme: "Thursday — Pushing Forward" },
-      { prefix: "Chapter 5", emoji: "🏁", theme: "Friday — The Final Lap" },
-      { prefix: "Chapter 6", emoji: "🌿", theme: "Saturday — Weekend Reflection" },
-      { prefix: "Chapter 7", emoji: "☀️", theme: "Sunday — Rest & Renewal" },
-    ];
-
-    daysData.forEach((dayItem, idx) => {
-      const chapterInfo = chapterTitles[idx];
-      const dateFormatted = `${dayItem.dObj.getDate()} ${monthsShort[dayItem.dObj.getMonth()]}`;
-      const hasSlots = dayItem.slots.length > 0;
-
-      const chapterCard = document.createElement('div');
-      chapterCard.className = 'week-chapter-card';
-
-      if (!hasSlots) {
-        chapterCard.innerHTML = `
-          <div class="week-chapter-header">
-            <div class="week-chapter-title">
-              <span>${chapterInfo.emoji}</span>
-              <span>${chapterInfo.prefix}: ${chapterInfo.theme}</span>
-            </div>
-            <span class="week-chapter-date">${dateFormatted}</span>
-          </div>
-          <div class="week-chapter-empty">
-            <span>☕</span>
-            <span>A restful pause day. No scheduled slots were logged for this day. Rest and recovery are an essential part of productivity!</span>
-          </div>
-        `;
-      } else {
-        const completedDaySlots = dayItem.slots.filter(s => s.status === 'COMPLETED');
-        const unfinishedDaySlots = dayItem.slots.filter(s => s.status === 'NOT_COMPLETED');
-
-        let narrative = "";
-        if (completedDaySlots.length === dayItem.slots.length) {
-          narrative = `A stellar day! You completed every single planned task on ${dayItem.dayName}. You were focused, organized, and followed through from start to finish! 🌟`;
-        } else if (completedDaySlots.length > 0 && unfinishedDaySlots.length > 0) {
-          narrative = `You took on ${dayItem.slots.length} activities on ${dayItem.dayName}. You successfully finished ${completedDaySlots.length} task(s), and while ${unfinishedDaySlots.length} task(s) remained pending, you made meaningful progress! 👍`;
-        } else if (completedDaySlots.length > 0) {
-          narrative = `You had a productive session on ${dayItem.dayName}, finishing ${completedDaySlots.length} of your focus tasks! Every checked box is a victory. ✨`;
-        } else {
-          narrative = `You mapped out ${dayItem.slots.length} task(s) for ${dayItem.dayName}. Even though they didn't wrap up completely, planning ahead was already a positive step! 🌿`;
-        }
-
-        const taskItemsHtml = dayItem.slots.map(s => {
-          const taskLabel = (typeof s.taskText === "string" ? s.taskText : (s.text || "")).trim() || "Planned Activity";
-          const timeLabel = (s.start !== null && s.end !== null) ? `${minutesToTimeString(s.start)} – ${minutesToTimeString(s.end)}` : "";
-          let itemClass = "unmarked";
-          let badgeText = "Planned";
-
-          if (s.status === 'COMPLETED') {
-            itemClass = "completed";
-            badgeText = "✓ Completed";
-          } else if (s.status === 'NOT_COMPLETED') {
-            itemClass = "unfinished";
-            badgeText = "⏳ Incomplete";
-          }
-
-          return `
-            <div class="week-task-item ${itemClass}">
-              <div class="week-task-left">
-                <span class="week-task-badge">${badgeText}</span>
-                <span class="week-task-text">${escapeHtml(taskLabel)}</span>
-              </div>
-              <span class="week-task-time">${escapeHtml(timeLabel)}</span>
-            </div>
-          `;
-        }).join('');
-
-        chapterCard.innerHTML = `
-          <div class="week-chapter-header">
-            <div class="week-chapter-title">
-              <span>${chapterInfo.emoji}</span>
-              <span>${chapterInfo.prefix}: ${chapterInfo.theme}</span>
-            </div>
-            <span class="week-chapter-date">${dateFormatted} • ${dayItem.slots.length} slot(s)</span>
-          </div>
-          <p class="week-chapter-narrative">${escapeHtml(narrative)}</p>
-          <div class="week-chapter-tasks">
-            ${taskItemsHtml}
-          </div>
-        `;
-      }
-
-      storySection.appendChild(chapterCard);
-    });
-
-    container.appendChild(storySection);
-
-    // 3. Final Section: Vintage Personal Diary Story Page (at the very end)
-    const diaryBook = document.createElement('div');
-    diaryBook.className = 'vintage-diary-book';
-
-    // Header with stickers, title and date
-    const headerDecor = document.createElement('div');
-    headerDecor.className = 'diary-header-decor';
-    headerDecor.innerHTML = `
-      <div class="diary-top-stickers">
-        <span class="diary-sticker-icon" title="Flowers">🌸</span>
-        <span class="diary-sticker-icon" title="Cute Smiley">😊</span>
-        <span class="diary-sticker-icon" title="Lovely Doll">🧸</span>
-        <span class="diary-sticker-icon" title="Sparkles">✨</span>
-        <span class="diary-sticker-icon" title="Rose">🌹</span>
-      </div>
-      <h2 class="diary-title-handwritten">My Weekly Diary &amp; Story</h2>
-      <div class="diary-date-stamp">🌿 Week of ${fromStr} – ${toStr} • Personal Journal Notes ☕</div>
-      <div class="diary-stats-ribbon">
-        <span class="diary-stat-tag">🎯 Planned: ${totalSlotsCount}</span>
-        <span class="diary-stat-tag" style="color: #1e6935;">✅ Completed: ${completedSlotsCount}</span>
-        <span class="diary-stat-tag" style="color: #991b1b;">⏳ Missed: ${unfinishedSlotsCount}</span>
-        <span class="diary-stat-tag" style="color: #6b21a8;">⏱️ Focus: ${hoursFocused} hrs</span>
-        <span class="diary-stat-tag" style="color: #1d4ed8;">📊 Success Rate: ${completionRate}%</span>
-      </div>
-    `;
-    diaryBook.appendChild(headerDecor);
-
-    // Continuous handwritten conversational diary story
-    const storyBody = document.createElement('div');
-    storyBody.className = 'diary-story-body';
-
-    let storyHtml = '';
-
-    // Warm Opening
-    storyHtml += `
-      <p class="diary-paragraph">
-        <strong>Dear Diary &amp; my dear friend,</strong> 🌷<br/>
-        As I sit down with a gentle cup of warm tea today, looking back through every page and hour of this week, my heart feels so full. Every week has its own heartbeat, its quiet victories, and moments that teach us patience. Looking at my planner, I set out to tackle <strong>${totalSlotsCount} activities</strong>, pouring in over <strong>${hoursFocused} hours</strong> of honest, deep concentration!
-      </p>
-    `;
-
-    // Interlude 1: Cute divider
-    storyHtml += `
-      <div class="diary-decor-divider" aria-hidden="true">
-        <div class="diary-decor-line"></div>
-        <div class="diary-decor-icons">🌸 🧸 🍃 🧸 🌸</div>
-        <div class="diary-decor-line"></div>
-      </div>
-    `;
-
-    // Completed Tasks Narrative
-    if (completedSlotsCount > 0) {
-      const topWins = allCompletedTasks.slice(0, 6);
-      const winsListFormatted = topWins.map(t => `<span class="diary-highlight-completed">“${escapeHtml(t)}”</span>`).join(', ');
-      storyHtml += `
-        <p class="diary-paragraph">
-          Let’s take a joyful moment to celebrate what got done! 🎉 You poured real passion and focus into finishing <strong>${completedSlotsCount} tasks</strong>. Remember how good it felt checking off ${winsListFormatted}${allCompletedTasks.length > 6 ? ` and ${allCompletedTasks.length - 6} other wonderful goals` : ''}? That wasn't just luck; that was your sheer persistence showing up day after day! Every completed slot brought you one step closer to where you want to be in life. You should feel truly proud of yourself! 🌼💛
-        </p>
-      `;
-    } else {
-      storyHtml += `
-        <p class="diary-paragraph">
-          This was a quiet, gentle week where things were just finding their rhythm. Even when no tasks were marked as finished yet, simply opening up your planner, holding yourself accountable, and setting your intentions is a deeply brave act. A blank page is never an empty page — it is an invitation for fresh magic. 🌿✨
-        </p>
-      `;
-    }
-
-    // Daily Walkthrough
-    const activeDays = daysData.filter(d => d.slots.length > 0);
-    if (activeDays.length > 0) {
-      storyHtml += `
-        <p class="diary-paragraph">
-          Looking back at the day-by-day journey:
-      `;
-      const dailySentences = daysData.map(d => {
-        if (d.slots.length === 0) {
-          return `On <em>${d.dayName}</em>, you took a calm, restful breather to recharge your energy ☕.`;
-        }
-        if (d.completed.length === d.slots.length) {
-          return `<em>${d.dayName}</em> was an absolute masterpiece where you conquered everything you planned (${d.completed.map(t => `“${escapeHtml(t)}”`).join(', ')}) 🌟!`;
-        }
-        if (d.completed.length > 0 && d.missed.length > 0) {
-          return `On <em>${d.dayName}</em>, you successfully completed ${d.completed.map(t => `“${escapeHtml(t)}”`).join(', ')}, while leaving ${d.missed.map(t => `“${escapeHtml(t)}”`).join(', ')} to rest for another time 👍.`;
-        }
-        if (d.completed.length > 0) {
-          return `<em>${d.dayName}</em> gave you great steady momentum with ${d.completed.map(t => `“${escapeHtml(t)}”`).join(', ')} ✨.`;
-        }
-        return `On <em>${d.dayName}</em>, you had planned ${d.missed.map(t => `“${escapeHtml(t)}”`).join(', ')}, and while the day shifted, your heart was right there trying 🌱.`;
-      });
-
-      storyHtml += ' ' + dailySentences.join(' ') + `</p>`;
-    }
-
-    // Interlude 2: Flowers & Doll divider
-    storyHtml += `
-      <div class="diary-decor-divider" aria-hidden="true">
-        <div class="diary-decor-line"></div>
-        <div class="diary-decor-icons">🎀 🌻 🧸 🌻 🎀</div>
-        <div class="diary-decor-line"></div>
-      </div>
-    `;
-
-    // Caring Reflections on Missed / Skipped Tasks
-    if (unfinishedSlotsCount > 0) {
-      const missedListFormatted = allMissedTasks.slice(0, 5).map(t => `<span class="diary-highlight-missed">“${escapeHtml(t)}”</span>`).join(', ');
-      storyHtml += `
-        <p class="diary-paragraph">
-          Now, let's talk about the items that were missed or skipped this week — tasks like ${missedListFormatted}${allMissedTasks.length > 5 ? ` and a few others` : ''}. Please listen closely, my friend: <em>missing a task does not mean you failed.</em> 🤗 Sometimes energy dips, unexpected life surprises happen, or a task simply felt heavier than anticipated. In this diary, missed tasks are not judged; they are gentle compass markers guiding us. We can break them down into lighter, smaller 20-minute bites, or simply welcome them with a smiling face next week. Give yourself kindness and grace! 💕🌈
-        </p>
-      `;
-    } else if (totalSlotsCount > 0) {
-      storyHtml += `
-        <p class="diary-paragraph">
-          Looking closely, there wasn't a single missed task left behind in your schedule this week! 🎯 What a rare and delightful feat of focus! Give yourself a warm hug for following through with your commitments so gracefully. 🌺💫
-        </p>
-      `;
-    }
-
-    // Looking Ahead & Loving Sign-off
-    storyHtml += `
-      <p class="diary-paragraph">
-        As this week gently folds its pages into memory, take a deep, refreshing breath. Relax your shoulders. You worked hard, you learned, you grew, and you are becoming stronger and calmer with every passing day. Next week brings an untouched morning sun and brand-new opportunities waiting just for you. Believe in yourself, keep your smile bright, and know that you are doing so wonderfully well! 🌸✨🧸
-      </p>
-
-      <div class="diary-signoff">
-        <div class="diary-signoff-line">With love, warm smiles &amp; cheer, 💖🌼</div>
-        <div class="diary-signature">Your Weekly Companion &amp; Friend ✨🧸</div>
-      </div>
-    `;
-
-    storyBody.innerHTML = storyHtml;
-    diaryBook.appendChild(storyBody);
-    container.appendChild(diaryBook);
-
-    weekReviewContent.appendChild(container);
-  }
-
   // --- TODAY'S WORK PROGRESS SYSTEM ON HOME ---
   let todayProgressTimer = null;
   let summaryRuleTimer = null;
@@ -2528,6 +2137,14 @@
     updateHomeUnfinishedBanner();
   }
 
+  if (btnHomeNext) {
+    btnHomeNext.addEventListener('click', () => {
+      selectedDateKey = getLocalDateKey(todayDate);
+      initSettingsView();
+      switchView('settings');
+      if (startInput) startInput.focus();
+    });
+  }
 
   async function handleGoToHome(e) {
     if (e && typeof e.preventDefault === 'function') {
@@ -2542,7 +2159,6 @@
 
     // Reset currentActivityTab so Home shows the default activity selection clean
     currentActivityTab = null;
-    updateActivityNavButtonsState(null);
 
     // If leaving a slot page, perform the exact cleanup as slot back button (clean up new empty slot)
     const dayData = getCurrentDayData();
@@ -2710,9 +2326,9 @@
       // Show on all signed-in screens except Home
       btnTopMyWorkBoard.style.display = viewName === 'home' ? 'none' : 'inline-flex';
     }
-    if (btnTopChangePassword) {
-      // Show on all signed-in screens except My Week Review
-      btnTopChangePassword.style.display = viewName === 'weekReview' ? 'none' : 'inline-flex';
+    if (btnHomeNext) {
+      // Home Next button in the top bar is only displayed on Home
+      btnHomeNext.style.display = viewName === 'home' ? 'inline-flex' : 'none';
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3440,28 +3056,11 @@
     const selectedObj = parseLocalDateKey(selectedDateKey);
     const shortDateStr = formatShortDisplayDate(selectedObj);
 
-    // Check if the selected date has no actual work (no slots or all slots empty/unwritten)
-    cleanupTrailingEmptySlots(dayData);
-    const slotsWithTimes = getSlotsWithTimes()
-      .filter(item => !isSlotEmpty(item.slot))
-      .sort((a, b) => a.startMinutes - b.startMinutes);
-    const totalSlots = slotsWithTimes.length;
-
-    // If there is no work on this date (or slots array is empty or has 0 valid/non-empty slots)
-    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0 || totalSlots === 0) {
+    // If there is no saved plan for this date (or slots array is empty)
+    if (!dayData || !Array.isArray(dayData.slots) || dayData.slots.length === 0) {
       summaryHeaderSubtitle.textContent = `${shortDateStr} - No slots planned`;
       if (summaryUnfinishedBanner) summaryUnfinishedBanner.style.display = "none";
-      if (summaryEmptyState) {
-        summaryEmptyState.style.display = "block";
-        if (summaryEmptyMessage) {
-          summaryEmptyMessage.textContent = "No work on this day.";
-        }
-        if (summaryPlanThisDayBtn) {
-          const todayStr = getLocalDateKey(todayDate);
-          // For past dates (such as viewing previous work), only show the simple message without the plan button
-          summaryPlanThisDayBtn.style.display = selectedDateKey < todayStr ? "none" : "inline-flex";
-        }
-      }
+      if (summaryEmptyState) summaryEmptyState.style.display = "block";
       summarySlotsList.innerHTML = "";
       if (summaryResultArea) summaryResultArea.innerHTML = "";
       if (summarySaveSection) summarySaveSection.style.display = "none";
@@ -3471,6 +3070,12 @@
     if (summaryEmptyState) summaryEmptyState.style.display = "none";
     if (summarySaveSection) summarySaveSection.style.display = "flex";
 
+    // Filter out trailing empty slots and sort by start time
+    cleanupTrailingEmptySlots(dayData);
+    const slotsWithTimes = getSlotsWithTimes()
+      .filter(item => !isSlotEmpty(item.slot))
+      .sort((a, b) => a.startMinutes - b.startMinutes);
+    const totalSlots = slotsWithTimes.length;
     const startStr = formatMinutesTo12Hour(dayData.startMinutes);
     const endStr = formatMinutesTo12Hour(dayData.endMinutes);
 

@@ -6,7 +6,7 @@
   <title>Daily Work Planner | User-Controlled Schedule</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
   <style>
     /* Prevent flash of unauthenticated planner content */
     html {
@@ -16,56 +16,26 @@
       visibility: visible;
     }
 
-    .top-auth-area {
+    .top-auth-bar {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-      width: 100%;
-      flex-wrap: wrap;
-    }
-
-    .top-heading-row {
-      display: inline-flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 10px;
-    }
-
-    .app-title {
-      margin: 0;
-      font-family: inherit;
-      font-style: italic;
-      font-weight: 800;
-      font-size: clamp(1.4rem, 4vw, 1.85rem);
-      line-height: 1.2;
-      letter-spacing: -0.02em;
-      color: #7c3aed; /* Fallback solid color (4.5:1+ contrast on light background) */
-      background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      user-select: none;
-      word-break: break-word;
-    }
-
-    .app-title-smiley {
-      width: 28px;
-      height: 28px;
-      vertical-align: middle;
-      display: inline-block;
-      flex-shrink: 0;
-      pointer-events: none;
-      filter: drop-shadow(0 2px 4px rgba(219, 39, 119, 0.25));
-    }
-
-    .top-buttons-row {
-      display: inline-flex;
       justify-content: flex-end;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
-      margin-left: auto;
+    }
+
+    .top-auth-left {
+      margin-right: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .top-auth-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .btn-top-board {
@@ -96,6 +66,32 @@
       outline-offset: 2px;
     }
 
+    .btn-top-home-next {
+      min-height: 44px;
+      min-width: 84px;
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      font-family: inherit;
+      background: var(--slate-900);
+      color: #ffffff;
+      border: 1px solid var(--slate-900);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-top-home-next:hover {
+      background: var(--slate-800);
+    }
+
+    .btn-top-home-next:focus-visible {
+      outline: 2px solid var(--slate-900);
+      outline-offset: 2px;
+    }
 
     .unfinished-notice-banner {
       display: flex;
@@ -1297,7 +1293,6 @@
       width: 100%;
     }
     .home-title {
-      display: inline-block;
       font-size: 2.1rem;
       font-weight: 800;
       font-style: italic;
@@ -1307,9 +1302,7 @@
       -webkit-text-fill-color: transparent;
       margin: 0;
       letter-spacing: -0.5px;
-      line-height: 1.25;
-      padding-right: 0.25em;
-      padding-left: 0.05em;
+      line-height: 1.2;
     }
     .home-proverb {
       font-size: 1.15rem;
@@ -2396,456 +2389,31 @@
       color: var(--slate-500);
       font-style: italic;
     }
-
-    /* =========================================================
-       MY WEEK REVIEW STYLES - VINTAGE PERSONAL DIARY STORY
-       ========================================================= */
-    .week-review-btn-wrap {
-      margin-top: 14px;
-      width: 100%;
-    }
-    .btn-activity-week-review {
-      width: 100%;
-      min-height: 56px;
-      padding: 12px 18px;
-      border-radius: 14px;
-      border: 1.5px solid #c084fc;
-      background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-      color: #581c87;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 6px rgba(168, 85, 247, 0.08);
-      text-align: left;
-    }
-    .btn-activity-week-review:hover {
-      background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
-      border-color: #a855f7;
-    }
-    .btn-activity-week-review:focus-visible {
-      outline: 2px solid #9333ea;
-      outline-offset: 2px;
-    }
-    .week-review-btn-content {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .week-review-btn-icon {
-      font-size: 1.6rem;
-      line-height: 1;
-      filter: drop-shadow(0 2px 4px rgba(168, 85, 247, 0.2));
-    }
-    .week-review-btn-text {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .week-review-btn-title {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #581c87;
-      letter-spacing: -0.01em;
-    }
-    .week-review-btn-subtitle {
-      font-size: 0.82rem;
-      color: #7e22ce;
-      font-weight: 500;
-    }
-    .week-review-btn-arrow {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: #9333ea;
-      margin-left: 12px;
-      transition: transform 0.2s ease;
-    }
-    .btn-activity-week-review:hover .week-review-btn-arrow {
-      transform: translateX(4px);
-    }
-
-    /* Week Review Page Container */
-    .week-review-container {
-      display: flex;
-      flex-direction: column;
-      gap: 22px;
-      margin-top: 10px;
-    }
-    .week-hero-card {
-      background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
-      border: 1.5px solid #e9d5ff;
-      border-radius: 16px;
-      padding: 24px;
-      text-align: center;
-      box-shadow: 0 4px 16px rgba(168, 85, 247, 0.06);
-    }
-    .week-hero-emoji {
-      font-size: 2.8rem;
-      margin-bottom: 8px;
-      display: inline-block;
-      animation: floatHeroEmoji 3s ease-in-out infinite;
-    }
-    @keyframes floatHeroEmoji {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-6px); }
-    }
-    .week-hero-title {
-      font-size: 1.45rem;
-      font-weight: 800;
-      font-style: italic;
-      color: #3b0764;
-      margin-bottom: 6px;
-    }
-    .week-hero-range {
-      font-size: 0.95rem;
-      color: #6b21a8;
-      font-weight: 600;
-      margin-bottom: 18px;
-    }
-    .week-stats-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 10px;
-      margin-top: 14px;
-    }
-    .week-stat-pill {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 12px 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-    }
-    .week-stat-number {
-      font-size: 1.35rem;
-      font-weight: 800;
-      color: #1e293b;
-    }
-    .week-stat-label {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: #64748b;
-      margin-top: 2px;
-      text-align: center;
-    }
-
-    /* Chapters / Story Timeline */
-    .week-story-section {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      text-align: left;
-    }
-    .week-story-heading {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: #0f172a;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .week-chapter-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 14px;
-      padding: 18px 20px;
-      transition: all 0.15s ease;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    }
-    .week-chapter-card:hover {
-      border-color: #cbd5e1;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
-    .week-chapter-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .week-chapter-title {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #0f172a;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .week-chapter-date {
-      font-size: 0.82rem;
-      color: #64748b;
-      font-weight: 600;
-    }
-    .week-chapter-narrative {
-      font-size: 0.94rem;
-      color: #334155;
-      line-height: 1.55;
-      margin-bottom: 12px;
-    }
-    .week-chapter-tasks {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .week-task-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 0.88rem;
-    }
-    .week-task-item.completed {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      color: #14532d;
-    }
-    .week-task-item.unfinished {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #7f1d1d;
-    }
-    .week-task-item.unmarked {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      color: #334155;
-    }
-    .week-task-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      min-width: 0;
-    }
-    .week-task-badge {
-      font-size: 0.76rem;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      flex-shrink: 0;
-    }
-    .week-task-item.completed .week-task-badge {
-      background: #22c55e;
-      color: #ffffff;
-    }
-    .week-task-item.unfinished .week-task-badge {
-      background: #ef4444;
-      color: #ffffff;
-    }
-    .week-task-item.unmarked .week-task-badge {
-      background: #94a3b8;
-      color: #ffffff;
-    }
-    .week-task-text {
-      flex: 1;
-      font-weight: 500;
-      word-break: break-word;
-    }
-    .week-task-time {
-      font-size: 0.78rem;
-      color: #64748b;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .week-chapter-empty {
-      background: #fafaf9;
-      border: 1px dashed #e7e5e4;
-      color: #78716c;
-      font-size: 0.9rem;
-      padding: 14px 18px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* Vintage Diary Book Page Styling */
-    .vintage-diary-book {
-      position: relative;
-      background: #fdfaf3; /* Warm ivory/cream paper */
-      border: 1px solid #e7dec8;
-      border-radius: 18px;
-      box-shadow: 
-        0 4px 20px rgba(120, 80, 40, 0.08),
-        0 1px 3px rgba(0, 0, 0, 0.05),
-        inset 0 0 40px rgba(220, 205, 175, 0.25);
-      padding: 34px 26px 40px 28px;
-      overflow: hidden;
-      margin-top: 14px;
-    }
-
-    .diary-header-decor {
-      text-align: center;
-      margin-bottom: 18px;
-      position: relative;
-    }
-    .diary-top-stickers {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 8px;
-    }
-    .diary-sticker-icon {
-      font-size: 1.85rem;
-      display: inline-block;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
-    }
-    .diary-title-handwritten {
-      font-family: 'Caveat', cursive, sans-serif;
-      font-size: clamp(2.1rem, 5vw, 2.75rem);
-      font-weight: 700;
-      color: #4a2c11; /* Warm vintage dark sepia ink */
-      margin: 0;
-      line-height: 1.2;
-      letter-spacing: 0.01em;
-    }
-    .diary-date-stamp {
-      font-family: 'Caveat', cursive, sans-serif;
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: #8c6239;
-      margin-top: 4px;
-    }
-
-    /* Diary Stats Ribbon */
-    .diary-stats-ribbon {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 12px;
-      margin: 14px 0 24px 0;
-      padding: 10px 14px;
-      background: rgba(247, 241, 227, 0.75);
-      border-radius: 12px;
-      border: 1px dashed #d6c7a7;
-    }
-    .diary-stat-tag {
-      font-family: 'Caveat', cursive, sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #3e2723;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* Natural Notebook Writing Lines */
-    .diary-story-body {
-      font-family: 'Caveat', cursive, sans-serif;
-      font-size: clamp(1.35rem, 3.4vw, 1.55rem);
-      line-height: 2.15; /* Generous notebook line spacing */
-      color: #2b1810; /* Soft dark fountain pen ink */
-      text-align: left;
-      /* Subtle notebook horizontal lines */
-      background-image: linear-gradient(to bottom, transparent 96%, rgba(195, 175, 140, 0.35) 96%);
-      background-size: 100% 2.15em;
-      background-repeat: repeat-y;
-      padding: 6px 4px 10px 6px;
-      word-break: break-word;
-    }
-
-    .diary-paragraph {
-      margin-bottom: 1.5em;
-      text-indent: 1.2em;
-    }
-
-    .diary-paragraph:first-child {
-      text-indent: 0;
-    }
-
-    .diary-highlight-completed {
-      color: #1e6935;
-      font-weight: 700;
-      background: rgba(187, 247, 208, 0.45);
-      padding: 0 4px;
-      border-radius: 4px;
-    }
-
-    .diary-highlight-missed {
-      color: #991b1b;
-      font-weight: 700;
-      background: rgba(254, 202, 202, 0.4);
-      padding: 0 4px;
-      border-radius: 4px;
-    }
-
-    /* Cute Decorative Interlude Dividers */
-    .diary-decor-divider {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      margin: 1.2em 0;
-      user-select: none;
-    }
-    .diary-decor-line {
-      flex: 1;
-      height: 1px;
-      background: linear-gradient(to right, transparent, rgba(180, 150, 110, 0.4), transparent);
-    }
-    .diary-decor-icons {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 1.4rem;
-    }
-
-    /* Vintage handwritten sign-off */
-    .diary-signoff {
-      margin-top: 2em;
-      text-align: right;
-      padding-right: 14px;
-    }
-    .diary-signoff-line {
-      font-family: 'Caveat', cursive, sans-serif;
-      font-size: 1.45rem;
-      font-weight: 700;
-      color: #5c3818;
-    }
-    .diary-signature {
-      font-family: 'Caveat', cursive, sans-serif;
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: #8b3a1d;
-      margin-top: 2px;
-    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
 </head>
 <body>
   <div class="container">
-    <!-- TOP AREA: ROW 1 HEADING, ROW 2 RIGHT-ALIGNED BUTTONS -->
-    <header class="top-auth-area">
-      <!-- Row 1: Heading -->
-      <div class="top-heading-row">
-        <p class="app-title">Daily Work Planner</p>
-        <img src="images/happy.svg" alt="" class="app-title-smiley" aria-hidden="true" />
-      </div>
-
-      <!-- Row 2: Right-aligned buttons -->
-      <div class="top-buttons-row">
-        <button type="button" id="btn-top-change-password" class="btn-top-change-pwd" aria-label="Change Account Password">
-          Change Password
-        </button>
+    <!-- TOP THIN BAR WITH LOG OUT AND NAVIGATION BUTTONS -->
+    <div class="top-auth-bar">
+      <div class="top-auth-left">
         <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;" aria-label="Return to My Work Board">
           My Work Board
+        </button>
+      </div>
+      <div class="top-auth-right">
+        <button type="button" id="btn-top-change-password" class="btn-top-change-pwd" aria-label="Change Account Password">
+          Change Password
         </button>
         <button type="button" id="btn-logout" class="btn-logout" aria-label="Log out of Daily Work Planner">
           Log out
         </button>
+        <button type="button" id="btn-home-next" class="btn-top-home-next" aria-label="Go to Daily Work Planner">
+          Next &rarr;
+        </button>
       </div>
-    </header>
+    </div>
 
     <!-- IN-APP REMINDER BANNER -->
     <div id="app-reminder-banner" class="reminder-banner" role="status" aria-live="polite" style="display: none;">
@@ -2910,20 +2478,6 @@
               <line x1="10" y1="15" x2="14" y2="15"></line>
             </svg>
             <span class="btn-activity-label">Upcoming Schedule</span>
-          </button>
-        </div>
-
-        <!-- MY WEEK REVIEW BUTTON -->
-        <div class="week-review-btn-wrap">
-          <button type="button" id="btn-activity-week-review" class="btn-activity-week-review" aria-label="My Week Review">
-            <div class="week-review-btn-content">
-              <span class="week-review-btn-icon" aria-hidden="true">🌟</span>
-              <div class="week-review-btn-text">
-                <span class="week-review-btn-title">My Week Review</span>
-                <span class="week-review-btn-subtitle">Discover your weekly journey, friendly companion story &amp; tips</span>
-              </div>
-            </div>
-            <span class="week-review-btn-arrow" aria-hidden="true">&rarr;</span>
           </button>
         </div>
 
@@ -3013,13 +2567,6 @@
 
       <div id="upcoming-date-summary-content" style="margin-top: 18px;" aria-live="polite">
         <!-- Loaded dynamically in app.js -->
-      </div>
-    </div>
-
-    <!-- SEPARATE SCREEN: MY WEEK REVIEW -->
-    <div id="view-week-review" class="card views">
-      <div id="week-review-content" class="week-review-content" aria-live="polite">
-        <!-- Loaded dynamically by renderWeekReview() in app.js -->
       </div>
     </div>
 
@@ -3163,7 +2710,7 @@
 
       <!-- Empty Day State on Summary -->
       <div id="summary-empty-state" class="empty-summary-card" style="display: none;">
-        <p id="summary-empty-message" class="empty-summary-message">No plan saved for this date</p>
+        <p class="empty-summary-message">No plan saved for this date</p>
         <button type="button" id="summary-plan-this-day-btn" class="btn-plan-this-day">
           Plan this day
         </button>
