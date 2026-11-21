@@ -212,6 +212,7 @@
   const summaryEditDialogCloseBtn = document.getElementById('summary-edit-dialog-close-btn');
 
   let currentEditingSlotIndex = null;
+  let currentEditingDateKey = null;
 
   // Calendar Dialog Elements
   const calendarDialog = document.getElementById('calendar-dialog');
@@ -1109,6 +1110,7 @@
           taskText: text,
           status,
           markedAt: s.markedAt || null,
+          slotIndex: idx,
         });
       }
     });
@@ -1722,6 +1724,85 @@
           workText.textContent = 'No task written';
         }
         li.appendChild(workText);
+
+        // Actions: Edit and Cancel buttons at the end of each slot, in the right-side corner
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'upcoming-detail-actions';
+
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn-upcoming-slot-edit';
+        editBtn.setAttribute('aria-label', `Edit slot on ${dateKey}`);
+        editBtn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+          <span>Edit</span>
+        `;
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetIndex = typeof slotItem.slotIndex === 'number' ? slotItem.slotIndex : 0;
+          openEditSlotModal(targetIndex, dateKey);
+        });
+        actionsDiv.appendChild(editBtn);
+
+        // Cancel button
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'btn-upcoming-slot-cancel';
+        cancelBtn.setAttribute('aria-label', `Cancel slot on ${dateKey}`);
+        cancelBtn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Cancel</span>
+        `;
+        cancelBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const currentDay = state.days[dateKey];
+          if (!currentDay || !Array.isArray(currentDay.slots)) return;
+
+          const targetIndex = typeof slotItem.slotIndex === 'number' ? slotItem.slotIndex : -1;
+          if (targetIndex < 0 || targetIndex >= currentDay.slots.length) return;
+
+          // Remove the selected slot from the schedule
+          currentDay.slots.splice(targetIndex, 1);
+
+          // If slots remain, adjust the sequence continuity
+          if (currentDay.slots.length > 0) {
+            let prevEnd = currentDay.slots[0].start || currentDay.startMinutes || 0;
+            if (targetIndex === 0) {
+              // If the first slot was removed, align day startMinutes to the new first slot
+              currentDay.startMinutes = currentDay.slots[0].start;
+              prevEnd = currentDay.slots[0].end;
+            }
+            for (let j = Math.max(1, targetIndex); j < currentDay.slots.length; j++) {
+              const s = currentDay.slots[j];
+              const dur = (typeof s.end === "number" && typeof s.start === "number" && s.end > s.start)
+                ? (s.end - s.start)
+                : (s.end ? Math.max(30, s.end - prevEnd) : 60);
+              s.start = prevEnd;
+              s.end = prevEnd + dur;
+              prevEnd = s.end;
+            }
+            const lastSlot = currentDay.slots[currentDay.slots.length - 1];
+            if (lastSlot && typeof lastSlot.end === "number") {
+              currentDay.endMinutes = lastSlot.end;
+            }
+          }
+
+          // Save immediately to persistent storage (localStorage & Supabase)
+          saveStorage(dateKey);
+
+          // Refresh the Upcoming Event Details view
+          openUpcomingEventDetailsPageC(dateKey);
+        });
+        actionsDiv.appendChild(cancelBtn);
+
+        li.appendChild(actionsDiv);
 
         ul.appendChild(li);
       });
@@ -3702,11 +3783,13 @@
   }
 
   // --- SLOT EDITING DIALOG LOGIC ---
-  function openEditSlotModal(slotIndex) {
-    const dayData = getCurrentDayData();
+  function openEditSlotModal(slotIndex, targetDateKey = null) {
+    const editDateKey = targetDateKey || selectedDateKey;
+    const dayData = state.days[editDateKey] || (editDateKey === selectedDateKey ? getCurrentDayData() : null);
     if (!dayData || !dayData.slots || !dayData.slots[slotIndex]) return;
 
     currentEditingSlotIndex = slotIndex;
+    currentEditingDateKey = editDateKey;
     const slot = dayData.slots[slotIndex];
     const sStart = getEffectiveSlotStart(dayData, slotIndex);
     const sEnd = typeof slot.end === "number" ? slot.end : sStart;
@@ -3744,6 +3827,7 @@
 
   function closeEditSlotModal() {
     currentEditingSlotIndex = null;
+    currentEditingDateKey = null;
     if (summaryEditSlotDialog) {
       if (typeof summaryEditSlotDialog.close === "function") {
         summaryEditSlotDialog.close();
@@ -3762,7 +3846,8 @@
 
   if (summaryEditDialogSaveBtn) {
     summaryEditDialogSaveBtn.addEventListener('click', () => {
-      const dayData = getCurrentDayData();
+      const editDateKey = currentEditingDateKey || selectedDateKey;
+      const dayData = state.days[editDateKey] || (editDateKey === selectedDateKey ? getCurrentDayData() : null);
       if (!dayData || currentEditingSlotIndex === null) return;
 
       const idx = currentEditingSlotIndex;
@@ -3828,10 +3913,15 @@
       }
 
       // Save immediately to persistent storage
-      saveStorage(selectedDateKey);
+      saveStorage(editDateKey);
       closeEditSlotModal();
-      renderSummaryView();
-      showSaveSuccessMessage();
+
+      if (views.upcomingEventDetails && views.upcomingEventDetails.classList.contains('active')) {
+        openUpcomingEventDetailsPageC(editDateKey);
+      } else {
+        renderSummaryView();
+        showSaveSuccessMessage();
+      }
     });
   }
 
