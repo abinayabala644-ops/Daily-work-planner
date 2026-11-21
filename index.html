@@ -1172,6 +1172,22 @@
       background: #fef2f2;
     }
 
+    .summary-slot-card.status-cancelled {
+      border-color: #cbd5e1;
+      border-left-color: #64748b;
+      background: #f8fafc;
+    }
+
+    .slot-status-program-cancelled-msg {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #b91c1c;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .summary-slot-card.status-unmarked {
       border-color: #e2e8f0;
       border-left-color: #94a3b8;
@@ -1311,6 +1327,12 @@
     }
 
     .slot-status-btn.not-completed-active {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #dc2626;
+    }
+
+    .slot-status-btn.cancelled-active {
       background: #dc2626;
       color: #ffffff;
       border-color: #dc2626;
@@ -1497,16 +1519,22 @@
     }
 
     /* --- ACTIVITY SECTION --- */
-    .activity-section {
-      margin-bottom: 24px;
-      position: relative;
-    }
     .activity-section-title {
       font-size: 1.25rem;
       font-weight: 700;
-      color: var(--slate-900);
+      font-style: italic;
+      color: #7c3aed;
+      background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
       text-align: center;
-      margin: 0 0 16px 0;
+      margin: 0 auto 16px auto;
+    }
+    .activity-section {
+      margin-bottom: 24px;
+      position: relative;
+      text-align: center;
     }
 
     .activity-nav-grid {
@@ -1778,6 +1806,13 @@
       background-color: #dcfce7;
       border-color: #86efac;
       color: #14532d;
+    }
+    /* Cancelled status row */
+    .today-progress-btn.status-cancelled {
+      border-left-color: #64748b;
+      background-color: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
     }
     /* Not Completed status row */
     .today-progress-btn.status-not-completed {
@@ -3110,12 +3145,11 @@
         <button type="button" id="home-unfinished-continue-btn" class="btn-home-unfinished-continue">Continue</button>
       </div>
 
-      <div class="home-hero-card">
+      <div class="home-hero-card" style="display: none;">
         <div class="home-hero-bg-shape" aria-hidden="true"></div>
         <div class="home-hero-content">
           <h1 class="home-title">My Work Board</h1>
-          <p id="home-daily-proverb" class="home-proverb">Well begun is half done.</p>
-          <div class="home-emoji" aria-hidden="true">😊</div>
+          <p id="home-daily-proverb" class="home-proverb" style="display: none;"></p>
         </div>
       </div>
 

@@ -103,6 +103,7 @@
   let unconfirmedSettingsChange = null;
   let durationChangeConfirm = null;
   let textSaveDebounceTimer = null;
+  let newScheduleSession = null;
 
   // DOM Views
   const views = {
@@ -454,7 +455,7 @@
       }
 
       const taskText = typeof s?.taskText === "string" ? s.taskText : (typeof s?.text === "string" ? s.text : "");
-      const status = (s?.status === "COMPLETED" || s?.status === "NOT_COMPLETED") ? s.status : "NONE";
+      const status = (s?.status === "COMPLETED" || s?.status === "NOT_COMPLETED" || s?.status === "CANCELLED") ? s.status : "NONE";
       const markedAt = (status !== "NONE" && (typeof s?.markedAt === "string" || typeof s?.markedAt === "number")) ? s.markedAt : null;
 
       return {
@@ -786,6 +787,10 @@
     if (!dayData) return MIN_WORK_TIME;
     if (slotIndex === 0) {
       return typeof dayData.startMinutes === "number" ? dayData.startMinutes : MIN_WORK_TIME;
+    }
+    const current = dayData.slots && dayData.slots[slotIndex];
+    if (current && current.isNewSlotSession && typeof current.start === "number") {
+      return current.start;
     }
     const prev = dayData.slots && dayData.slots[slotIndex - 1];
     if (prev && typeof prev.end === "number" && !isNaN(prev.end)) {
@@ -1831,9 +1836,15 @@
 
   // Bind Listeners for Upcoming Schedule
   if (upcomingAddScheduleBtn) {
-    upcomingAddScheduleBtn.addEventListener('click', () => {
+    upcomingAddScheduleBtn.addEventListener('click', async () => {
+      // First navigate to My Work Board home page, then directly open Daily Work Planner (starting time 9:00 AM, ending time 6:00 PM)
+      await handleGoToHome();
       const tomorrowStr = getLocalDateKey(addDays(todayDate, 1));
       selectedDateKey = tomorrowStr;
+      newScheduleSession = {
+        dateKey: tomorrowStr,
+        isNewAddition: true,
+      };
       initSettingsView();
       switchView('settings');
       if (startInput) startInput.focus();
@@ -2235,6 +2246,45 @@
     return now.getHours() * 60 + now.getMinutes();
   }
 
+  // --- AUTOMATIC END OF DAY UPDATE ---
+  // At the end of the day, any work without a Complete or Cancel action should automatically be marked as "This Work is Not Complete."
+  // Do not change the status of previously completed or cancelled work.
+  function applyEndOfDayAutoUpdate() {
+    const todayStr = getLocalDateKey(todayDate);
+    const currentMin = getDeviceCurrentMinutes();
+    let changedAny = false;
+
+    Object.keys(state.days).forEach((dateKey) => {
+      const dayData = state.days[dateKey];
+      if (!dayData || !Array.isArray(dayData.slots)) return;
+
+      const isPastDay = dateKey < todayStr;
+      const isToday = dateKey === todayStr;
+      const dayEndMins = typeof dayData.endMinutes === "number" ? dayData.endMinutes : MAX_WORK_TIME;
+      const isTodayEnded = isToday && currentMin >= dayEndMins;
+
+      if (isPastDay || isTodayEnded) {
+        let changedDay = false;
+        dayData.slots.forEach((slot) => {
+          const text = (typeof slot.taskText === "string" ? slot.taskText : (slot.text || "")).trim();
+          if (text.length > 0) {
+            // Only update slots that have NOT been completed or cancelled
+            if (slot.status !== "COMPLETED" && slot.status !== "CANCELLED" && slot.status !== "NOT_COMPLETED") {
+              slot.status = "NOT_COMPLETED";
+              changedDay = true;
+            }
+          }
+        });
+        if (changedDay) {
+          saveStorage(dateKey);
+          changedAny = true;
+        }
+      }
+    });
+
+    return changedAny;
+  }
+
   function getTodayWorkProgressSlots() {
     const todayStr = getLocalDateKey(todayDate);
     const dayData = state.days[todayStr];
@@ -2283,6 +2333,8 @@
       if (supabaseClient && currentUserId && currentUserId !== 'anonymous') {
         await loadRange(todayStr, todayStr);
       }
+
+      applyEndOfDayAutoUpdate();
 
       cachedTodaySlots = getTodayWorkProgressSlots();
       renderTodayWorkProgressInPlace();
@@ -2343,9 +2395,12 @@
       if (slotItem.status === 'COMPLETED') {
         statusKind = 'completed';
         statusWord = '✓ Completed';
+      } else if (slotItem.status === 'CANCELLED') {
+        statusKind = 'cancelled';
+        statusWord = 'This Program is Cancelled.';
       } else if (slotItem.status === 'NOT_COMPLETED') {
         statusKind = 'not-completed';
-        statusWord = '✗ Not Completed';
+        statusWord = 'This Work is Not Complete.';
       } else if (currentMin < slotItem.startMinutes) {
         statusKind = 'upcoming';
         statusWord = 'Upcoming';
@@ -2426,7 +2481,7 @@
         }
 
         // Accessible label
-        const statusAccessible = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : (currentMin < slotItem.startMinutes ? 'Upcoming' : 'Not marked yet'));
+        const statusAccessible = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'CANCELLED' ? 'This Program is Cancelled.' : (slotItem.status === 'NOT_COMPLETED' ? 'This Work is Not Complete.' : (currentMin < slotItem.startMinutes ? 'Upcoming' : 'Not marked yet')));
         rowBtn.setAttribute('aria-label', `Open slot ${slotItem.slotNumber}: ${timeRangeText}, ${slotItem.taskText}, ${statusAccessible}.`);
       }
     });
@@ -2668,6 +2723,7 @@
   let dismissedReminderSlotIds = new Set();
 
   async function checkInAppReminders() {
+    applyEndOfDayAutoUpdate();
     if (!appReminderBanner || !currentUserId || currentUserId === "anonymous") return;
 
     const todayStr = getLocalDateKey(todayDate);
@@ -2777,8 +2833,8 @@
       btnTopMyWorkBoard.style.display = viewName === 'home' ? 'none' : 'inline-flex';
     }
     if (btnTopDailySummary) {
-      // Show on other planner pages, but hide on Home / My Work Board and on Daily Work Summary itself
-      btnTopDailySummary.style.display = (viewName === 'home' || viewName === 'summary') ? 'none' : 'inline-flex';
+      // Hide across all views as requested
+      btnTopDailySummary.style.display = 'none';
     }
     if (btnTopChangePassword) {
       // Show ONLY on Home (My Work Board) page, never on other pages
@@ -2850,9 +2906,10 @@
   function initSettingsView() {
     updateDateButtonsState();
 
-    const dayData = getCurrentDayData();
-    const startMins = dayData ? dayData.startMinutes : state.lastTimes.startMinutes;
-    const endMins = dayData ? dayData.endMinutes : state.lastTimes.endMinutes;
+    const isNewAdding = Boolean(newScheduleSession && newScheduleSession.isNewAddition && newScheduleSession.dateKey === selectedDateKey);
+    const dayData = !isNewAdding ? getCurrentDayData() : null;
+    const startMins = dayData ? dayData.startMinutes : (isNewAdding ? MIN_WORK_TIME : state.lastTimes.startMinutes);
+    const endMins = dayData ? dayData.endMinutes : (isNewAdding ? MAX_WORK_TIME : state.lastTimes.endMinutes);
 
     startInput.value = formatMinutesTo12Hour(startMins || MIN_WORK_TIME);
     endInput.value = formatMinutesTo12Hour(endMins || MAX_WORK_TIME);
@@ -2950,7 +3007,10 @@
     const dayData = getCurrentDayData();
     const settingsChanged = dayData && (dayData.startMinutes !== startMins || dayData.endMinutes !== endMins);
 
+    const isNewAdding = Boolean(newScheduleSession && newScheduleSession.isNewAddition && newScheduleSession.dateKey === selectedDateKey);
+
     const hasSlotsOutside = Boolean(
+      !isNewAdding &&
       settingsChanged &&
       dayData &&
       Array.isArray(dayData.slots) &&
@@ -2968,7 +3028,35 @@
       settingsConfirmDialog.showModal();
     } else {
       state.lastTimes = { startMinutes: startMins, endMinutes: endMins };
-      if (!state.days[selectedDateKey]) {
+      if (isNewAdding) {
+        if (!state.days[selectedDateKey]) {
+          state.days[selectedDateKey] = {
+            startMinutes: startMins,
+            endMinutes: endMins,
+            slots: [],
+          };
+        }
+        const targetDay = state.days[selectedDateKey];
+        targetDay.startMinutes = Math.min(typeof targetDay.startMinutes === "number" ? targetDay.startMinutes : startMins, startMins);
+        targetDay.endMinutes = Math.max(typeof targetDay.endMinutes === "number" ? targetDay.endMinutes : endMins, endMins);
+
+        // Append a new slot with the chosen start time for this schedule addition
+        const newSlot = {
+          id: `slot-${(targetDay.slots ? targetDay.slots.length : 0) + 1}`,
+          start: startMins,
+          end: null,
+          taskText: "",
+          text: "",
+          status: "NONE",
+          markedAt: null,
+          isNewSlotSession: true,
+          sessionEndMinutes: endMins,
+        };
+        if (!Array.isArray(targetDay.slots)) targetDay.slots = [];
+        targetDay.slots.push(newSlot);
+        currentSlotIndex = targetDay.slots.length - 1;
+        newScheduleSession = null; // session consumed
+      } else if (!state.days[selectedDateKey]) {
         state.days[selectedDateKey] = {
           startMinutes: startMins,
           endMinutes: endMins,
@@ -2983,6 +3071,7 @@
             },
           ],
         };
+        currentSlotIndex = 0;
       } else {
         state.days[selectedDateKey].startMinutes = startMins;
         state.days[selectedDateKey].endMinutes = endMins;
@@ -2998,9 +3087,9 @@
             },
           ];
         }
+        currentSlotIndex = 0;
       }
       saveStorage(selectedDateKey);
-      currentSlotIndex = 0;
       renderSlotPage();
       switchView('slot');
     }
@@ -3172,8 +3261,8 @@
   function isLastSlotOfDay(slot, dayData) {
     if (!slot || !dayData) return false;
     const slotEnd = typeof slot.end === "number" ? slot.end : null;
-    const dayEnd = typeof dayData.endMinutes === "number" ? dayData.endMinutes : null;
-    return slotEnd !== null && dayEnd !== null && slotEnd === dayEnd;
+    const dayEnd = (typeof slot.sessionEndMinutes === "number") ? slot.sessionEndMinutes : (typeof dayData.endMinutes === "number" ? dayData.endMinutes : null);
+    return slotEnd !== null && dayEnd !== null && (slotEnd === dayEnd || slotEnd === dayData.endMinutes);
   }
 
   function updateSlotValidationUI(showErrorAlways = false) {
@@ -3374,8 +3463,9 @@
       return;
     }
 
-    // If this slot's End time EQUALS the day's Ending Time: Next saves the slot and opens the SUMMARY page
-    if (slot.end === dayData.endMinutes) {
+    // If this slot's End time EQUALS the session Ending Time or day's Ending Time: Next saves the slot and opens the SUMMARY page
+    const targetEnd = (slot && typeof slot.sessionEndMinutes === "number") ? slot.sessionEndMinutes : dayData.endMinutes;
+    if (slot.end === targetEnd || slot.end === dayData.endMinutes) {
       cleanupTrailingEmptySlots(dayData);
       saveStorage(selectedDateKey);
       renderSummaryView();
@@ -3491,23 +3581,23 @@
       if (!btnGroup) return;
 
       const btnCompleted = btnGroup.querySelector('.slot-status-btn[aria-label*="Completed"]');
-      const btnNotCompleted = btnGroup.querySelector('.slot-status-btn[aria-label*="Not Completed"]');
+      const btnCancel = btnGroup.querySelector('.slot-status-btn[aria-label*="Cancel"]');
       const startMinVal = card.dataset.startMinutes ? parseInt(card.dataset.startMinutes, 10) : null;
 
       if (startMinVal !== null && !isNaN(startMinVal)) {
         const canMark = canSlotBeMarkedNow(startMinVal);
         const isCompActive = btnCompleted && btnCompleted.classList.contains('completed-active');
-        const isNotCompActive = btnNotCompleted && btnNotCompleted.classList.contains('not-completed-active');
+        const isCancelActive = btnCancel && btnCancel.classList.contains('cancelled-active');
 
         if (!canMark) {
           if (btnCompleted && !isCompActive) btnCompleted.setAttribute('aria-disabled', 'true');
           else if (btnCompleted) btnCompleted.removeAttribute('aria-disabled');
 
-          if (btnNotCompleted && !isNotCompActive) btnNotCompleted.setAttribute('aria-disabled', 'true');
-          else if (btnNotCompleted) btnNotCompleted.removeAttribute('aria-disabled');
+          if (btnCancel && !isCancelActive) btnCancel.setAttribute('aria-disabled', 'true');
+          else if (btnCancel) btnCancel.removeAttribute('aria-disabled');
         } else {
           if (btnCompleted) btnCompleted.removeAttribute('aria-disabled');
-          if (btnNotCompleted) btnNotCompleted.removeAttribute('aria-disabled');
+          if (btnCancel) btnCancel.removeAttribute('aria-disabled');
         }
       }
     });
@@ -3515,6 +3605,7 @@
 
   // --- SUMMARY VIEW LOGIC ---
   function renderSummaryView() {
+    applyEndOfDayAutoUpdate();
     const dayData = getCurrentDayData();
     const selectedObj = parseLocalDateKey(selectedDateKey);
     const shortDateStr = formatShortDisplayDate(selectedObj);
@@ -3635,7 +3726,7 @@
         openEditSlotModal(slotIndex);
       });
 
-      // 2. Status Buttons: ✓ Completed and ✗ Not Completed
+      // 2. Status Buttons: ✓ Completed and Cancel
       const btnGroup = document.createElement('div');
       btnGroup.className = "slot-status-btn-group";
 
@@ -3645,18 +3736,25 @@
       btnCompleted.innerHTML = `<span>✓ Completed</span>`;
       btnCompleted.setAttribute('aria-label', `Mark slot ${slotNumber} Completed`);
 
-      const btnNotCompleted = document.createElement('button');
-      btnNotCompleted.type = "button";
-      btnNotCompleted.className = "slot-status-btn";
-      btnNotCompleted.innerHTML = `<span>✗ Not Completed</span>`;
-      btnNotCompleted.setAttribute('aria-label', `Mark slot ${slotNumber} Not Completed`);
+      const btnCancel = document.createElement('button');
+      btnCancel.type = "button";
+      btnCancel.className = "slot-status-btn";
+      btnCancel.innerHTML = `<span>Cancel</span>`;
+      btnCancel.setAttribute('aria-label', `Mark slot ${slotNumber} Cancel`);
 
       btnGroup.appendChild(btnCompleted);
-      btnGroup.appendChild(btnNotCompleted);
+      btnGroup.appendChild(btnCancel);
 
       buttonsRow.appendChild(editBtn);
       buttonsRow.appendChild(btnGroup);
       card.appendChild(buttonsRow);
+
+      // Cancelled status message display: "This Program is Cancelled."
+      const cancelledMsgEl = document.createElement('div');
+      cancelledMsgEl.className = 'slot-status-program-cancelled-msg';
+      cancelledMsgEl.textContent = 'This Program is Cancelled.';
+      cancelledMsgEl.style.display = 'none';
+      card.appendChild(cancelledMsgEl);
 
       // Warning message container (only for error/time restriction alerts, no status text)
       const markWarningEl = document.createElement('div');
@@ -3692,17 +3790,22 @@
       function updateSlotCardButtons() {
         const currentStatus = slot.status || "NONE";
         const isComp = currentStatus === "COMPLETED";
+        const isCancel = currentStatus === "CANCELLED";
         const isNotComp = currentStatus === "NOT_COMPLETED";
 
         // Toggle card style class
         card.classList.toggle('status-not-completed', isNotComp);
-        card.classList.toggle('status-unmarked', !isComp && !isNotComp);
+        card.classList.toggle('status-cancelled', isCancel);
+        card.classList.toggle('status-unmarked', !isComp && !isCancel && !isNotComp);
 
         btnCompleted.classList.toggle('completed-active', isComp);
         btnCompleted.setAttribute('aria-pressed', String(isComp));
 
-        btnNotCompleted.classList.toggle('not-completed-active', isNotComp);
-        btnNotCompleted.setAttribute('aria-pressed', String(isNotComp));
+        btnCancel.classList.toggle('cancelled-active', isCancel);
+        btnCancel.setAttribute('aria-pressed', String(isCancel));
+
+        // When I click Cancel, display the status message: "This Program is Cancelled."
+        cancelledMsgEl.style.display = isCancel ? 'flex' : 'none';
 
         // Evaluate whether this slot can be marked right now
         const canMark = canSlotBeMarkedNow(startMinutes);
@@ -3710,11 +3813,11 @@
           if (!isComp) btnCompleted.setAttribute('aria-disabled', 'true');
           else btnCompleted.removeAttribute('aria-disabled');
 
-          if (!isNotComp) btnNotCompleted.setAttribute('aria-disabled', 'true');
-          else btnNotCompleted.removeAttribute('aria-disabled');
+          if (!isCancel) btnCancel.setAttribute('aria-disabled', 'true');
+          else btnCancel.removeAttribute('aria-disabled');
         } else {
           btnCompleted.removeAttribute('aria-disabled');
-          btnNotCompleted.removeAttribute('aria-disabled');
+          btnCancel.removeAttribute('aria-disabled');
         }
       }
 
@@ -3746,9 +3849,9 @@
         updateSummarySaveState();
       });
 
-      btnNotCompleted.addEventListener('click', () => {
+      btnCancel.addEventListener('click', () => {
         clearSummarySaveMessage();
-        const isCurrentlyActive = slot.status === "NOT_COMPLETED";
+        const isCurrentlyActive = slot.status === "CANCELLED";
 
         if (!isCurrentlyActive) {
           const canMark = canSlotBeMarkedNow(startMinutes);
@@ -3765,7 +3868,7 @@
           slot.status = "NONE";
           slot.markedAt = null;
         } else {
-          slot.status = "NOT_COMPLETED";
+          slot.status = "CANCELLED";
           slot.markedAt = getIsoTimestamp();
         }
         saveStorage(selectedDateKey); // Immediate save
