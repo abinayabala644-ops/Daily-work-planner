@@ -388,25 +388,17 @@
       return { minutes: null, error: 'INVALID' };
     }
 
-    // Hour 1 to 12
-    const morningHour = (hour === 12) ? 0 : hour;
-    const afternoonHour = (hour === 12) ? 12 : (hour + 12);
-
-    const morningMins = morningHour * 60 + min;
-    const afternoonMins = afternoonHour * 60 + min;
-
-    const morningInRange = morningMins >= 540 && morningMins <= 1080;
-    const afternoonInRange = afternoonMins >= 540 && afternoonMins <= 1080;
-
-    if (morningInRange && !afternoonInRange) {
-      return { minutes: morningMins, error: null };
+    // Hour 1 to 12 without meridiem
+    // If hour is 1..7, default to afternoon/evening PM (e.g. 1 -> 1:00 PM, 6 -> 6:00 PM, 7 -> 7:00 PM)
+    // If hour is 8..11, default to morning AM (e.g. 9 -> 9:00 AM, 10 -> 10:00 AM)
+    // If hour is 12, default to 12:00 PM (noon)
+    if (hour === 12) {
+      return { minutes: 12 * 60 + min, error: null };
+    } else if (hour >= 1 && hour <= 7) {
+      return { minutes: (hour + 12) * 60 + min, error: null };
+    } else {
+      return { minutes: hour * 60 + min, error: null };
     }
-    if (afternoonInRange && !morningInRange) {
-      return { minutes: afternoonMins, error: null };
-    }
-
-    // Neither fits into 9:00 AM to 6:00 PM
-    return { minutes: afternoonMins > 1080 ? afternoonMins : morningMins, error: 'OUT_OF_RANGE' };
   }
 
 
@@ -824,7 +816,7 @@
     }
 
     const slotStart = typeof slot.start === "number" && !isNaN(slot.start) ? slot.start : dayStartMinutes;
-    const effectiveDayEnd = typeof dayEndMinutes === "number" && !isNaN(dayEndMinutes) ? dayEndMinutes : MAX_WORK_TIME;
+    const effectiveDayEnd = typeof dayEndMinutes === "number" && !isNaN(dayEndMinutes) ? dayEndMinutes : 1440;
 
     if (slot.end > effectiveDayEnd) {
       return `The day ends at ${formatMinutesTo12Hour(effectiveDayEnd)}. Choose an earlier End time.`;
@@ -832,10 +824,6 @@
 
     if (slot.end < slotStart + 5) {
       return "The End time must be at least 5 minutes after the Start time.";
-    }
-
-    if (slot.end < MIN_WORK_TIME || slot.end > MAX_WORK_TIME) {
-      return "The day ends at " + formatMinutesTo12Hour(effectiveDayEnd) + ". Choose an earlier End time.";
     }
 
     return null;
@@ -2916,12 +2904,8 @@
     let endMins = endParsed.minutes;
 
     if (startVal) {
-      if (startParsed.error === 'INVALID') {
+      if (startParsed.error || startMins === null || isNaN(startMins)) {
         errorStartTime.textContent = "Type a time like 2:00 or 9:30 AM.";
-        errorStartTime.style.display = "block";
-        hasError = true;
-      } else if (startParsed.error === 'OUT_OF_RANGE' || startMins < MIN_WORK_TIME || startMins > MAX_WORK_TIME) {
-        errorStartTime.textContent = "Starting Time must be inside 9:00 AM to 6:00 PM.";
         errorStartTime.style.display = "block";
         hasError = true;
       } else {
@@ -2930,12 +2914,8 @@
     }
 
     if (endVal) {
-      if (endParsed.error === 'INVALID') {
+      if (endParsed.error || endMins === null || isNaN(endMins)) {
         errorEndTime.textContent = "Type a time like 2:00 or 9:30 AM.";
-        errorEndTime.style.display = "block";
-        hasError = true;
-      } else if (endParsed.error === 'OUT_OF_RANGE' || endMins < MIN_WORK_TIME || endMins > MAX_WORK_TIME) {
-        errorEndTime.textContent = "Ending Time must be inside 9:00 AM to 6:00 PM.";
         errorEndTime.style.display = "block";
         hasError = true;
       } else {
