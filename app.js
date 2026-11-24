@@ -824,17 +824,18 @@
     }
 
     const slotStart = typeof slot.start === "number" && !isNaN(slot.start) ? slot.start : dayStartMinutes;
+    const effectiveDayEnd = typeof dayEndMinutes === "number" && !isNaN(dayEndMinutes) ? dayEndMinutes : MAX_WORK_TIME;
 
-    if (slot.end < MIN_WORK_TIME || slot.end > MAX_WORK_TIME) {
-      return "The day ends at " + formatMinutesTo12Hour(dayEndMinutes) + ". Choose an earlier End time.";
+    if (slot.end > effectiveDayEnd) {
+      return `The day ends at ${formatMinutesTo12Hour(effectiveDayEnd)}. Choose an earlier End time.`;
     }
 
     if (slot.end < slotStart + 5) {
       return "The End time must be at least 5 minutes after the Start time.";
     }
 
-    if (slot.end > dayEndMinutes) {
-      return `The day ends at ${formatMinutesTo12Hour(dayEndMinutes)}. Choose an earlier End time.`;
+    if (slot.end < MIN_WORK_TIME || slot.end > MAX_WORK_TIME) {
+      return "The day ends at " + formatMinutesTo12Hour(effectiveDayEnd) + ". Choose an earlier End time.";
     }
 
     return null;
@@ -2854,11 +2855,11 @@
     updateDateButtonsState();
 
     const dayData = getCurrentDayData();
-    const startMins = dayData ? dayData.startMinutes : state.lastTimes.startMinutes;
-    const endMins = dayData ? dayData.endMinutes : state.lastTimes.endMinutes;
+    const startMins = dayData && typeof dayData.startMinutes === "number" ? dayData.startMinutes : null;
+    const endMins = dayData && typeof dayData.endMinutes === "number" ? dayData.endMinutes : null;
 
-    startInput.value = formatMinutesTo12Hour(startMins || MIN_WORK_TIME);
-    endInput.value = formatMinutesTo12Hour(endMins || MAX_WORK_TIME);
+    startInput.value = startMins !== null ? formatMinutesTo12Hour(startMins) : "";
+    endInput.value = endMins !== null ? formatMinutesTo12Hour(endMins) : "";
 
     clearSettingsErrors();
   }
