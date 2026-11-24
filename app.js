@@ -2777,8 +2777,8 @@
       btnTopMyWorkBoard.style.display = viewName === 'home' ? 'none' : 'inline-flex';
     }
     if (btnTopDailySummary) {
-      // Show on other planner pages, but hide on Home / My Work Board and on Daily Work Summary itself
-      btnTopDailySummary.style.display = (viewName === 'home' || viewName === 'summary') ? 'none' : 'inline-flex';
+      // Hide Daily Work Summary button from all pages as requested
+      btnTopDailySummary.style.display = 'none';
     }
     if (btnTopChangePassword) {
       // Show ONLY on Home (My Work Board) page, never on other pages
