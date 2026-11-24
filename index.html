@@ -1172,6 +1172,22 @@
       background: #fef2f2;
     }
 
+    .summary-slot-card.status-cancelled {
+      border-color: #cbd5e1;
+      border-left-color: #64748b;
+      background: #f8fafc;
+    }
+
+    .slot-status-cancelled-msg {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #b91c1c;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .summary-slot-card.status-unmarked {
       border-color: #e2e8f0;
       border-left-color: #94a3b8;
@@ -1311,6 +1327,12 @@
     }
 
     .slot-status-btn.not-completed-active {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #dc2626;
+    }
+
+    .slot-status-btn.cancelled-active {
       background: #dc2626;
       color: #ffffff;
       border-color: #dc2626;
@@ -1778,6 +1800,13 @@
       background-color: #dcfce7;
       border-color: #86efac;
       color: #14532d;
+    }
+    /* Cancelled status row */
+    .today-progress-btn.status-cancelled {
+      border-left-color: #64748b;
+      background-color: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
     }
     /* Not Completed status row */
     .today-progress-btn.status-not-completed {

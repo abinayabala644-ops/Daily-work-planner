@@ -454,7 +454,7 @@
       }
 
       const taskText = typeof s?.taskText === "string" ? s.taskText : (typeof s?.text === "string" ? s.text : "");
-      const status = (s?.status === "COMPLETED" || s?.status === "NOT_COMPLETED") ? s.status : "NONE";
+      const status = (s?.status === "COMPLETED" || s?.status === "NOT_COMPLETED" || s?.status === "CANCELLED") ? s.status : "NONE";
       const markedAt = (status !== "NONE" && (typeof s?.markedAt === "string" || typeof s?.markedAt === "number")) ? s.markedAt : null;
 
       return {
@@ -2343,6 +2343,9 @@
       if (slotItem.status === 'COMPLETED') {
         statusKind = 'completed';
         statusWord = '✓ Completed';
+      } else if (slotItem.status === 'CANCELLED') {
+        statusKind = 'cancelled';
+        statusWord = 'Cancelled';
       } else if (slotItem.status === 'NOT_COMPLETED') {
         statusKind = 'not-completed';
         statusWord = '✗ Not Completed';
@@ -2426,7 +2429,7 @@
         }
 
         // Accessible label
-        const statusAccessible = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : (currentMin < slotItem.startMinutes ? 'Upcoming' : 'Not marked yet'));
+        const statusAccessible = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'CANCELLED' ? 'Cancelled' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : (currentMin < slotItem.startMinutes ? 'Upcoming' : 'Not marked yet')));
         rowBtn.setAttribute('aria-label', `Open slot ${slotItem.slotNumber}: ${timeRangeText}, ${slotItem.taskText}, ${statusAccessible}.`);
       }
     });
@@ -3491,23 +3494,23 @@
       if (!btnGroup) return;
 
       const btnCompleted = btnGroup.querySelector('.slot-status-btn[aria-label*="Completed"]');
-      const btnNotCompleted = btnGroup.querySelector('.slot-status-btn[aria-label*="Not Completed"]');
+      const btnCancel = btnGroup.querySelector('.slot-status-btn[aria-label*="Cancel"]');
       const startMinVal = card.dataset.startMinutes ? parseInt(card.dataset.startMinutes, 10) : null;
 
       if (startMinVal !== null && !isNaN(startMinVal)) {
         const canMark = canSlotBeMarkedNow(startMinVal);
         const isCompActive = btnCompleted && btnCompleted.classList.contains('completed-active');
-        const isNotCompActive = btnNotCompleted && btnNotCompleted.classList.contains('not-completed-active');
+        const isCancelActive = btnCancel && btnCancel.classList.contains('cancelled-active');
 
         if (!canMark) {
           if (btnCompleted && !isCompActive) btnCompleted.setAttribute('aria-disabled', 'true');
           else if (btnCompleted) btnCompleted.removeAttribute('aria-disabled');
 
-          if (btnNotCompleted && !isNotCompActive) btnNotCompleted.setAttribute('aria-disabled', 'true');
-          else if (btnNotCompleted) btnNotCompleted.removeAttribute('aria-disabled');
+          if (btnCancel && !isCancelActive) btnCancel.setAttribute('aria-disabled', 'true');
+          else if (btnCancel) btnCancel.removeAttribute('aria-disabled');
         } else {
           if (btnCompleted) btnCompleted.removeAttribute('aria-disabled');
-          if (btnNotCompleted) btnNotCompleted.removeAttribute('aria-disabled');
+          if (btnCancel) btnCancel.removeAttribute('aria-disabled');
         }
       }
     });
@@ -3635,7 +3638,7 @@
         openEditSlotModal(slotIndex);
       });
 
-      // 2. Status Buttons: ✓ Completed and ✗ Not Completed
+      // 2. Status Buttons: ✓ Completed and Cancel
       const btnGroup = document.createElement('div');
       btnGroup.className = "slot-status-btn-group";
 
@@ -3645,18 +3648,25 @@
       btnCompleted.innerHTML = `<span>✓ Completed</span>`;
       btnCompleted.setAttribute('aria-label', `Mark slot ${slotNumber} Completed`);
 
-      const btnNotCompleted = document.createElement('button');
-      btnNotCompleted.type = "button";
-      btnNotCompleted.className = "slot-status-btn";
-      btnNotCompleted.innerHTML = `<span>✗ Not Completed</span>`;
-      btnNotCompleted.setAttribute('aria-label', `Mark slot ${slotNumber} Not Completed`);
+      const btnCancel = document.createElement('button');
+      btnCancel.type = "button";
+      btnCancel.className = "slot-status-btn";
+      btnCancel.innerHTML = `<span>Cancel</span>`;
+      btnCancel.setAttribute('aria-label', `Mark slot ${slotNumber} Cancel`);
 
       btnGroup.appendChild(btnCompleted);
-      btnGroup.appendChild(btnNotCompleted);
+      btnGroup.appendChild(btnCancel);
 
       buttonsRow.appendChild(editBtn);
       buttonsRow.appendChild(btnGroup);
       card.appendChild(buttonsRow);
+
+      // Confirmation message: "This work has been cancelled."
+      const cancelledMsgEl = document.createElement('div');
+      cancelledMsgEl.className = 'slot-status-cancelled-msg';
+      cancelledMsgEl.textContent = 'This work has been cancelled.';
+      cancelledMsgEl.style.display = 'none';
+      card.appendChild(cancelledMsgEl);
 
       // Warning message container (only for error/time restriction alerts, no status text)
       const markWarningEl = document.createElement('div');
@@ -3692,17 +3702,22 @@
       function updateSlotCardButtons() {
         const currentStatus = slot.status || "NONE";
         const isComp = currentStatus === "COMPLETED";
+        const isCancel = currentStatus === "CANCELLED";
         const isNotComp = currentStatus === "NOT_COMPLETED";
 
         // Toggle card style class
         card.classList.toggle('status-not-completed', isNotComp);
-        card.classList.toggle('status-unmarked', !isComp && !isNotComp);
+        card.classList.toggle('status-cancelled', isCancel);
+        card.classList.toggle('status-unmarked', !isComp && !isCancel && !isNotComp);
 
         btnCompleted.classList.toggle('completed-active', isComp);
         btnCompleted.setAttribute('aria-pressed', String(isComp));
 
-        btnNotCompleted.classList.toggle('not-completed-active', isNotComp);
-        btnNotCompleted.setAttribute('aria-pressed', String(isNotComp));
+        btnCancel.classList.toggle('cancelled-active', isCancel);
+        btnCancel.setAttribute('aria-pressed', String(isCancel));
+
+        // When user clicks Cancel button: display confirmation message "This work has been cancelled."
+        cancelledMsgEl.style.display = isCancel ? 'flex' : 'none';
 
         // Evaluate whether this slot can be marked right now
         const canMark = canSlotBeMarkedNow(startMinutes);
@@ -3710,11 +3725,11 @@
           if (!isComp) btnCompleted.setAttribute('aria-disabled', 'true');
           else btnCompleted.removeAttribute('aria-disabled');
 
-          if (!isNotComp) btnNotCompleted.setAttribute('aria-disabled', 'true');
-          else btnNotCompleted.removeAttribute('aria-disabled');
+          if (!isCancel) btnCancel.setAttribute('aria-disabled', 'true');
+          else btnCancel.removeAttribute('aria-disabled');
         } else {
           btnCompleted.removeAttribute('aria-disabled');
-          btnNotCompleted.removeAttribute('aria-disabled');
+          btnCancel.removeAttribute('aria-disabled');
         }
       }
 
@@ -3746,9 +3761,9 @@
         updateSummarySaveState();
       });
 
-      btnNotCompleted.addEventListener('click', () => {
+      btnCancel.addEventListener('click', () => {
         clearSummarySaveMessage();
-        const isCurrentlyActive = slot.status === "NOT_COMPLETED";
+        const isCurrentlyActive = slot.status === "CANCELLED";
 
         if (!isCurrentlyActive) {
           const canMark = canSlotBeMarkedNow(startMinutes);
@@ -3765,7 +3780,7 @@
           slot.status = "NONE";
           slot.markedAt = null;
         } else {
-          slot.status = "NOT_COMPLETED";
+          slot.status = "CANCELLED";
           slot.markedAt = getIsoTimestamp();
         }
         saveStorage(selectedDateKey); // Immediate save
