@@ -136,6 +136,7 @@
 
   // Home Page Elements
   const homeDailyProverb = document.getElementById('home-daily-proverb');
+  const homeDailyEmoji = document.getElementById('home-daily-emoji');
   const btnActivityPrev = document.getElementById('btn-activity-prev');
   const btnActivityToday = document.getElementById('btn-activity-today');
   const btnActivityUpcoming = document.getElementById('btn-activity-upcoming');
@@ -894,18 +895,18 @@
 
   // --- HOME VIEW (MY WORK BOARD) LOGIC ---
   const PROVERBS = [
-    "Well begun is half done.",
-    "A stitch in time saves nine.",
-    "Slow and steady wins the race.",
-    "Practice makes perfect.",
-    "Rome was not built in a day.",
-    "Where there is a will, there is a way.",
-    "The early bird catches the worm.",
-    "A journey of a thousand miles begins with a single step.",
-    "Better late than never.",
-    "Actions speak louder than words.",
-    "Time and tide wait for no man.",
-    "Many hands make light work."
+    { text: "Well begun is half done.", emoji: "✨" },
+    { text: "A stitch in time saves nine.", emoji: "🧵" },
+    { text: "Slow and steady wins the race.", emoji: "🐢" },
+    { text: "Practice makes perfect.", emoji: "🎯" },
+    { text: "Rome was not built in a day.", emoji: "🏛️" },
+    { text: "Where there is a will, there is a way.", emoji: "💪" },
+    { text: "The early bird catches the worm.", emoji: "🌅" },
+    { text: "A journey of a thousand miles begins with a single step.", emoji: "🌸" },
+    { text: "Better late than never.", emoji: "⏰" },
+    { text: "Actions speak louder than words.", emoji: "🌟" },
+    { text: "Time and tide wait for no man.", emoji: "⏳" },
+    { text: "Many hands make light work.", emoji: "🤝" }
   ];
 
   let currentActivityTab = null; // 'previous' | 'today' | 'upcoming' | null
@@ -955,8 +956,14 @@
     const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const fixedEpoch = new Date(2026, 0, 1);
     const diffDays = Math.floor((localMidnight.getTime() - fixedEpoch.getTime()) / 86400000);
-    const proverbIndex = ((diffDays % 12) + 12) % 12;
-    homeDailyProverb.textContent = PROVERBS[proverbIndex];
+    const proverbIndex = ((diffDays % PROVERBS.length) + PROVERBS.length) % PROVERBS.length;
+    const item = PROVERBS[proverbIndex];
+    if (typeof item === 'object') {
+      homeDailyProverb.textContent = item.text;
+      if (homeDailyEmoji) homeDailyEmoji.textContent = item.emoji;
+    } else {
+      homeDailyProverb.textContent = item;
+    }
   }
 
   function updateActivityNavButtonsState(activeTab) {

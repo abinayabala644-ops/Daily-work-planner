@@ -1461,15 +1461,47 @@
       position: relative;
     }
     .activity-section-title {
-      font-size: 1.35rem;
+      font-size: 1.4rem;
       font-weight: 800;
       text-align: center;
-      margin: 0 0 16px 0;
+      margin: 0 0 6px 0;
       color: #9333ea;
-      background: linear-gradient(135deg, #9333ea 0%, #ea580c 100%);
+      background: linear-gradient(135deg, #9333ea 0%, #db2777 50%, #ea580c 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       letter-spacing: -0.01em;
+    }
+
+    .activity-daily-motto {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 0 0 18px 0;
+      text-align: center;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, rgba(243, 232, 255, 0.6) 0%, rgba(254, 242, 242, 0.6) 50%, rgba(255, 237, 213, 0.6) 100%);
+      border-radius: 9999px;
+      border: 1px solid rgba(233, 213, 255, 0.7);
+      width: fit-content;
+      max-width: 92%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .activity-proverb-text {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--slate-700);
+      font-style: italic;
+      line-height: 1.35;
+    }
+
+    .activity-proverb-emoji {
+      font-size: 1.15rem;
+      line-height: 1;
+      user-select: none;
+      display: inline-block;
     }
 
     .activity-nav-grid {
@@ -3084,6 +3116,10 @@
 
       <div class="activity-section">
         <h2 class="activity-section-title">My Activity</h2>
+        <div class="activity-daily-motto" aria-label="Daily Inspiration">
+          <span id="home-daily-proverb" class="activity-proverb-text">Well begun is half done.</span>
+          <span id="home-daily-emoji" class="activity-proverb-emoji" aria-hidden="true">🌸</span>
+        </div>
 
         <div class="activity-nav-grid" role="group" aria-label="My Activity">
           <button type="button" id="btn-activity-prev" class="btn-activity-nav btn-activity-prev" data-tab="previous" aria-pressed="false">
