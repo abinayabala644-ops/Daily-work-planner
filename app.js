@@ -4500,7 +4500,7 @@
       }
       try {
         Object.keys(localStorage).forEach((key) => {
-          if (key.startsWith('sb-') || key.startsWith('dailyPlanner:')) {
+          if (key.startsWith('sb-')) {
             localStorage.removeItem(key);
           }
         });
@@ -4525,9 +4525,10 @@
         }
       }
       // Clear Supabase session auth tokens and user caches from localStorage and sessionStorage
+      // Note: Preserve cached planner data for offline/safety if needed, or clear only the active session tokens
       try {
         Object.keys(localStorage).forEach((key) => {
-          if (key.startsWith('sb-') || key.startsWith('dailyPlanner:')) {
+          if (key.startsWith('sb-')) {
             localStorage.removeItem(key);
           }
         });
