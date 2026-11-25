@@ -1455,80 +1455,21 @@
     }
 
     /* --- HOME SCREEN (MY WORK BOARD) --- */
-    .home-hero-card {
-      position: relative;
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 28px 20px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      overflow: hidden;
-      border: 1px solid var(--slate-200);
-      margin-bottom: 24px;
-    }
-    .home-hero-bg-shape {
-      position: absolute;
-      top: -40px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 280px;
-      height: 180px;
-      background: radial-gradient(circle, rgba(219, 234, 254, 0.75) 0%, rgba(243, 232, 255, 0.6) 50%, rgba(255, 255, 255, 0) 75%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .home-hero-content {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      width: 100%;
-    }
-    .home-title {
-      display: inline-block;
-      font-size: 2.1rem;
-      font-weight: 800;
-      font-style: italic;
-      color: #1d4ed8;
-      background: linear-gradient(135deg, #1d4ed8 0%, #7e22ce 55%, #be185d 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin: 0;
-      letter-spacing: -0.5px;
-      line-height: 1.25;
-      padding-right: 0.25em;
-      padding-left: 0.05em;
-    }
-    .home-proverb {
-      font-size: 1.15rem;
-      font-weight: 600;
-      color: var(--slate-700);
-      max-width: 480px;
-      margin: 0;
-      line-height: 1.45;
-    }
-    .home-emoji {
-      font-size: 2.5rem;
-      line-height: 1;
-      user-select: none;
-    }
-
     /* --- ACTIVITY SECTION --- */
     .activity-section {
       margin-bottom: 24px;
       position: relative;
     }
     .activity-section-title {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--slate-900);
+      font-size: 1.35rem;
+      font-weight: 800;
       text-align: center;
       margin: 0 0 16px 0;
+      color: #9333ea;
+      background: linear-gradient(135deg, #9333ea 0%, #ea580c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.01em;
     }
 
     .activity-nav-grid {
@@ -3139,14 +3080,7 @@
         <button type="button" id="home-unfinished-continue-btn" class="btn-home-unfinished-continue">Continue</button>
       </div>
 
-      <div class="home-hero-card">
-        <div class="home-hero-bg-shape" aria-hidden="true"></div>
-        <div class="home-hero-content">
-          <h1 class="home-title">My Work Board</h1>
-          <p id="home-daily-proverb" class="home-proverb">Well begun is half done.</p>
-          <div class="home-emoji" aria-hidden="true">😊</div>
-        </div>
-      </div>
+
 
       <div class="activity-section">
         <h2 class="activity-section-title">My Activity</h2>
