@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Daily Work Planner | User-Controlled Schedule</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=JetBrains+Mono:wght@500;600&display=swap"
+    rel="stylesheet" />
   <style>
     /* Prevent flash of unauthenticated planner content */
     html {
       visibility: hidden;
     }
+
     html.auth-ready {
       visibility: visible;
     }
@@ -41,7 +45,8 @@
       font-size: clamp(1.4rem, 4vw, 1.85rem);
       line-height: 1.2;
       letter-spacing: -0.02em;
-      color: #7c3aed; /* Fallback solid color (4.5:1+ contrast on light background) */
+      color: #7c3aed;
+      /* Fallback solid color (4.5:1+ contrast on light background) */
       background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #ea580c 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -83,6 +88,35 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .btn-top-theme {
+      min-height: 44px;
+      padding: 8px 14px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      font-family: inherit;
+      color: var(--slate-700);
+      background: var(--slate-100);
+      border: 1px solid var(--slate-300);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-top-theme:hover {
+      background: var(--slate-200);
+      color: var(--slate-900);
+      border-color: var(--slate-400);
+    }
+
+    .btn-top-theme:focus-visible {
+      outline: 2px solid var(--blue-700);
+      outline-offset: 2px;
     }
 
     .btn-top-board:hover {
@@ -334,6 +368,18 @@
     }
 
     :root {
+      --bg-body: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --border-light: #f1f5f9;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --input-text: #0f172a;
+      --modal-bg: #ffffff;
+      --modal-border: #e2e8f0;
+
       --slate-50: #f8fafc;
       --slate-100: #f1f5f9;
       --slate-200: #e2e8f0;
@@ -358,6 +404,36 @@
       --amber-500: #f59e0b;
     }
 
+    [data-theme="dark"] {
+      --bg-body: #0b0f19;
+      --bg-card: #111827;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --border-color: #374151;
+      --border-light: #1f2937;
+      --input-bg: #1f2937;
+      --input-border: #4b5563;
+      --input-text: #f9fafb;
+      --modal-bg: #111827;
+      --modal-border: #374151;
+
+      --slate-50: #0b0f19;
+      --slate-100: #1f2937;
+      --slate-200: #374151;
+      --slate-300: #4b5563;
+      --slate-400: #6b7280;
+      --slate-500: #9ca3af;
+      --slate-600: #d1d5db;
+      --slate-700: #e5e7eb;
+      --slate-800: #f3f4f6;
+      --slate-900: #f9fafb;
+      --blue-50: #172554;
+      --blue-100: #1e3a8a;
+      --blue-200: #1d4ed8;
+      --blue-700: #60a5fa;
+      --blue-800: #93c5fd;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -368,9 +444,12 @@
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--slate-50);
       color: var(--slate-900);
+      background-color: var(--bg-body);
+      color: var(--text-main);
       min-height: 100vh;
       padding: 24px 16px 48px;
       line-height: 1.5;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .container {
@@ -381,10 +460,13 @@
     .card {
       background: #ffffff;
       border: 1px solid var(--slate-200);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 16px;
       padding: 24px;
       box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
       position: relative;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
     }
 
     @media (min-width: 640px) {
@@ -693,7 +775,7 @@
       outline-offset: 1px;
     }
 
-    
+
     /* Save Section at bottom of Summary */
     .summary-save-section {
       margin-top: 24px;
@@ -828,6 +910,7 @@
         opacity: 0;
         transform: translateY(6px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -1412,23 +1495,27 @@
       gap: 8px;
       color: #1e3a8a;
     }
+
     .reminder-banner-content {
       display: flex;
       flex-direction: column;
       gap: 4px;
     }
+
     .reminder-banner-title {
       font-weight: 700;
       font-size: 0.95rem;
       color: #1e40af;
       margin: 0;
     }
+
     .reminder-banner-task,
     .reminder-banner-timing {
       font-size: 0.9rem;
       margin: 0;
       color: #1e3a8a;
     }
+
     .btn-reminder-dismiss {
       align-self: flex-start;
       min-height: 44px;
@@ -1446,9 +1533,11 @@
       justify-content: center;
       margin-top: 4px;
     }
+
     .btn-reminder-dismiss:hover {
       background: #1e40af;
     }
+
     .btn-reminder-dismiss:focus-visible {
       outline: 2px solid #1e40af;
       outline-offset: 2px;
@@ -1460,6 +1549,7 @@
       margin-bottom: 24px;
       position: relative;
     }
+
     .activity-section-title {
       font-size: 1.4rem;
       font-weight: 800;
@@ -1511,6 +1601,7 @@
       width: 100%;
       margin: 0 auto;
     }
+
     @media (min-width: 600px) {
       .activity-nav-grid {
         gap: 12px;
@@ -1569,6 +1660,7 @@
       background-color: #fde047;
       border-color: #eab308;
     }
+
     .btn-activity-prev:hover {
       background-color: #facc15;
     }
@@ -1578,6 +1670,7 @@
       background-color: #f9a8d4;
       border-color: #ec4899;
     }
+
     .btn-activity-today:hover {
       background-color: #f472b6;
     }
@@ -1587,6 +1680,7 @@
       background-color: #86efac;
       border-color: #22c55e;
     }
+
     .btn-activity-upcoming:hover {
       background-color: #4ade80;
     }
@@ -1628,9 +1722,11 @@
         transition: background-color 0.01ms !important;
         transform: none !important;
       }
+
       .btn-activity-nav:hover {
         transform: none !important;
       }
+
       .btn-activity-nav:active {
         transform: none !important;
       }
@@ -1650,12 +1746,14 @@
       padding: 14px 18px;
       margin-bottom: 20px;
     }
+
     .home-unfinished-content {
       display: flex;
       flex-direction: column;
       gap: 4px;
       flex: 1 1 260px;
     }
+
     .home-unfinished-title {
       font-size: 0.98rem;
       font-weight: 800;
@@ -1663,6 +1761,7 @@
       margin: 0;
       line-height: 1.35;
     }
+
     .home-unfinished-details {
       font-size: 0.88rem;
       font-weight: 600;
@@ -1673,6 +1772,7 @@
       word-break: break-word;
       overflow-wrap: anywhere;
     }
+
     .btn-home-unfinished-continue {
       min-height: 44px;
       padding: 8px 20px;
@@ -1690,9 +1790,11 @@
       justify-content: center;
       flex-shrink: 0;
     }
+
     .btn-home-unfinished-continue:hover {
       background: var(--slate-800);
     }
+
     .btn-home-unfinished-continue:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
@@ -1707,6 +1809,7 @@
       padding: 18px 20px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
+
     .today-progress-title {
       font-size: 1.25rem;
       font-weight: 800;
@@ -1714,6 +1817,7 @@
       letter-spacing: -0.01em;
       margin: 0 0 16px 0;
     }
+
     .today-progress-message {
       font-size: 1rem;
       font-weight: 500;
@@ -1722,6 +1826,7 @@
       padding: 24px 12px;
       margin: 0;
     }
+
     .today-progress-list {
       list-style: none;
       padding: 0;
@@ -1730,12 +1835,14 @@
       flex-direction: column;
       gap: 12px;
     }
+
     .today-progress-item {
       display: block;
       width: 100%;
       margin: 0;
       padding: 0;
     }
+
     .today-progress-btn {
       width: 100%;
       min-height: 44px;
@@ -1758,10 +1865,12 @@
       transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
       box-sizing: border-box;
     }
+
     .today-progress-btn:hover {
       box-shadow: 0 3px 8px rgba(0, 0, 0, 0.07);
       filter: brightness(0.98);
     }
+
     .today-progress-btn:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
@@ -1774,6 +1883,7 @@
       border-color: #86efac;
       color: #14532d;
     }
+
     /* Cancelled status row */
     .today-progress-btn.status-cancelled {
       border-left-color: #b91c1c;
@@ -1781,6 +1891,7 @@
       border-color: #fca5a5;
       color: #7f1d1d;
     }
+
     /* Not Completed status row */
     .today-progress-btn.status-not-completed {
       border-left-color: #b91c1c;
@@ -1788,6 +1899,7 @@
       border-color: #fca5a5;
       color: #7f1d1d;
     }
+
     /* Upcoming status row */
     .today-progress-btn.status-upcoming {
       border-left-color: #9ca3af;
@@ -1795,6 +1907,7 @@
       border-color: #d1d5db;
       color: #374151;
     }
+
     /* Not marked yet status row */
     .today-progress-btn.status-unmarked {
       border-left-color: #94a3b8;
@@ -1818,6 +1931,7 @@
       gap: 8px;
       flex-wrap: wrap;
     }
+
     .today-slot-badge-now {
       display: inline-flex;
       align-items: center;
@@ -1832,6 +1946,7 @@
       text-transform: uppercase;
       line-height: 1.2;
     }
+
     .today-slot-time-range {
       font-size: 1.12rem;
       font-weight: 800;
@@ -1839,12 +1954,14 @@
       line-height: 1.25;
       color: inherit;
     }
+
     .today-slot-body-col {
       display: flex;
       flex-direction: column;
       gap: 6px;
       width: 100%;
     }
+
     .today-slot-work-text {
       font-size: 1rem;
       font-weight: 500;
@@ -1854,6 +1971,7 @@
       word-break: break-word;
       overflow-wrap: anywhere;
     }
+
     .today-slot-status-label {
       font-size: 0.92rem;
       font-weight: 800;
@@ -1870,15 +1988,18 @@
         align-items: center;
         gap: 16px;
       }
+
       .today-slot-time-col {
         flex: 0 0 auto;
         min-width: 170px;
       }
+
       .today-slot-body-col {
         flex: 1 1 auto;
         align-items: flex-end;
         text-align: right;
       }
+
       .today-slot-work-text {
         text-align: right;
       }
@@ -1898,6 +2019,7 @@
       box-sizing: border-box;
       margin-top: 6px;
     }
+
     .slot-status-btn[aria-disabled="true"] {
       opacity: 0.55;
       background: var(--slate-100);
@@ -1914,24 +2036,28 @@
       padding: 16px;
       min-height: 120px;
     }
+
     .activity-panel-header {
       font-size: 1.05rem;
       font-weight: 700;
       color: var(--slate-900);
       margin: 0 0 12px 0;
     }
+
     .activity-panel-subtitle {
       font-size: 0.88rem;
       font-weight: 600;
       color: var(--slate-600);
       margin: -6px 0 16px 0;
     }
+
     .activity-panel-hint {
       color: var(--slate-600);
       font-size: 0.88rem;
       text-align: center;
       margin: 4px 0 0 0;
     }
+
     .activity-panel-message {
       font-size: 0.95rem;
       color: var(--slate-600);
@@ -1939,11 +2065,13 @@
       padding: 20px 8px;
       margin: 0;
     }
+
     .activity-items-list {
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
+
     .activity-item-card {
       background: #ffffff;
       border: 1px solid var(--slate-200);
@@ -1953,6 +2081,7 @@
       flex-direction: column;
       gap: 6px;
     }
+
     .activity-item-top {
       display: flex;
       justify-content: space-between;
@@ -1960,36 +2089,44 @@
       flex-wrap: wrap;
       gap: 6px;
     }
+
     .activity-item-date {
       font-size: 0.85rem;
       font-weight: 700;
       color: var(--slate-800);
     }
+
     .activity-item-time {
       font-size: 0.82rem;
       font-weight: 600;
       color: var(--slate-500);
     }
+
     .activity-item-task {
       font-size: 0.95rem;
       color: var(--slate-900);
       font-weight: 500;
       word-break: break-word;
     }
+
     .activity-item-status {
       font-size: 0.82rem;
       font-weight: 700;
       margin-top: 2px;
     }
+
     .activity-item-status.comp {
       color: #047857;
     }
+
     .activity-item-status.not-comp {
       color: #b91c1c;
     }
+
     .activity-item-status.unmarked {
       color: var(--slate-500);
     }
+
     .activity-item-markmsg {
       font-size: 0.78rem;
       color: var(--slate-500);
@@ -2010,6 +2147,7 @@
       color: var(--slate-900);
       cursor: pointer;
     }
+
     .time-select:focus-visible {
       border-color: var(--slate-900);
       outline: 2px solid var(--slate-900);
@@ -2029,6 +2167,7 @@
     .home-day-section {
       margin-bottom: 24px;
     }
+
     .home-day-header {
       display: flex;
       justify-content: space-between;
@@ -2038,17 +2177,20 @@
       padding-bottom: 6px;
       border-bottom: 1px solid var(--slate-200);
     }
+
     .home-day-title {
       font-size: 1.05rem;
       font-weight: 700;
       color: var(--slate-900);
       margin: 0;
     }
+
     .home-day-count {
       font-size: 0.85rem;
       font-weight: 600;
       color: var(--slate-500);
     }
+
     .home-tiles-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -2057,11 +2199,13 @@
       padding: 0;
       margin: 0;
     }
+
     @media (min-width: 600px) {
       .home-tiles-grid {
         grid-template-columns: 1fr 1fr;
       }
     }
+
     .home-tile-card {
       background: #ffffff;
       border: 1px solid var(--slate-200);
@@ -2074,34 +2218,42 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
       word-break: break-word;
     }
+
     .home-tile-card.comp {
       border-left-color: #059669;
     }
+
     .home-tile-card.not-comp {
       border-left-color: #e11d48;
     }
+
     .home-tile-card.unmarked {
       border-left-color: var(--slate-400);
     }
+
     .home-tile-card.planned {
       border-left-color: #2563eb;
     }
+
     .home-tile-time {
       font-size: 1.05rem;
       font-weight: 800;
       color: var(--slate-900);
       letter-spacing: -0.2px;
     }
+
     .home-tile-task {
       font-size: 0.95rem;
       font-weight: 500;
       color: var(--slate-800);
       line-height: 1.4;
     }
+
     .home-tile-task.muted {
       color: var(--slate-500);
       font-style: italic;
     }
+
     .home-tile-status {
       font-size: 0.85rem;
       font-weight: 700;
@@ -2110,18 +2262,23 @@
       align-items: center;
       gap: 4px;
     }
+
     .home-tile-status.comp {
       color: #047857;
     }
+
     .home-tile-status.not-comp {
       color: #b91c1c;
     }
+
     .home-tile-status.unmarked {
       color: var(--slate-600);
     }
+
     .home-tile-status.planned {
       color: #1d4ed8;
     }
+
     .cal-status-planned-icon {
       display: inline-block;
       width: 8px;
@@ -2130,11 +2287,13 @@
       border: 1.5px solid #2563eb;
       background: #3b82f6;
     }
+
     .home-tile-markmsg {
       font-size: 0.78rem;
       font-weight: 500;
       color: var(--slate-500);
     }
+
     .home-pagination-row {
       margin-top: 16px;
       display: flex;
@@ -2142,12 +2301,14 @@
       align-items: center;
       gap: 10px;
     }
+
     .home-pagination-count {
       font-size: 0.88rem;
       font-weight: 600;
       color: var(--slate-600);
       margin: 0;
     }
+
     .btn-home-show-more {
       min-height: 44px;
       min-width: 140px;
@@ -2164,9 +2325,11 @@
       justify-content: center;
       transition: background 0.15s ease;
     }
+
     .btn-home-show-more:hover {
       background: var(--slate-100);
     }
+
     .btn-home-show-more:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
@@ -2186,6 +2349,7 @@
       margin-bottom: 20px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
+
     .prev-work-date-label {
       font-size: 0.95rem;
       font-weight: 700;
@@ -2194,6 +2358,7 @@
       align-items: center;
       gap: 8px;
     }
+
     .prev-work-date-input {
       font-family: inherit;
       font-size: 0.95rem;
@@ -2207,11 +2372,13 @@
       outline: none;
       cursor: pointer;
     }
+
     .prev-work-date-input:focus-visible {
       border-color: var(--slate-900);
       outline: 2px solid var(--slate-900);
       outline-offset: 1px;
     }
+
     .prev-work-range-info {
       font-size: 0.85rem;
       font-weight: 600;
@@ -2232,9 +2399,11 @@
       margin: 0 0 16px 0;
       list-style: none;
     }
+
     .prev-7-days-strip::-webkit-scrollbar {
       height: 6px;
     }
+
     .prev-7-days-strip::-webkit-scrollbar-thumb {
       background: var(--slate-300);
       border-radius: 9999px;
@@ -2261,14 +2430,17 @@
       transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
       user-select: none;
     }
+
     .prev-7-day-btn:hover {
       background: var(--slate-50);
       border-color: var(--slate-400);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
     }
+
     .prev-7-day-btn:active {
       transform: scale(0.98);
     }
+
     .prev-7-day-btn:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
@@ -2280,12 +2452,14 @@
       color: var(--slate-900);
       line-height: 1.2;
     }
+
     .prev-day-date {
       font-size: 0.88rem;
       font-weight: 600;
       color: var(--slate-700);
       line-height: 1.2;
     }
+
     .prev-day-count {
       font-size: 0.78rem;
       font-weight: 500;
@@ -2299,10 +2473,12 @@
       cursor: pointer;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
+
     .home-tile-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
+
     .home-tile-card:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
@@ -2316,6 +2492,7 @@
       margin: 16px 0 20px 0;
       text-align: left;
     }
+
     .work-detail-row {
       display: flex;
       flex-direction: column;
@@ -2323,6 +2500,7 @@
       padding-bottom: 8px;
       border-bottom: 1px solid var(--slate-100);
     }
+
     .work-detail-label {
       font-size: 0.78rem;
       font-weight: 700;
@@ -2330,6 +2508,7 @@
       letter-spacing: 0.5px;
       color: var(--slate-500);
     }
+
     .work-detail-value {
       font-size: 0.98rem;
       font-weight: 600;
@@ -2346,23 +2525,27 @@
       padding: 22px 24px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
+
     .date-summary-tile-header {
       border-bottom: 2px solid var(--slate-100);
       padding-bottom: 14px;
       margin-bottom: 16px;
     }
+
     .date-summary-tile-date {
       font-size: 1.15rem;
       font-weight: 800;
       color: var(--slate-900);
       margin: 0 0 4px 0;
     }
+
     .date-summary-tile-count {
       font-size: 0.88rem;
       font-weight: 600;
       color: var(--slate-500);
       margin: 0;
     }
+
     .date-summary-activities-list {
       list-style: none;
       margin: 0;
@@ -2371,6 +2554,7 @@
       flex-direction: column;
       gap: 12px;
     }
+
     .date-summary-activity-item {
       padding: 12px 14px;
       border-radius: 8px;
@@ -2381,18 +2565,22 @@
       flex-direction: column;
       gap: 6px;
     }
+
     .date-summary-activity-item.comp {
       border-left-color: #059669;
       background: #f0fdf4;
     }
+
     .date-summary-activity-item.not-comp {
       border-left-color: #e11d48;
       background: #fef2f2;
     }
+
     .date-summary-activity-item.upcoming-item {
       border-left-color: #2563eb;
       background: #f8fafc;
     }
+
     .date-summary-activity-main {
       display: flex;
       justify-content: space-between;
@@ -2400,18 +2588,21 @@
       gap: 12px;
       flex-wrap: wrap;
     }
+
     .date-summary-activity-desc {
       font-size: 0.96rem;
       font-weight: 700;
       color: var(--slate-900);
       word-break: break-word;
     }
+
     .date-summary-activity-time {
       font-size: 0.9rem;
       font-weight: 800;
       color: var(--slate-700);
       white-space: nowrap;
     }
+
     .date-summary-activity-status {
       font-size: 0.82rem;
       font-weight: 700;
@@ -2419,12 +2610,15 @@
       align-items: center;
       gap: 4px;
     }
+
     .date-summary-activity-status.comp {
       color: #047857;
     }
+
     .date-summary-activity-status.not-comp {
       color: #b91c1c;
     }
+
     .date-summary-activity-status.unmarked {
       color: var(--slate-600);
     }
@@ -2439,10 +2633,12 @@
       gap: 6px;
       font-weight: 700;
     }
+
     .btn-summary-upcoming:hover {
       background-color: #059669;
       color: #ffffff;
     }
+
     .btn-summary-upcoming:focus-visible {
       outline: 2px solid #047857;
       outline-offset: 2px;
@@ -2465,9 +2661,11 @@
       transition: background 0.15s ease;
       white-space: nowrap;
     }
+
     .upcoming-sched-header-btn:hover {
       background: var(--slate-800);
     }
+
     .upcoming-sched-header-btn:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
@@ -2479,6 +2677,7 @@
       gap: 10px;
       margin-top: 18px;
     }
+
     .btn-upcoming-date {
       min-height: 44px;
       padding: 10px 18px;
@@ -2496,11 +2695,13 @@
       transition: all 0.15s ease;
       white-space: nowrap;
     }
+
     .btn-upcoming-date:hover {
       background: var(--slate-100);
       color: var(--slate-900);
       border-color: var(--slate-400);
     }
+
     .btn-upcoming-date:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 2px;
@@ -2515,6 +2716,7 @@
       flex-direction: column;
       gap: 14px;
     }
+
     .upcoming-detail-card {
       background: #ffffff;
       border: 1px solid var(--slate-200);
@@ -2527,6 +2729,7 @@
       gap: 8px;
       position: relative;
     }
+
     .upcoming-detail-actions {
       display: flex;
       align-items: center;
@@ -2534,6 +2737,7 @@
       align-self: flex-end;
       margin-top: 8px;
     }
+
     .btn-upcoming-slot-edit {
       display: inline-flex;
       align-items: center;
@@ -2550,15 +2754,18 @@
       transition: all 0.15s ease;
       min-height: 36px;
     }
+
     .btn-upcoming-slot-edit:hover {
       background: #f1f5f9;
       color: #0f172a;
       border-color: #94a3b8;
     }
+
     .btn-upcoming-slot-edit:focus-visible {
       outline: 2px solid var(--slate-900);
       outline-offset: 1px;
     }
+
     .btn-upcoming-slot-cancel {
       display: inline-flex;
       align-items: center;
@@ -2575,26 +2782,31 @@
       transition: all 0.15s ease;
       min-height: 36px;
     }
+
     .btn-upcoming-slot-cancel:hover {
       background: #fee2e2;
       color: #991b1b;
       border-color: #fca5a5;
     }
+
     .btn-upcoming-slot-cancel:focus-visible {
       outline: 2px solid #b91c1c;
       outline-offset: 1px;
     }
+
     .upcoming-detail-row {
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
       gap: 8px 16px;
     }
+
     .upcoming-detail-item {
       display: flex;
       align-items: baseline;
       gap: 6px;
     }
+
     .upcoming-detail-label {
       font-size: 0.82rem;
       font-weight: 700;
@@ -2602,11 +2814,13 @@
       letter-spacing: 0.5px;
       color: var(--slate-500);
     }
+
     .upcoming-detail-value {
       font-size: 1rem;
       font-weight: 800;
       color: var(--slate-900);
     }
+
     .upcoming-detail-work-label {
       font-size: 0.82rem;
       font-weight: 700;
@@ -2615,6 +2829,7 @@
       color: var(--slate-500);
       margin-top: 4px;
     }
+
     .upcoming-detail-work-text {
       font-size: 0.96rem;
       font-weight: 500;
@@ -2623,6 +2838,7 @@
       word-break: break-word;
       white-space: pre-wrap;
     }
+
     .upcoming-detail-work-text.muted {
       color: var(--slate-500);
       font-style: italic;
@@ -2635,6 +2851,7 @@
       margin-top: 14px;
       width: 100%;
     }
+
     .btn-activity-week-review {
       width: 100%;
       min-height: 56px;
@@ -2652,42 +2869,50 @@
       box-shadow: 0 2px 6px rgba(168, 85, 247, 0.08);
       text-align: left;
     }
+
     .btn-activity-week-review:hover {
       background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
       border-color: #a855f7;
     }
+
     .btn-activity-week-review:focus-visible {
       outline: 2px solid #9333ea;
       outline-offset: 2px;
     }
+
     .week-review-btn-content {
       display: flex;
       align-items: center;
       gap: 12px;
     }
+
     .week-review-btn-icon {
       font-size: 1.6rem;
       line-height: 1;
       filter: drop-shadow(0 2px 4px rgba(168, 85, 247, 0.2));
     }
+
     .week-review-btn-text {
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
+
     .week-review-btn-title {
       font-size: 1rem;
       font-weight: 700;
       color: #581c87;
       letter-spacing: -0.01em;
     }
+
     .week-review-btn-subtitle {
       font-size: 0.82rem;
       color: #7e22ce;
       font-weight: 500;
     }
+
     .week-review-btn-arrow {
       font-size: 1.3rem;
       font-weight: 700;
@@ -2695,6 +2920,7 @@
       margin-left: 12px;
       transition: transform 0.2s ease;
     }
+
     .btn-activity-week-review:hover .week-review-btn-arrow {
       transform: translateX(4px);
     }
@@ -2706,6 +2932,7 @@
       gap: 22px;
       margin-top: 10px;
     }
+
     .week-hero-card {
       background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
       border: 1.5px solid #e9d5ff;
@@ -2714,16 +2941,26 @@
       text-align: center;
       box-shadow: 0 4px 16px rgba(168, 85, 247, 0.06);
     }
+
     .week-hero-emoji {
       font-size: 2.8rem;
       margin-bottom: 8px;
       display: inline-block;
       animation: floatHeroEmoji 3s ease-in-out infinite;
     }
+
     @keyframes floatHeroEmoji {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-6px); }
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-6px);
+      }
     }
+
     .week-hero-title {
       font-size: 1.45rem;
       font-weight: 800;
@@ -2731,18 +2968,21 @@
       color: #3b0764;
       margin-bottom: 6px;
     }
+
     .week-hero-range {
       font-size: 0.95rem;
       color: #6b21a8;
       font-weight: 600;
       margin-bottom: 18px;
     }
+
     .week-stats-row {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 10px;
       margin-top: 14px;
     }
+
     .week-stat-pill {
       background: #ffffff;
       border: 1px solid #e2e8f0;
@@ -2751,13 +2991,15 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
     }
+
     .week-stat-number {
       font-size: 1.35rem;
       font-weight: 800;
       color: #1e293b;
     }
+
     .week-stat-label {
       font-size: 0.78rem;
       font-weight: 600;
@@ -2773,6 +3015,7 @@
       gap: 14px;
       text-align: left;
     }
+
     .week-story-heading {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.85rem;
@@ -2783,18 +3026,22 @@
       gap: 8px;
       margin: 8px 0 2px 4px;
     }
+
     .week-chapter-card {
-      background: #fdfaf3; /* Matching warm cream diary paper */
+      background: #fdfaf3;
+      /* Matching warm cream diary paper */
       border: 1px solid #e7dec8;
       border-radius: 14px;
       padding: 18px 20px;
       transition: all 0.15s ease;
       box-shadow: 0 1px 3px rgba(120, 80, 40, 0.05);
     }
+
     .week-chapter-card:hover {
       border-color: #d6c7a7;
       box-shadow: 0 4px 10px rgba(120, 80, 40, 0.08);
     }
+
     .week-chapter-header {
       display: flex;
       justify-content: space-between;
@@ -2803,6 +3050,7 @@
       gap: 8px;
       margin-bottom: 8px;
     }
+
     .week-chapter-title {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.45rem;
@@ -2812,12 +3060,14 @@
       align-items: center;
       gap: 8px;
     }
+
     .week-chapter-date {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.15rem;
       color: #8c6239;
       font-weight: 600;
     }
+
     .week-chapter-narrative {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.35rem;
@@ -2825,12 +3075,14 @@
       color: #2b1810;
       margin-bottom: 10px;
     }
+
     .week-chapter-tasks {
       display: flex;
       flex-direction: column;
       gap: 8px;
       margin-top: 6px;
     }
+
     .week-task-item {
       display: flex;
       align-items: center;
@@ -2841,21 +3093,25 @@
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.25rem;
     }
+
     .week-task-item.completed {
       background: rgba(187, 247, 208, 0.45);
       border: 1px solid #bbf7d0;
       color: #14532d;
     }
+
     .week-task-item.unfinished {
       background: rgba(254, 202, 202, 0.4);
       border: 1px solid #fecaca;
       color: #7f1d1d;
     }
+
     .week-task-item.unmarked {
       background: rgba(241, 245, 249, 0.6);
       border: 1px solid #e2e8f0;
       color: #334155;
     }
+
     .week-task-left {
       display: flex;
       align-items: center;
@@ -2863,6 +3119,7 @@
       flex: 1;
       min-width: 0;
     }
+
     .week-task-badge {
       font-family: inherit;
       font-size: 1.05rem;
@@ -2871,29 +3128,35 @@
       border-radius: 6px;
       flex-shrink: 0;
     }
+
     .week-task-item.completed .week-task-badge {
       background: #22c55e;
       color: #ffffff;
     }
+
     .week-task-item.unfinished .week-task-badge {
       background: #ef4444;
       color: #ffffff;
     }
+
     .week-task-item.unmarked .week-task-badge {
       background: #94a3b8;
       color: #ffffff;
     }
+
     .week-task-text {
       flex: 1;
       font-weight: 600;
       word-break: break-word;
     }
+
     .week-task-time {
       font-size: 1.1rem;
       color: #8c6239;
       font-weight: 600;
       white-space: nowrap;
     }
+
     .week-chapter-empty {
       background: rgba(247, 241, 227, 0.6);
       border: 1px dashed #d6c7a7;
@@ -2911,10 +3174,11 @@
     /* Vintage Diary Book Page Styling */
     .vintage-diary-book {
       position: relative;
-      background: #fdfaf3; /* Warm ivory/cream paper */
+      background: #fdfaf3;
+      /* Warm ivory/cream paper */
       border: 1px solid #e7dec8;
       border-radius: 18px;
-      box-shadow: 
+      box-shadow:
         0 4px 20px rgba(120, 80, 40, 0.08),
         0 1px 3px rgba(0, 0, 0, 0.05),
         inset 0 0 40px rgba(220, 205, 175, 0.25);
@@ -2928,6 +3192,7 @@
       margin-bottom: 18px;
       position: relative;
     }
+
     .diary-top-stickers {
       display: flex;
       justify-content: center;
@@ -2935,20 +3200,24 @@
       gap: 14px;
       margin-bottom: 8px;
     }
+
     .diary-sticker-icon {
       font-size: 1.85rem;
       display: inline-block;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
     }
+
     .diary-title-handwritten {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: clamp(2.1rem, 5vw, 2.75rem);
       font-weight: 700;
-      color: #4a2c11; /* Warm vintage dark sepia ink */
+      color: #4a2c11;
+      /* Warm vintage dark sepia ink */
       margin: 0;
       line-height: 1.2;
       letter-spacing: 0.01em;
     }
+
     .diary-date-stamp {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.3rem;
@@ -2969,6 +3238,7 @@
       border-radius: 12px;
       border: 1px dashed #d6c7a7;
     }
+
     .diary-stat-tag {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.25rem;
@@ -2983,8 +3253,10 @@
     .diary-story-body {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: clamp(1.35rem, 3.4vw, 1.55rem);
-      line-height: 2.15; /* Generous notebook line spacing */
-      color: #2b1810; /* Soft dark fountain pen ink */
+      line-height: 2.15;
+      /* Generous notebook line spacing */
+      color: #2b1810;
+      /* Soft dark fountain pen ink */
       text-align: left;
       /* Subtle notebook horizontal lines */
       background-image: linear-gradient(to bottom, transparent 96%, rgba(195, 175, 140, 0.35) 96%);
@@ -3028,11 +3300,13 @@
       margin: 1.2em 0;
       user-select: none;
     }
+
     .diary-decor-line {
       flex: 1;
       height: 1px;
       background: linear-gradient(to right, transparent, rgba(180, 150, 110, 0.4), transparent);
     }
+
     .diary-decor-icons {
       display: inline-flex;
       align-items: center;
@@ -3046,12 +3320,14 @@
       text-align: right;
       padding-right: 14px;
     }
+
     .diary-signoff-line {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.45rem;
       font-weight: 700;
       color: #5c3818;
     }
+
     .diary-signature {
       font-family: 'Caveat', cursive, sans-serif;
       font-size: 1.75rem;
@@ -3059,10 +3335,369 @@
       color: #8b3a1d;
       margin-top: 2px;
     }
+
+    /* ========================================================
+       DARK THEME COMPREHENSIVE OVERRIDES
+       ======================================================== */
+    [data-theme="dark"] .card {
+      background: var(--bg-card);
+      border-color: var(--border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    [data-theme="dark"] .btn-top-board,
+    [data-theme="dark"] .btn-top-summary,
+    [data-theme="dark"] .btn-top-change-pwd,
+    [data-theme="dark"] .btn-top-theme {
+      background: #1f2937;
+      color: #f3f4f6;
+      border-color: #374151;
+    }
+
+    [data-theme="dark"] .btn-top-board:hover,
+    [data-theme="dark"] .btn-top-summary:hover,
+    [data-theme="dark"] .btn-top-change-pwd:hover,
+    [data-theme="dark"] .btn-top-theme:hover {
+      background: #374151;
+      color: #ffffff;
+      border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .btn-logout {
+      background: #1f2937;
+      color: #f87171;
+      border-color: #374151;
+    }
+
+    [data-theme="dark"] .btn-logout:hover {
+      background: #7f1d1d;
+      color: #ffffff;
+      border-color: #991b1b;
+    }
+
+    [data-theme="dark"] .time-input,
+    [data-theme="dark"] .task-input,
+    [data-theme="dark"] .form-input,
+    [data-theme="dark"] .select-input,
+    [data-theme="dark"] .summary-edit-input {
+      background-color: var(--input-bg);
+      border-color: var(--input-border);
+      color: var(--input-text);
+    }
+
+    /* Finished By Dropdown in Dark Mode: keep readable black text for options and selected value */
+    [data-theme="dark"] .time-select,
+    [data-theme="dark"] select#slot-end-select {
+      background-color: #ffffff !important;
+      border-color: var(--slate-300) !important;
+      color: #000000 !important;
+    }
+    [data-theme="dark"] .time-select option,
+    [data-theme="dark"] select#slot-end-select option {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+    }
+
+    [data-theme="dark"] .time-input:focus,
+    [data-theme="dark"] .task-input:focus,
+    [data-theme="dark"] .form-input:focus,
+    [data-theme="dark"] .select-input:focus,
+    [data-theme="dark"] .summary-edit-input:focus {
+      border-color: var(--blue-700);
+      outline-color: var(--blue-700);
+    }
+
+    [data-theme="dark"] .header-title,
+    [data-theme="dark"] .slot-header-title,
+    [data-theme="dark"] .summary-header-title,
+    [data-theme="dark"] .form-label,
+    [data-theme="dark"] .slot-field-label,
+    [data-theme="dark"] .today-progress-title,
+    [data-theme="dark"] .calendar-title,
+    [data-theme="dark"] .modal-title,
+    [data-theme="dark"] #change-pwd-title {
+      color: #f9fafb !important;
+    }
+
+    [data-theme="dark"] .header-subtitle,
+    [data-theme="dark"] .slot-date-display,
+    [data-theme="dark"] .summary-header-subtitle,
+    [data-theme="dark"] .field-hint,
+    [data-theme="dark"] .modal-desc,
+    [data-theme="dark"] .upcoming-subtitle,
+    [data-theme="dark"] .upcoming-event-subtitle,
+    [data-theme="dark"] .prev-summary-subtitle {
+      color: #9ca3af !important;
+    }
+
+    [data-theme="dark"] .header-row {
+      border-bottom-color: var(--border-color);
+    }
+
+    [data-theme="dark"] .date-nav-btn {
+      background: #1f2937;
+      color: #d1d5db;
+      border-color: #374151;
+    }
+
+    [data-theme="dark"] .date-nav-btn:hover {
+      background: #374151;
+      color: #ffffff;
+    }
+
+    [data-theme="dark"] .date-nav-btn[aria-pressed="true"] {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    [data-theme="dark"] .slot-badge {
+      background: #1f2937;
+      color: #60a5fa;
+      border-color: #374151;
+    }
+
+    [data-theme="dark"] .slot-start-display-box {
+      background: #1f2937;
+      border-color: #374151;
+      color: #f9fafb;
+    }
+
+    /* Modal / Dialog in Dark Mode */
+    [data-theme="dark"] .modal-box,
+    [data-theme="dark"] .calendar-modal-box,
+    [data-theme="dark"] .summary-edit-modal-box,
+    [data-theme="dark"] .work-detail-modal-box,
+    [data-theme="dark"] .change-pwd-modal-box {
+      background: var(--modal-bg);
+      border-color: var(--modal-border);
+      color: var(--text-main);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .calendar-modal-header,
+    [data-theme="dark"] .work-detail-header,
+    [data-theme="dark"] .change-pwd-header {
+      border-bottom-color: var(--border-color);
+    }
+
+    [data-theme="dark"] .calendar-close-btn {
+      color: #9ca3af;
+    }
+
+    [data-theme="dark"] .calendar-close-btn:hover {
+      color: #ffffff;
+    }
+
+    [data-theme="dark"] .calendar-nav-btn {
+      background: #1f2937;
+      border-color: #374151;
+      color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .calendar-nav-btn:hover {
+      background: #374151;
+    }
+
+    [data-theme="dark"] .calendar-weekday {
+      color: #9ca3af;
+    }
+
+    [data-theme="dark"] .calendar-day-btn {
+      color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .calendar-day-btn:hover {
+      background: #1f2937;
+    }
+
+    [data-theme="dark"] .calendar-day-btn.other-month {
+      color: #4b5563;
+    }
+
+    /* Slot Cards & Summary in Dark Mode */
+    [data-theme="dark"] .summary-slot-card {
+      background: #1f2937;
+      border-color: #374151;
+    }
+
+    [data-theme="dark"] .summary-slot-card.status-unmarked {
+      background: #1f2937;
+      border-color: #374151;
+      border-left-color: #6b7280;
+    }
+
+    [data-theme="dark"] .summary-slot-time-text {
+      color: #f9fafb;
+    }
+
+    [data-theme="dark"] .summary-slot-task-text {
+      color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .summary-slot-meta {
+      color: #9ca3af;
+    }
+
+    [data-theme="dark"] .slot-status-btn {
+      background: #111827;
+      border-color: #374151;
+      color: #d1d5db;
+    }
+
+    [data-theme="dark"] .slot-status-btn:hover {
+      background: #1f2937;
+      color: #ffffff;
+    }
+
+    /* Unmarked today progress in dark mode */
+    [data-theme="dark"] .today-progress-btn.status-unmarked {
+      background-color: #1f2937;
+      border-color: #374151;
+      border-left-color: #6b7280;
+      color: #f9fafb;
+    }
+
+    [data-theme="dark"] .today-progress-btn.status-upcoming {
+      background-color: #182234;
+      border-color: #374151;
+      border-left-color: #4b5563;
+      color: #9ca3af;
+    }
+
+    /* Activity section motto pill in dark mode */
+    [data-theme="dark"] .activity-daily-motto {
+      background: linear-gradient(135deg, rgba(88, 28, 135, 0.4) 0%, rgba(131, 24, 67, 0.4) 50%, rgba(124, 45, 18, 0.4) 100%);
+      border-color: rgba(147, 51, 234, 0.4);
+    }
+
+    [data-theme="dark"] .activity-proverb-text {
+      color: #e5e7eb;
+    }
+
+    /* Buttons & Actions in Dark Mode */
+    [data-theme="dark"] .btn-primary,
+    [data-theme="dark"] .btn-top-right,
+    [data-theme="dark"] .btn-summary-save {
+      background: #ffffff !important;
+      color: #000000 !important;
+      border-color: #cbd5e1 !important;
+    }
+
+    [data-theme="dark"] .btn-primary:hover:not(:disabled),
+    [data-theme="dark"] .btn-top-right:hover:not(:disabled),
+    [data-theme="dark"] .btn-summary-save:hover:not(:disabled) {
+      background: #f1f5f9 !important;
+      color: #000000 !important;
+    }
+
+    [data-theme="dark"] .btn-primary:disabled,
+    [data-theme="dark"] .btn-top-right:disabled,
+    [data-theme="dark"] .btn-summary-save:disabled {
+      background: #e2e8f0 !important;
+      color: #475569 !important;
+      border-color: #cbd5e1 !important;
+      cursor: not-allowed !important;
+    }
+
+    /* Calendar Toggle Icon Button in Dark Mode */
+    [data-theme="dark"] .btn-icon {
+      background: #1f2937;
+      color: #f9fafb;
+      border-color: #374151;
+    }
+    [data-theme="dark"] .btn-icon:hover {
+      background: #374151;
+      color: #ffffff;
+      border-color: #4b5563;
+    }
+    [data-theme="dark"] .btn-icon svg {
+      stroke: #f9fafb;
+    }
+
+    /* Daily Work Summary Result Message in Dark Mode */
+    [data-theme="dark"] .result-card {
+      background: #ffffff !important;
+      border-color: var(--slate-200) !important;
+    }
+    [data-theme="dark"] .result-message {
+      color: #000000 !important;
+    }
+
+    /* Secondary / outline buttons in dark mode */
+    [data-theme="dark"] .btn-secondary {
+      background: #1f2937;
+      border-color: #374151;
+      color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .btn-secondary:hover {
+      background: #374151;
+      color: #ffffff;
+      border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .empty-summary-card {
+      background: #1f2937;
+      border-color: #374151;
+    }
+
+    [data-theme="dark"] .empty-summary-message {
+      color: #f3f4f6;
+    }
+
+    /* Upcoming schedule list items in dark mode */
+    [data-theme="dark"] .upcoming-item-card,
+    [data-theme="dark"] .upcoming-event-detail-card,
+    [data-theme="dark"] .prev-summary-card {
+      background: #1f2937;
+      border-color: #374151;
+      color: #f9fafb;
+    }
+
+    [data-theme="dark"] .upcoming-item-title,
+    [data-theme="dark"] .upcoming-event-detail-title {
+      color: #f9fafb;
+    }
+
+    /* Week Review Companion Journal Card in dark mode */
+    [data-theme="dark"] .companion-card {
+      background: #182030;
+      border-color: #2d3748;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .companion-header-title {
+      color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .diary-stats-ribbon {
+      background: rgba(31, 41, 55, 0.7);
+      border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .diary-stat-tag {
+      color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .diary-story-body {
+      color: #e2e8f0;
+      background-image: linear-gradient(to bottom, transparent 96%, rgba(75, 85, 99, 0.35) 96%);
+    }
+
+    [data-theme="dark"] .diary-signoff-line {
+      color: #cbd5e1;
+    }
+
+    [data-theme="dark"] .diary-signature {
+      color: #fca5a5;
+    }
   </style>
+  <script src="theme.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
 </head>
+
 <body>
   <div class="container">
     <!-- TOP AREA: ROW 1 HEADING, ROW 2 RIGHT-ALIGNED BUTTONS -->
@@ -3075,13 +3710,26 @@
 
       <!-- Row 2: Right-aligned buttons -->
       <div class="top-buttons-row">
-        <button type="button" id="btn-top-change-password" class="btn-top-change-pwd" style="display: none;" aria-label="Change Password">
+        <button type="button" id="btn-top-theme-toggle" class="btn-top-theme" aria-label="Switch Theme"
+          title="Toggle Dark/Light Theme">
+          <span class="theme-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+          <span class="theme-btn-text">Dark</span>
+        </button>
+        <button type="button" id="btn-top-change-password" class="btn-top-change-pwd" style="display: none;"
+          aria-label="Change Password">
           Change Password
         </button>
-        <button type="button" id="btn-top-daily-summary" class="btn-top-summary" style="display: none;" aria-label="Open Daily Work Summary">
+        <button type="button" id="btn-top-daily-summary" class="btn-top-summary" style="display: none;"
+          aria-label="Open Daily Work Summary">
           Daily Work Summary
         </button>
-        <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;" aria-label="Return to My Work Board">
+        <button type="button" id="btn-top-my-work-board" class="btn-top-board" style="display: none;"
+          aria-label="Return to My Work Board">
           My Work Board
         </button>
         <button type="button" id="btn-logout" class="btn-logout" aria-label="Log out of Daily Work Planner">
@@ -3104,7 +3752,8 @@
     <!-- PAGE 0: MY WORK BOARD (HOME) -->
     <div id="view-home" class="card views">
       <!-- Unfinished Work Notification at Very Top of Home -->
-      <div id="home-unfinished-banner" class="home-unfinished-banner" role="status" aria-live="polite" style="display: none;">
+      <div id="home-unfinished-banner" class="home-unfinished-banner" role="status" aria-live="polite"
+        style="display: none;">
         <div class="home-unfinished-content">
           <p class="home-unfinished-title">Today’s schedule is not finished.</p>
           <p id="home-unfinished-details" class="home-unfinished-details"></p>
@@ -3122,8 +3771,10 @@
         </div>
 
         <div class="activity-nav-grid" role="group" aria-label="My Activity">
-          <button type="button" id="btn-activity-prev" class="btn-activity-nav btn-activity-prev" data-tab="previous" aria-pressed="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button type="button" id="btn-activity-prev" class="btn-activity-nav btn-activity-prev" data-tab="previous"
+            aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
               <path d="M3 3v5h5"></path>
               <polyline points="12 7 12 12 15 15"></polyline>
@@ -3131,7 +3782,8 @@
             <span class="btn-activity-label">Previous Work</span>
           </button>
           <button type="button" id="btn-activity-today" class="btn-activity-nav btn-activity-today" data-tab="today">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
               <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -3140,8 +3792,10 @@
             </svg>
             <span class="btn-activity-label">Today Schedule</span>
           </button>
-          <button type="button" id="btn-activity-upcoming" class="btn-activity-nav btn-activity-upcoming" data-tab="upcoming" aria-pressed="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button type="button" id="btn-activity-upcoming" class="btn-activity-nav btn-activity-upcoming"
+            data-tab="upcoming" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
               <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -3155,12 +3809,14 @@
 
         <!-- MY WEEK REVIEW BUTTON -->
         <div class="week-review-btn-wrap">
-          <button type="button" id="btn-activity-week-review" class="btn-activity-week-review" aria-label="My Week Review">
+          <button type="button" id="btn-activity-week-review" class="btn-activity-week-review"
+            aria-label="My Week Review">
             <div class="week-review-btn-content">
               <span class="week-review-btn-icon" aria-hidden="true">🌟</span>
               <div class="week-review-btn-text">
                 <span class="week-review-btn-title">My Week Review</span>
-                <span class="week-review-btn-subtitle">Discover your weekly journey, friendly companion story &amp; tips</span>
+                <span class="week-review-btn-subtitle">Discover your weekly journey, friendly companion story &amp;
+                  tips</span>
               </div>
             </div>
             <span class="week-review-btn-arrow" aria-hidden="true">&rarr;</span>
@@ -3271,8 +3927,10 @@
             <h1 class="header-title">Daily Work Planner</h1>
             <p class="header-subtitle">Plan your day one slot at a time</p>
           </div>
-          <button type="button" id="calendar-toggle-btn" class="btn-icon" aria-label="Open monthly calendar" title="Open monthly calendar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" id="calendar-toggle-btn" class="btn-icon" aria-label="Open monthly calendar"
+            title="Open monthly calendar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
               <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -3294,15 +3952,19 @@
 
       <div class="form-group">
         <label for="starting-time-input" class="form-label">Starting Time</label>
-        <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 9:00 AM" id="starting-time-input" value="" class="time-input" aria-describedby="error-start-time" />
+        <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 9:00 AM"
+          id="starting-time-input" value="" class="time-input" aria-describedby="error-start-time" />
         <p id="error-start-time" class="field-error-text" style="display: none;"></p>
       </div>
 
       <div class="form-group">
         <label for="ending-time-input" class="form-label">Ending Time</label>
         <div style="display: flex; align-items: center; gap: 14px; width: 100%;">
-          <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 6:00 PM" id="ending-time-input" value="" class="time-input" aria-describedby="error-end-time" style="flex: 1 1 auto; margin-bottom: 0;" />
-          <button type="button" id="settings-next-btn" class="btn btn-top-right" style="min-height: 44px; min-width: 100px;">
+          <input type="text" inputmode="text" autocomplete="off" maxlength="8" placeholder="e.g. 6:00 PM"
+            id="ending-time-input" value="" class="time-input" aria-describedby="error-end-time"
+            style="flex: 1 1 auto; margin-bottom: 0;" />
+          <button type="button" id="settings-next-btn" class="btn btn-top-right"
+            style="min-height: 44px; min-width: 100px;">
             Next &rarr;
           </button>
         </div>
@@ -3322,38 +3984,50 @@
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
           <span id="slot-badge" class="slot-badge" style="font-size: 0.88rem; padding: 4px 12px;">Slot 1</span>
         </div>
-        <div id="slot-date-display" class="selected-date-slot-display" style="font-size: 1rem; color: var(--slate-600); font-weight: 600;"></div>
+        <div id="slot-date-display" class="selected-date-slot-display"
+          style="font-size: 1rem; color: var(--slate-600); font-weight: 600;"></div>
       </div>
 
       <!-- Notice for slot keeping earlier saved time -->
-      <div id="slot-legacy-notice" class="legacy-slot-notice" style="display: none; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.85rem; font-weight: 600; color: #92400e;">
+      <div id="slot-legacy-notice" class="legacy-slot-notice"
+        style="display: none; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.85rem; font-weight: 600; color: #92400e;">
         This slot keeps the time you saved earlier.
       </div>
 
-      <div class="slot-times-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px;">
+      <div class="slot-times-grid"
+        style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px;">
         <div class="form-group" style="margin-bottom: 0;">
-          <span id="slot-start-label" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Starting Time</span>
-          <div id="slot-start-display" class="time-readonly-display" style="min-height: 44px; font-size: 16px; width: 100%; display: flex; align-items: center; padding: 10px 14px; border: 1px solid var(--slate-300); border-radius: 8px; background: var(--slate-100); color: var(--slate-900); font-weight: 700;" tabindex="0" aria-label="Starting Time"></div>
+          <span id="slot-start-label" class="form-label"
+            style="display: block; font-weight: 700; margin-bottom: 6px;">Starting Time</span>
+          <div id="slot-start-display" class="time-readonly-display"
+            style="min-height: 44px; font-size: 16px; width: 100%; display: flex; align-items: center; padding: 10px 14px; border: 1px solid var(--slate-300); border-radius: 8px; background: var(--slate-100); color: var(--slate-900); font-weight: 700;"
+            tabindex="0" aria-label="Starting Time"></div>
           <p id="slot-start-hint" style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--slate-500);"></p>
         </div>
         <div class="form-group" style="margin-bottom: 0;">
-          <label for="slot-end-select" class="form-label" style="display: block; font-weight: 700; margin-bottom: 6px;">Finished By</label>
+          <label for="slot-end-select" class="form-label"
+            style="display: block; font-weight: 700; margin-bottom: 6px;">Finished By</label>
           <select id="slot-end-select" class="time-select" aria-describedby="slot-rules-message">
             <option value="">Select time</option>
           </select>
-          <p id="slot-end-last-hint" style="display: none; margin: 4px 0 0 0; font-size: 0.78rem; color: var(--slate-600);">This is the last slot. Finish opens your summary.</p>
+          <p id="slot-end-last-hint"
+            style="display: none; margin: 4px 0 0 0; font-size: 0.78rem; color: var(--slate-600);">This is the last
+            slot. Finish opens your summary.</p>
         </div>
       </div>
 
-      <div id="slot-rules-message" class="field-error-text" style="display: none; margin-bottom: 16px; font-size: 0.88rem; font-weight: 600;"></div>
+      <div id="slot-rules-message" class="field-error-text"
+        style="display: none; margin-bottom: 16px; font-size: 0.88rem; font-weight: 600;"></div>
 
       <div class="form-group" style="margin-bottom: 20px;">
         <label for="slot-task-input" class="form-label">Work for this slot</label>
-        <textarea id="slot-task-input" class="textarea-box" placeholder="Type what you plan to do in this slot…"></textarea>
+        <textarea id="slot-task-input" class="textarea-box"
+          placeholder="Type what you plan to do in this slot…"></textarea>
       </div>
 
       <div class="slot-actions-row">
-        <button type="button" id="slot-next-btn" class="btn btn-primary" style="width: 100%; min-height: 44px;" disabled>
+        <button type="button" id="slot-next-btn" class="btn btn-primary" style="width: 100%; min-height: 44px;"
+          disabled>
           Next &rarr;
         </button>
       </div>
@@ -3367,8 +4041,10 @@
           <p id="summary-header-subtitle" class="header-subtitle">9:00 AM - 6:00 PM, 0 slots</p>
         </div>
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-          <button type="button" id="summary-calendar-toggle-btn" class="btn-icon" aria-label="Open calendar" title="Open calendar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" id="summary-calendar-toggle-btn" class="btn-icon" aria-label="Open calendar"
+            title="Open calendar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
               <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -3378,8 +4054,10 @@
           <button type="button" id="summary-back-btn" class="btn btn-secondary">
             &larr; Back
           </button>
-          <button type="button" id="summary-upcoming-btn" class="btn btn-summary-upcoming" aria-label="Open Upcoming Schedule">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button type="button" id="summary-upcoming-btn" class="btn btn-summary-upcoming"
+            aria-label="Open Upcoming Schedule">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
               <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -3412,11 +4090,12 @@
       </div>
 
       <!-- Finish/Saved Success Message at Top of Summary -->
-      <div id="summary-finish-message" class="save-message-box save-message-success" role="status" aria-live="polite" style="display: none; margin-bottom: 16px;"></div>
+      <div id="summary-finish-message" class="save-message-box save-message-success" role="status" aria-live="polite"
+        style="display: none; margin-bottom: 16px;"></div>
 
       <div id="summary-slots-list" class="summary-slots-grid"></div>
 
-            <div id="summary-result-area" class="summary-result-area" aria-live="polite"></div>
+      <div id="summary-result-area" class="summary-result-area" aria-live="polite"></div>
 
       <!-- Save and Next Section at very end of Summary page -->
       <div id="summary-save-section" class="summary-save-section">
@@ -3424,7 +4103,9 @@
         <p id="summary-save-hint" class="summary-save-hint">Press Save to store this day.</p>
         <div style="display: flex; gap: 12px; width: 100%;">
           <button type="button" id="summary-save-btn" class="btn-summary-save" style="flex: 1 1 50%;">Save</button>
-          <button type="button" id="summary-next-btn" class="btn btn-primary" style="flex: 1 1 50%; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; border-radius: 10px;">Next &rarr;</button>
+          <button type="button" id="summary-next-btn" class="btn btn-primary"
+            style="flex: 1 1 50%; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; border-radius: 10px;">Next
+            &rarr;</button>
         </div>
       </div>
     </div>
@@ -3434,8 +4115,10 @@
   <dialog id="summary-edit-slot-dialog">
     <div class="summary-edit-modal-box">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-        <h2 id="summary-edit-dialog-title" style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #0f172a;">Edit Slot</h2>
-        <button type="button" id="summary-edit-dialog-close-btn" class="calendar-close-btn" aria-label="Close dialog">&times;</button>
+        <h2 id="summary-edit-dialog-title" style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #0f172a;">Edit
+          Slot</h2>
+        <button type="button" id="summary-edit-dialog-close-btn" class="calendar-close-btn"
+          aria-label="Close dialog">&times;</button>
       </div>
 
       <div class="summary-edit-field">
@@ -3468,9 +4151,12 @@
       <div class="calendar-header">
         <h2 id="calendar-month-title" class="calendar-month-title">October 2026</h2>
         <div class="calendar-nav-buttons">
-          <button type="button" id="calendar-prev-month-btn" class="calendar-arrow-btn" aria-label="Previous Month">&larr;</button>
-          <button type="button" id="calendar-next-month-btn" class="calendar-arrow-btn" aria-label="Next Month">&rarr;</button>
-          <button type="button" id="calendar-close-btn" class="calendar-close-btn" aria-label="Close Calendar">&times;</button>
+          <button type="button" id="calendar-prev-month-btn" class="calendar-arrow-btn"
+            aria-label="Previous Month">&larr;</button>
+          <button type="button" id="calendar-next-month-btn" class="calendar-arrow-btn"
+            aria-label="Next Month">&rarr;</button>
+          <button type="button" id="calendar-close-btn" class="calendar-close-btn"
+            aria-label="Close Calendar">&times;</button>
         </div>
       </div>
       <div class="calendar-weekdays-row">
@@ -3531,7 +4217,8 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button type="button" id="work-detail-close-btn" class="btn btn-primary" style="min-width: 100px;">Close</button>
+        <button type="button" id="work-detail-close-btn" class="btn btn-primary"
+          style="min-width: 100px;">Close</button>
       </div>
     </div>
   </dialog>
@@ -3540,46 +4227,26 @@
   <dialog id="change-password-dialog">
     <div class="modal-box">
       <h3 class="modal-title">Change Password</h3>
-      <p class="modal-desc" id="change-pwd-desc">Enter your current password, edit new password, and confirm password below.</p>
+      <p class="modal-desc" id="change-pwd-desc">Enter your current password, edit new password, and confirm password
+        below.</p>
 
       <form id="change-password-form" autocomplete="off" novalidate>
         <div class="change-pwd-form-group">
           <label for="change-pwd-prev" class="change-pwd-label">Current Password</label>
-          <input
-            type="password"
-            id="change-pwd-prev"
-            class="change-pwd-input"
-            autocomplete="one-time-code"
-            data-lpignore="true"
-            placeholder="Enter current password"
-            required
-          />
+          <input type="password" id="change-pwd-prev" class="change-pwd-input" autocomplete="one-time-code"
+            data-lpignore="true" placeholder="Enter current password" required />
         </div>
 
         <div class="change-pwd-form-group">
           <label for="change-pwd-new" class="change-pwd-label">Edit Password</label>
-          <input
-            type="password"
-            id="change-pwd-new"
-            class="change-pwd-input"
-            autocomplete="one-time-code"
-            data-lpignore="true"
-            placeholder="Enter new password (at least 8 characters)"
-            required
-          />
+          <input type="password" id="change-pwd-new" class="change-pwd-input" autocomplete="one-time-code"
+            data-lpignore="true" placeholder="Enter new password (at least 8 characters)" required />
         </div>
 
         <div class="change-pwd-form-group">
           <label for="change-pwd-confirm" class="change-pwd-label">Confirm Password</label>
-          <input
-            type="password"
-            id="change-pwd-confirm"
-            class="change-pwd-input"
-            autocomplete="one-time-code"
-            data-lpignore="true"
-            placeholder="Confirm new password"
-            required
-          />
+          <input type="password" id="change-pwd-confirm" class="change-pwd-input" autocomplete="one-time-code"
+            data-lpignore="true" placeholder="Confirm new password" required />
         </div>
 
         <label class="change-pwd-show-row" id="change-pwd-show-row">
@@ -3594,7 +4261,8 @@
           <button type="submit" id="change-pwd-submit-btn" class="btn btn-primary">Save Password</button>
         </div>
 
-        <div class="modal-actions" id="change-pwd-ok-actions" style="display: none; justify-content: center; margin-top: 16px;">
+        <div class="modal-actions" id="change-pwd-ok-actions"
+          style="display: none; justify-content: center; margin-top: 16px;">
           <button type="button" id="change-pwd-ok-btn" class="btn btn-primary" style="min-width: 120px;">OK</button>
         </div>
       </form>
@@ -3608,7 +4276,8 @@
       <p class="modal-desc">Some slots are outside the new times and will be removed.</p>
       <div class="modal-actions">
         <button type="button" id="settings-dialog-cancel" class="btn btn-secondary">Cancel</button>
-        <button type="button" id="settings-dialog-continue" class="btn" style="background: var(--rose-600); color: #fff;">Continue</button>
+        <button type="button" id="settings-dialog-continue" class="btn"
+          style="background: var(--rose-600); color: #fff;">Continue</button>
       </div>
     </div>
   </dialog>
@@ -3620,11 +4289,13 @@
       <p class="modal-desc">Changing this End time removes all slots after it.</p>
       <div class="modal-actions">
         <button type="button" id="duration-dialog-cancel" class="btn btn-secondary">Cancel</button>
-        <button type="button" id="duration-dialog-continue" class="btn" style="background: var(--rose-600); color: #fff;">Continue</button>
+        <button type="button" id="duration-dialog-continue" class="btn"
+          style="background: var(--rose-600); color: #fff;">Continue</button>
       </div>
     </div>
   </dialog>
 
   <script src="app.js"></script>
 </body>
+
 </html>
