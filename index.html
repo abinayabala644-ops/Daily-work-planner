@@ -3660,37 +3660,35 @@
       color: #f9fafb;
     }
 
-    /* Week Review Companion Journal Card in dark mode */
-    [data-theme="dark"] .companion-card {
-      background: #182030;
-      border-color: #2d3748;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    /* Week Review Companion Journal Card in dark mode:
+       Set all relevant diary text and handwritten story to solid BLACK (#000000)
+       while strictly preserving all emojis, layout, backgrounds, and fonts */
+    [data-theme="dark"] .diary-title-handwritten {
+      color: #000000 !important;
     }
 
-    [data-theme="dark"] .companion-header-title {
-      color: #f3f4f6;
-    }
-
-    [data-theme="dark"] .diary-stats-ribbon {
-      background: rgba(31, 41, 55, 0.7);
-      border-color: #4b5563;
+    [data-theme="dark"] .diary-date-stamp {
+      color: #000000 !important;
     }
 
     [data-theme="dark"] .diary-stat-tag {
-      color: #e5e7eb;
+      color: #000000 !important;
     }
 
     [data-theme="dark"] .diary-story-body {
-      color: #e2e8f0;
-      background-image: linear-gradient(to bottom, transparent 96%, rgba(75, 85, 99, 0.35) 96%);
+      color: #000000 !important;
+    }
+
+    [data-theme="dark"] .diary-paragraph {
+      color: #000000 !important;
     }
 
     [data-theme="dark"] .diary-signoff-line {
-      color: #cbd5e1;
+      color: #000000 !important;
     }
 
     [data-theme="dark"] .diary-signature {
-      color: #fca5a5;
+      color: #000000 !important;
     }
   </style>
   <script src="theme.js"></script>
