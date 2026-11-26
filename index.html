@@ -3986,11 +3986,7 @@
           style="font-size: 1rem; color: var(--slate-600); font-weight: 600;"></div>
       </div>
 
-      <!-- Notice for slot keeping earlier saved time -->
-      <div id="slot-legacy-notice" class="legacy-slot-notice"
-        style="display: none; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.85rem; font-weight: 600; color: #92400e;">
-        This slot keeps the time you saved earlier.
-      </div>
+
 
       <div class="slot-times-grid"
         style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px;">
@@ -4264,6 +4260,18 @@
           <button type="button" id="change-pwd-ok-btn" class="btn btn-primary" style="min-width: 120px;">OK</button>
         </div>
       </form>
+    </div>
+  </dialog>
+
+  <!-- Native Dialog: Time Conflict Confirmation for Upcoming Schedule -->
+  <dialog id="conflict-confirm-dialog">
+    <div class="modal-box">
+      <h3 class="modal-title">Schedule Time Conflict</h3>
+      <p id="conflict-confirm-message" class="modal-desc" style="line-height: 1.5; margin-bottom: 20px;"></p>
+      <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+        <button type="button" id="conflict-keep-btn" class="btn btn-secondary" style="min-width: 140px;">Keep Existing Work</button>
+        <button type="button" id="conflict-cancel-btn" class="btn" style="min-width: 150px; background: var(--rose-600); color: #fff;">Cancel Existing Work</button>
+      </div>
     </div>
   </dialog>
 

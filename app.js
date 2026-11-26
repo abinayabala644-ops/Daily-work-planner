@@ -223,6 +223,13 @@
   const calendarCloseBtn = document.getElementById('calendar-close-btn');
   const calendarDaysGrid = document.getElementById('calendar-days-grid');
 
+  // Conflict Confirm Dialog Elements
+  const conflictConfirmDialog = document.getElementById('conflict-confirm-dialog');
+  const conflictConfirmMessage = document.getElementById('conflict-confirm-message');
+  const conflictKeepBtn = document.getElementById('conflict-keep-btn');
+  const conflictCancelBtn = document.getElementById('conflict-cancel-btn');
+  let pendingConflictData = null;
+
   // Other Dialogs
   const settingsConfirmDialog = document.getElementById('settings-confirm-dialog');
   const settingsDialogCancel = document.getElementById('settings-dialog-cancel');
@@ -788,11 +795,6 @@
   }
 
   function getEffectiveSlotStart(dayData, slotIndex) {
-    if (!dayData || !dayData.slots || !dayData.slots[slotIndex]) return MIN_WORK_TIME;
-    const slot = dayData.slots[slotIndex];
-    if (typeof slot.start === "number" && !isNaN(slot.start)) {
-      return slot.start;
-    }
     return getExpectedSlotStart(dayData, slotIndex);
   }
 
@@ -2941,6 +2943,36 @@
     const dayData = getCurrentDayData();
     const settingsChanged = dayData && (dayData.startMinutes !== startMins || dayData.endMinutes !== endMins);
 
+    // Check for conflicting saved slots in Upcoming Schedule when new starting time is later than saved slot start
+    // or overlaps/affects existing saved work
+    if (dayData && Array.isArray(dayData.slots)) {
+      const conflictingSlots = dayData.slots.filter(s => {
+        if (isSlotEmpty(s)) return false;
+        if (s.status === "CANCELLED") return false;
+        if (typeof s.start !== "number") return false;
+        // Conflicting condition: new starting time is later than the slot start, or new start falls inside the slot
+        if (startMins > s.start) return true;
+        return false;
+      });
+
+      if (conflictingSlots.length > 0) {
+        const firstConf = conflictingSlots[0];
+        const cStart = formatMinutesTo12Hour(firstConf.start);
+        const cEnd = (typeof firstConf.end === "number") ? formatMinutesTo12Hour(firstConf.end) : formatMinutesTo12Hour(dayData.endMinutes);
+        
+        conflictConfirmMessage.textContent = `You have already saved a work schedule from ${cStart} to ${cEnd}. Your newly selected starting time is later than your previously saved work time. Do you want to keep this existing work or cancel it and continue with the new time?`;
+        
+        pendingConflictData = {
+          startMinutes: startMins,
+          endMinutes: endMins,
+          conflictingSlots: conflictingSlots,
+        };
+        
+        conflictConfirmDialog.showModal();
+        return;
+      }
+    }
+
     const hasSlotsOutside = Boolean(
       settingsChanged &&
       dayData &&
@@ -2996,6 +3028,48 @@
       switchView('slot');
     }
   });
+
+  // Conflict confirmation buttons logic
+  if (conflictKeepBtn) {
+    conflictKeepBtn.addEventListener('click', () => {
+      conflictConfirmDialog.close();
+      const dayData = getCurrentDayData();
+      if (dayData) {
+        startInput.value = formatMinutesTo12Hour(dayData.startMinutes);
+        endInput.value = formatMinutesTo12Hour(dayData.endMinutes);
+      }
+      pendingConflictData = null;
+    });
+  }
+
+  if (conflictCancelBtn) {
+    conflictCancelBtn.addEventListener('click', () => {
+      if (!pendingConflictData) {
+        conflictConfirmDialog.close();
+        return;
+      }
+      const { startMinutes: newStart, endMinutes: newEnd, conflictingSlots } = pendingConflictData;
+      const dayData = getCurrentDayData();
+      if (dayData) {
+        // Mark only the affected conflicting slots as CANCELLED
+        if (Array.isArray(conflictingSlots)) {
+          conflictingSlots.forEach(cs => {
+            cs.status = "CANCELLED";
+            cs.markedAt = Date.now();
+          });
+        }
+        dayData.startMinutes = newStart;
+        dayData.endMinutes = newEnd;
+        state.lastTimes = { startMinutes: newStart, endMinutes: newEnd };
+      }
+      saveStorage(selectedDateKey);
+      conflictConfirmDialog.close();
+      pendingConflictData = null;
+      currentSlotIndex = 0;
+      renderSlotPage();
+      switchView('slot');
+    });
+  }
 
   settingsDialogCancel.addEventListener('click', () => {
     settingsConfirmDialog.close();
@@ -3070,18 +3144,14 @@
     const selectedObj = parseLocalDateKey(selectedDateKey);
     slotDateDisplay.textContent = formatFullDisplayDate(selectedObj);
 
-    // Rule 1: Start time is automatic and read-only on every slot page
+    // Start time is automatic: Slot 1 starts at dayData.startMinutes, subsequent slots start at previous slot end
     const expectedStart = getExpectedSlotStart(dayData, currentSlotIndex);
-    const isLegacy = typeof slot.start === "number" && !isNaN(slot.start) && slot.start !== expectedStart;
-
-    if (isLegacy) {
-      if (slotLegacyNotice) slotLegacyNotice.style.display = "block";
-    } else {
-      if (slotLegacyNotice) slotLegacyNotice.style.display = "none";
-      slot.start = expectedStart; // enforce automatic start for new / updated slots
+    slot.start = expectedStart;
+    if (slotLegacyNotice) {
+      slotLegacyNotice.style.display = "none";
     }
 
-    const effectiveStart = getEffectiveSlotStart(dayData, currentSlotIndex);
+    const effectiveStart = expectedStart;
     const startStr = formatMinutesTo12Hour(effectiveStart);
     if (slotStartDisplay) {
       slotStartDisplay.textContent = startStr;
