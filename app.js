@@ -223,6 +223,13 @@
   const calendarCloseBtn = document.getElementById('calendar-close-btn');
   const calendarDaysGrid = document.getElementById('calendar-days-grid');
 
+  // Conflict Confirm Dialog Elements
+  const conflictConfirmDialog = document.getElementById('conflict-confirm-dialog');
+  const conflictConfirmMessage = document.getElementById('conflict-confirm-message');
+  const conflictKeepBtn = document.getElementById('conflict-keep-btn');
+  const conflictCancelBtn = document.getElementById('conflict-cancel-btn');
+  let pendingConflictData = null;
+
   // Other Dialogs
   const settingsConfirmDialog = document.getElementById('settings-confirm-dialog');
   const settingsDialogCancel = document.getElementById('settings-dialog-cancel');
@@ -462,6 +469,122 @@
     });
   }
 
+  function mergeSlotsArrays(existingSlots = [], incomingSlots = [], defaultStart = MIN_WORK_TIME) {
+    const sanitizedExisting = sanitizeSlots(existingSlots, defaultStart);
+    const sanitizedIncoming = sanitizeSlots(incomingSlots, defaultStart);
+    const result = [];
+
+    function findMatchingIndex(target) {
+      return result.findIndex(s => {
+        // Direct match on start and end
+        if (typeof target.start === "number" && typeof target.end === "number" &&
+            typeof s.start === "number" && typeof s.end === "number") {
+          if (s.start === target.start && s.end === target.end) return true;
+        }
+        // Match by unique ID if present and not generic
+        if (target.id && s.id && target.id === s.id && !target.id.startsWith("slot-")) {
+          return true;
+        }
+        // Match by taskText and start time if start is identical
+        const sText = (s.taskText || s.text || "").trim();
+        const tText = (target.taskText || target.text || "").trim();
+        if (sText && tText && sText === tText && s.start === target.start) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // 1. Add all sanitized existing slots
+    sanitizedExisting.forEach(s => {
+      result.push({ ...s });
+    });
+
+    // 2. Merge incoming slots
+    sanitizedIncoming.forEach(inc => {
+      const matchIdx = findMatchingIndex(inc);
+      if (matchIdx !== -1) {
+        // Merge without overwriting valid details
+        const cur = result[matchIdx];
+        const curText = (cur.taskText || cur.text || "").trim();
+        const incText = (inc.taskText || inc.text || "").trim();
+        if (!curText && incText) {
+          cur.taskText = incText;
+          cur.text = incText;
+        }
+        if (inc.status && inc.status !== "NONE") {
+          cur.status = inc.status;
+          cur.markedAt = inc.markedAt || cur.markedAt || null;
+        }
+        if (typeof inc.start === "number" && (typeof cur.start !== "number" || isNaN(cur.start))) {
+          cur.start = inc.start;
+        }
+        if (typeof inc.end === "number" && (typeof cur.end !== "number" || isNaN(cur.end))) {
+          cur.end = inc.end;
+        }
+      } else {
+        result.push({ ...inc });
+      }
+    });
+
+    // Filter out trailing empty unstarted slots if other valid slots exist
+    const hasValid = result.some(s => !isSlotEmpty(s));
+    let cleaned = result;
+    if (hasValid) {
+      cleaned = result.filter(s => !isSlotEmpty(s));
+    }
+
+    // Sort chronologically by startMinutes
+    cleaned.sort((a, b) => {
+      const aStart = typeof a.start === "number" ? a.start : 0;
+      const bStart = typeof b.start === "number" ? b.start : 0;
+      return aStart - bStart;
+    });
+
+    // Re-assign stable IDs if generic
+    cleaned.forEach((s, idx) => {
+      if (!s.id || s.id.startsWith("slot-")) {
+        s.id = `slot-${idx + 1}`;
+      }
+    });
+
+    return cleaned;
+  }
+
+  function mergeDayData(dateKey, incomingStart, incomingEnd, incomingSlots = [], incomingSavedAt = null) {
+    const existing = state.days[dateKey];
+    const sMin = typeof incomingStart === "number" ? incomingStart : (existing && typeof existing.startMinutes === "number" ? existing.startMinutes : MIN_WORK_TIME);
+    const eMin = typeof incomingEnd === "number" ? incomingEnd : (existing && typeof existing.endMinutes === "number" ? existing.endMinutes : MAX_WORK_TIME);
+
+    if (!existing) {
+      state.days[dateKey] = {
+        startMinutes: sMin,
+        endMinutes: eMin,
+        slots: sanitizeSlots(incomingSlots, sMin),
+        savedAt: typeof incomingSavedAt === "string" ? incomingSavedAt : null,
+      };
+      return;
+    }
+
+    // Merge existing and incoming slots without overwriting
+    const mergedSlots = mergeSlotsArrays(existing.slots || [], incomingSlots || [], sMin);
+    
+    // Expand day boundary to encompass all saved slots
+    let finalStart = sMin;
+    let finalEnd = eMin;
+    mergedSlots.forEach(s => {
+      if (typeof s.start === "number" && s.start < finalStart) finalStart = s.start;
+      if (typeof s.end === "number" && s.end > finalEnd) finalEnd = s.end;
+    });
+
+    existing.startMinutes = finalStart;
+    existing.endMinutes = finalEnd;
+    existing.slots = mergedSlots;
+    if (typeof incomingSavedAt === "string" && incomingSavedAt) {
+      existing.savedAt = incomingSavedAt;
+    }
+  }
+
   function loadFromLocalStorage() {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -584,12 +707,7 @@
             if (row && typeof row.day === "string") {
               const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
               const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-              state.days[row.day] = {
-                startMinutes: sMin,
-                endMinutes: eMin,
-                slots: sanitizeSlots(row.slots, sMin),
-                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-              };
+              mergeDayData(row.day, sMin, eMin, row.slots, row.saved_at);
             }
           });
 
@@ -642,12 +760,7 @@
             if (row && typeof row.day === "string") {
               const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
               const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-              state.days[row.day] = {
-                startMinutes: sMin,
-                endMinutes: eMin,
-                slots: sanitizeSlots(row.slots, sMin),
-                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-              };
+              mergeDayData(row.day, sMin, eMin, row.slots, row.saved_at);
             }
           });
 
@@ -697,12 +810,7 @@
             if (row && typeof row.day === "string") {
               const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
               const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-              state.days[row.day] = {
-                startMinutes: sMin,
-                endMinutes: eMin,
-                slots: sanitizeSlots(row.slots, sMin),
-                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-              };
+              mergeDayData(row.day, sMin, eMin, row.slots, row.saved_at);
             }
           });
 
@@ -737,12 +845,7 @@
             if (row && typeof row.day === "string") {
               const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
               const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-              state.days[row.day] = {
-                startMinutes: sMin,
-                endMinutes: eMin,
-                slots: sanitizeSlots(row.slots, sMin),
-                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-              };
+              mergeDayData(row.day, sMin, eMin, row.slots, row.saved_at);
             }
           });
           // Update local cache
@@ -759,6 +862,11 @@
     const dateToSync = syncDateKey || selectedDateKey;
     if (dateToSync) {
       syncDayToSupabase(dateToSync);
+    }
+    const todayStr = getLocalDateKey(todayDate);
+    if (dateToSync === todayStr && views.home && views.home.classList.contains('active')) {
+      cachedTodaySlots = getTodayWorkProgressSlots();
+      renderTodayWorkProgressInPlace();
     }
   }
 
@@ -2328,7 +2436,9 @@
     }
 
     // Render / update each row
+    const renderedIndices = new Set();
     cachedTodaySlots.forEach((slotItem) => {
+      renderedIndices.add(String(slotItem.slotIndex));
       const isRunning = slotItem.startMinutes <= currentMin && currentMin < slotItem.endMinutes;
       const timeRangeText = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
 
@@ -2414,6 +2524,11 @@
           badge.style.display = isRunning ? 'inline-flex' : 'none';
         }
 
+        const timeSpan = rowBtn.querySelector('.today-slot-time-range');
+        if (timeSpan) {
+          timeSpan.textContent = timeRangeText;
+        }
+
         const statusLabel = rowBtn.querySelector('.today-slot-status-label');
         if (statusLabel) {
           statusLabel.textContent = statusWord;
@@ -2427,6 +2542,13 @@
         // Accessible label
         const statusAccessible = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'CANCELLED' ? 'Cancelled' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : (currentMin < slotItem.startMinutes ? 'Upcoming' : 'Not marked yet')));
         rowBtn.setAttribute('aria-label', `Open slot ${slotItem.slotNumber}: ${timeRangeText}, ${slotItem.taskText}, ${statusAccessible}.`);
+      }
+    });
+
+    // Clean up any stale DOM items no longer in cachedTodaySlots
+    Array.from(ul.querySelectorAll('li[data-slot-idx]')).forEach(li => {
+      if (!renderedIndices.has(li.dataset.slotIdx)) {
+        li.remove();
       }
     });
   }
@@ -2857,6 +2979,13 @@
     endInput.value = endMins !== null ? formatMinutesTo12Hour(endMins) : "";
 
     clearSettingsErrors();
+
+    // Auto-focus starting time input if settings view is active
+    setTimeout(() => {
+      if (views.settings && views.settings.classList.contains('active') && startInput) {
+        startInput.focus();
+      }
+    }, 50);
   }
 
   function clearSettingsErrors() {
@@ -2874,16 +3003,31 @@
     }
   }
 
-  [startInput, endInput].forEach(inp => {
-    if (!inp) return;
-    inp.addEventListener('blur', () => handleTimeFieldBlur(inp));
-    inp.addEventListener('keydown', (e) => {
+  if (startInput) {
+    startInput.addEventListener('blur', () => handleTimeFieldBlur(startInput));
+    startInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        handleTimeFieldBlur(inp);
-        inp.blur();
+        e.preventDefault();
+        handleTimeFieldBlur(startInput);
+        if (endInput) {
+          endInput.focus();
+        }
       }
     });
-  });
+  }
+
+  if (endInput) {
+    endInput.addEventListener('blur', () => handleTimeFieldBlur(endInput));
+    endInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleTimeFieldBlur(endInput);
+        if (settingsNextBtn && !settingsNextBtn.disabled) {
+          settingsNextBtn.click();
+        }
+      }
+    });
+  }
 
   settingsNextBtn.addEventListener('click', () => {
     clearSettingsErrors();
@@ -2941,6 +3085,36 @@
     const dayData = getCurrentDayData();
     const settingsChanged = dayData && (dayData.startMinutes !== startMins || dayData.endMinutes !== endMins);
 
+    // Check for conflicting saved slots in Upcoming Schedule when new starting time is later than saved slot start
+    // or overlaps/affects existing saved work
+    if (dayData && Array.isArray(dayData.slots)) {
+      const conflictingSlots = dayData.slots.filter(s => {
+        if (isSlotEmpty(s)) return false;
+        if (s.status === "CANCELLED") return false;
+        if (typeof s.start !== "number") return false;
+        // Conflicting condition: new starting time is later than the slot start, or new start falls inside the slot
+        if (startMins > s.start) return true;
+        return false;
+      });
+
+      if (conflictingSlots.length > 0) {
+        const firstConf = conflictingSlots[0];
+        const cStart = formatMinutesTo12Hour(firstConf.start);
+        const cEnd = (typeof firstConf.end === "number") ? formatMinutesTo12Hour(firstConf.end) : formatMinutesTo12Hour(dayData.endMinutes);
+        
+        conflictConfirmMessage.textContent = `You have already saved a work schedule from ${cStart} to ${cEnd}. Your newly selected starting time is later than your previously saved work time. Do you want to keep this existing work or cancel it and continue with the new time?`;
+        
+        pendingConflictData = {
+          startMinutes: startMins,
+          endMinutes: endMins,
+          conflictingSlots: conflictingSlots,
+        };
+        
+        conflictConfirmDialog.showModal();
+        return;
+      }
+    }
+
     const hasSlotsOutside = Boolean(
       settingsChanged &&
       dayData &&
@@ -2991,11 +3165,59 @@
         }
       }
       saveStorage(selectedDateKey);
-      currentSlotIndex = 0;
+      // Navigate to the first unfinished slot, or the first slot if all or none are filled
+      const existingDay = state.days[selectedDateKey];
+      if (existingDay && Array.isArray(existingDay.slots) && existingDay.slots.length > 0) {
+        currentSlotIndex = getFirstUnfinishedSlotIndex(existingDay);
+      } else {
+        currentSlotIndex = 0;
+      }
       renderSlotPage();
       switchView('slot');
     }
   });
+
+  // Conflict confirmation buttons logic
+  if (conflictKeepBtn) {
+    conflictKeepBtn.addEventListener('click', () => {
+      conflictConfirmDialog.close();
+      const dayData = getCurrentDayData();
+      if (dayData) {
+        startInput.value = formatMinutesTo12Hour(dayData.startMinutes);
+        endInput.value = formatMinutesTo12Hour(dayData.endMinutes);
+      }
+      pendingConflictData = null;
+    });
+  }
+
+  if (conflictCancelBtn) {
+    conflictCancelBtn.addEventListener('click', () => {
+      if (!pendingConflictData) {
+        conflictConfirmDialog.close();
+        return;
+      }
+      const { startMinutes: newStart, endMinutes: newEnd, conflictingSlots } = pendingConflictData;
+      const dayData = getCurrentDayData();
+      if (dayData) {
+        // Mark only the affected conflicting slots as CANCELLED
+        if (Array.isArray(conflictingSlots)) {
+          conflictingSlots.forEach(cs => {
+            cs.status = "CANCELLED";
+            cs.markedAt = Date.now();
+          });
+        }
+        dayData.startMinutes = newStart;
+        dayData.endMinutes = newEnd;
+        state.lastTimes = { startMinutes: newStart, endMinutes: newEnd };
+      }
+      saveStorage(selectedDateKey);
+      conflictConfirmDialog.close();
+      pendingConflictData = null;
+      currentSlotIndex = 0;
+      renderSlotPage();
+      switchView('slot');
+    });
+  }
 
   settingsDialogCancel.addEventListener('click', () => {
     settingsConfirmDialog.close();
@@ -3070,18 +3292,14 @@
     const selectedObj = parseLocalDateKey(selectedDateKey);
     slotDateDisplay.textContent = formatFullDisplayDate(selectedObj);
 
-    // Rule 1: Start time is automatic and read-only on every slot page
+    // Start time is automatic: Slot 1 starts at dayData.startMinutes, subsequent slots start at previous slot end
     const expectedStart = getExpectedSlotStart(dayData, currentSlotIndex);
-    const isLegacy = typeof slot.start === "number" && !isNaN(slot.start) && slot.start !== expectedStart;
-
-    if (isLegacy) {
-      if (slotLegacyNotice) slotLegacyNotice.style.display = "block";
-    } else {
-      if (slotLegacyNotice) slotLegacyNotice.style.display = "none";
-      slot.start = expectedStart; // enforce automatic start for new / updated slots
+    slot.start = expectedStart;
+    if (slotLegacyNotice) {
+      slotLegacyNotice.style.display = "none";
     }
 
-    const effectiveStart = getEffectiveSlotStart(dayData, currentSlotIndex);
+    const effectiveStart = expectedStart;
     const startStr = formatMinutesTo12Hour(effectiveStart);
     if (slotStartDisplay) {
       slotStartDisplay.textContent = startStr;
@@ -3105,6 +3323,17 @@
 
     // Update validation and buttons state
     updateSlotValidationUI();
+
+    // Auto-focus first relevant field in slot view
+    setTimeout(() => {
+      if (views.slot && views.slot.classList.contains('active')) {
+        if (slotEndSelect && !slotEndSelect.value) {
+          slotEndSelect.focus();
+        } else if (slotTaskInput) {
+          slotTaskInput.focus();
+        }
+      }
+    }, 50);
   }
 
   function adjustSlotTaskInputHeight() {
@@ -3294,6 +3523,28 @@
       }, 600);
     }
   });
+
+  if (slotEndSelect) {
+    slotEndSelect.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (slotTaskInput) {
+          slotTaskInput.focus();
+        }
+      }
+    });
+  }
+
+  if (slotTaskInput) {
+    slotTaskInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || !e.shiftKey)) {
+        if (slotNextBtn && !slotNextBtn.disabled) {
+          e.preventDefault();
+          slotNextBtn.click();
+        }
+      }
+    });
+  }
 
   slotTaskInput.addEventListener('input', () => {
     adjustSlotTaskInputHeight();
@@ -3840,6 +4091,37 @@
     }
   }
 
+  if (summaryEditSlotDialog) {
+    if (summaryEditStartInput) {
+      summaryEditStartInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleTimeFieldBlur(summaryEditStartInput);
+          if (summaryEditEndInput) summaryEditEndInput.focus();
+        }
+      });
+      summaryEditStartInput.addEventListener('blur', () => handleTimeFieldBlur(summaryEditStartInput));
+    }
+    if (summaryEditEndInput) {
+      summaryEditEndInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleTimeFieldBlur(summaryEditEndInput);
+          if (summaryEditTaskInput) summaryEditTaskInput.focus();
+        }
+      });
+      summaryEditEndInput.addEventListener('blur', () => handleTimeFieldBlur(summaryEditEndInput));
+    }
+    if (summaryEditTaskInput) {
+      summaryEditTaskInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          if (summaryEditDialogSaveBtn) summaryEditDialogSaveBtn.click();
+        }
+      });
+    }
+  }
+
   if (summaryEditDialogCloseBtn) {
     summaryEditDialogCloseBtn.addEventListener('click', closeEditSlotModal);
   }
@@ -4285,8 +4567,282 @@
     renderCalendarGrid();
   });
 
+  // Keyboard Shortcuts Dialog & Search Elements
+  const btnTopShortcutsHelp = document.getElementById('btn-top-shortcuts-help');
+  const shortcutsHelpDialog = document.getElementById('shortcuts-help-dialog');
+  const shortcutsDialogCloseBtn = document.getElementById('shortcuts-dialog-close-btn');
+  const shortcutsDialogOkBtn = document.getElementById('shortcuts-dialog-ok-btn');
+
+  const taskSearchDialog = document.getElementById('task-search-dialog');
+  const taskSearchInput = document.getElementById('task-search-input');
+  const taskSearchResults = document.getElementById('task-search-results');
+  const taskSearchCloseBtn = document.getElementById('task-search-close-btn');
+
+  function openShortcutsDialog() {
+    if (shortcutsHelpDialog) {
+      if (typeof shortcutsHelpDialog.showModal === 'function') {
+        shortcutsHelpDialog.showModal();
+      } else {
+        shortcutsHelpDialog.setAttribute('open', '');
+      }
+    }
+  }
+
+  function closeShortcutsDialog() {
+    if (shortcutsHelpDialog) {
+      if (typeof shortcutsHelpDialog.close === 'function') {
+        shortcutsHelpDialog.close();
+      } else {
+        shortcutsHelpDialog.removeAttribute('open');
+      }
+    }
+  }
+
+  if (btnTopShortcutsHelp) {
+    btnTopShortcutsHelp.addEventListener('click', openShortcutsDialog);
+  }
+  if (shortcutsDialogCloseBtn) {
+    shortcutsDialogCloseBtn.addEventListener('click', closeShortcutsDialog);
+  }
+  if (shortcutsDialogOkBtn) {
+    shortcutsDialogOkBtn.addEventListener('click', closeShortcutsDialog);
+  }
+
+  // Task Search Dialog Functions (Ctrl + K)
+  function openTaskSearchDialog() {
+    if (taskSearchDialog) {
+      if (typeof taskSearchDialog.showModal === 'function') {
+        taskSearchDialog.showModal();
+      } else {
+        taskSearchDialog.setAttribute('open', '');
+      }
+      if (taskSearchInput) {
+        taskSearchInput.value = '';
+        taskSearchInput.focus();
+      }
+      renderTaskSearchResults('');
+    }
+  }
+
+  function closeTaskSearchDialog() {
+    if (taskSearchDialog) {
+      if (typeof taskSearchDialog.close === 'function') {
+        taskSearchDialog.close();
+      } else {
+        taskSearchDialog.removeAttribute('open');
+      }
+    }
+  }
+
+  if (taskSearchCloseBtn) {
+    taskSearchCloseBtn.addEventListener('click', closeTaskSearchDialog);
+  }
+
+  function renderTaskSearchResults(query) {
+    if (!taskSearchResults) return;
+    const q = (query || '').toLowerCase().trim();
+    if (!q) {
+      taskSearchResults.innerHTML = '<p class="task-search-empty-hint">Type above to search through your tasks.</p>';
+      return;
+    }
+
+    const matched = [];
+    const daysKeys = Object.keys(state.days || {}).sort().reverse();
+    daysKeys.forEach((dKey) => {
+      const dayData = state.days[dKey];
+      if (!dayData || !Array.isArray(dayData.slots)) return;
+      dayData.slots.forEach((s, idx) => {
+        const text = (s.taskText || s.text || '').trim();
+        if (text && text.toLowerCase().includes(q)) {
+          matched.push({
+            dateKey: dKey,
+            slotIndex: idx,
+            slotNumber: idx + 1,
+            start: s.start,
+            end: s.end,
+            taskText: text,
+            status: s.status,
+          });
+        }
+      });
+    });
+
+    if (matched.length === 0) {
+      taskSearchResults.innerHTML = `<p class="task-search-empty-hint">No tasks found matching "${escapeHtml(q)}".</p>`;
+      return;
+    }
+
+    taskSearchResults.innerHTML = '';
+    matched.slice(0, 25).forEach((item) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'task-search-item-btn';
+
+      const taskP = document.createElement('span');
+      taskP.className = 'task-search-item-task';
+      taskP.textContent = item.taskText;
+
+      const metaP = document.createElement('span');
+      metaP.className = 'task-search-item-meta';
+      const dObj = parseLocalDateKey(item.dateKey);
+      const timeStr = typeof item.start === 'number' && typeof item.end === 'number'
+        ? `${formatMinutesTo12Hour(item.start)} - ${formatMinutesTo12Hour(item.end)}`
+        : '';
+      metaP.textContent = `${formatFullDisplayDate(dObj)} • Slot ${item.slotNumber} ${timeStr ? '• ' + timeStr : ''}`;
+
+      btn.appendChild(taskP);
+      btn.appendChild(metaP);
+
+      btn.addEventListener('click', () => {
+        closeTaskSearchDialog();
+        selectedDateKey = item.dateKey;
+        currentSlotIndex = item.slotIndex;
+        renderSlotPage();
+        switchView('slot');
+      });
+
+      taskSearchResults.appendChild(btn);
+    });
+  }
+
+  if (taskSearchInput) {
+    taskSearchInput.addEventListener('input', () => {
+      renderTaskSearchResults(taskSearchInput.value);
+    });
+  }
+
+  // Helper to close currently open native modal/dialog (Esc handler)
+  function closeAnyOpenDialog() {
+    const dialogs = [
+      shortcutsHelpDialog,
+      taskSearchDialog,
+      summaryEditSlotDialog,
+      calendarDialog,
+      workDetailDialog,
+      changePasswordDialog,
+      conflictConfirmDialog,
+      settingsConfirmDialog,
+      durationConfirmDialog,
+    ];
+    let closedAny = false;
+    for (const d of dialogs) {
+      if (d && (d.open || d.hasAttribute('open'))) {
+        if (typeof d.close === 'function') {
+          d.close();
+        } else {
+          d.removeAttribute('open');
+        }
+        closedAny = true;
+      }
+    }
+    return closedAny;
+  }
+
+  // Helper to trigger Save action (Ctrl + S)
+  function triggerSaveAction() {
+    // 1. If inside Edit Slot Modal, trigger modal save
+    if (summaryEditSlotDialog && (summaryEditSlotDialog.open || summaryEditSlotDialog.hasAttribute('open'))) {
+      if (summaryEditDialogSaveBtn && !summaryEditDialogSaveBtn.disabled) {
+        summaryEditDialogSaveBtn.click();
+        return;
+      }
+    }
+    // 2. If inside Change Password Modal, trigger submit
+    if (changePasswordDialog && (changePasswordDialog.open || changePasswordDialog.hasAttribute('open'))) {
+      if (changePasswordForm) {
+        if (typeof changePasswordForm.requestSubmit === 'function') {
+          changePasswordForm.requestSubmit();
+        } else if (changePwdSubmitBtn) {
+          changePwdSubmitBtn.click();
+        }
+        return;
+      }
+    }
+    // 3. If in Summary View, click Save Day
+    if (views.summary && views.summary.classList.contains('active')) {
+      if (summarySaveBtn && !summarySaveBtn.disabled) {
+        summarySaveBtn.click();
+        return;
+      }
+    }
+    // 4. If in Slot View, advance/save current slot
+    if (views.slot && views.slot.classList.contains('active')) {
+      if (slotNextBtn && !slotNextBtn.disabled) {
+        slotNextBtn.click();
+        return;
+      }
+    }
+    // 5. If in Settings View, advance
+    if (views.settings && views.settings.classList.contains('active')) {
+      if (settingsNextBtn && !settingsNextBtn.disabled) {
+        settingsNextBtn.click();
+        return;
+      }
+    }
+    // Fallback: flush pending debounced save
+    flushPendingDebouncedSave();
+  }
+
+  // Helper to trigger New Task (Alt + N)
+  function triggerNewTaskAction() {
+    // Directly starts planning/adding task for Today
+    const todayStr = getLocalDateKey(todayDate);
+    selectedDateKey = todayStr;
+    updateDateButtonsState();
+    initSettingsView();
+    switchView('settings');
+    if (startInput) startInput.focus();
+  }
+
+  // Global Keyboard Shortcuts Handler
+  window.addEventListener('keydown', (e) => {
+    const activeEl = document.activeElement;
+    const isEditingText = activeEl && (
+      activeEl.tagName === 'INPUT' ||
+      activeEl.tagName === 'TEXTAREA' ||
+      activeEl.isContentEditable
+    );
+
+    // 1. Ctrl + S / Cmd + S – Save the current work or form (allowed inside textboxes)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      triggerSaveAction();
+      return;
+    }
+
+    // 2. Ctrl + K / Cmd + K – Focus task search field / open search dialog
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      openTaskSearchDialog();
+      return;
+    }
+
+    // 3. Alt + H – Navigate to My Work Board
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'h' || e.key === 'H')) {
+      e.preventDefault();
+      handleGoToHome(e);
+      return;
+    }
+
+    // 4. Alt + N – Open New Task form
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'n' || e.key === 'N')) {
+      e.preventDefault();
+      triggerNewTaskAction();
+      return;
+    }
+
+    // 5. Esc – Close open modal/popup
+    if (e.key === 'Escape') {
+      const closed = closeAnyOpenDialog();
+      if (closed) {
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+
   // Dialog backdrop close listeners
-  [settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog, changePasswordDialog].filter(Boolean).forEach((diag) => {
+  [settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog, changePasswordDialog, shortcutsHelpDialog, taskSearchDialog].filter(Boolean).forEach((diag) => {
     diag.addEventListener('click', (e) => {
       const rect = diag.getBoundingClientRect();
       const isInDialog =
@@ -4373,6 +4929,37 @@
   if (changePwdCancelBtn && changePasswordDialog) {
     changePwdCancelBtn.addEventListener('click', () => {
       changePasswordDialog.close();
+    });
+  }
+
+  if (changePwdPrevInput) {
+    changePwdPrevInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (changePwdNewInput) changePwdNewInput.focus();
+      }
+    });
+  }
+  if (changePwdNewInput) {
+    changePwdNewInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (changePwdConfirmInput) changePwdConfirmInput.focus();
+      }
+    });
+  }
+  if (changePwdConfirmInput) {
+    changePwdConfirmInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (changePasswordForm) {
+          if (typeof changePasswordForm.requestSubmit === 'function') {
+            changePasswordForm.requestSubmit();
+          } else if (changePwdSubmitBtn) {
+            changePwdSubmitBtn.click();
+          }
+        }
+      }
     });
   }
 

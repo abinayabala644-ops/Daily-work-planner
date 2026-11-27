@@ -218,10 +218,12 @@
       transition: border-color 0.15s ease, background-color 0.2s ease, color 0.2s ease;
     }
 
+    .form-input:focus,
     .form-input:focus-visible {
       border-color: var(--blue-700);
       outline: 2px solid var(--blue-700);
       outline-offset: 1px;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     }
 
     .show-password-row {
