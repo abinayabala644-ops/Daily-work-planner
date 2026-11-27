@@ -2979,6 +2979,13 @@
     endInput.value = endMins !== null ? formatMinutesTo12Hour(endMins) : "";
 
     clearSettingsErrors();
+
+    // Auto-focus starting time input if settings view is active
+    setTimeout(() => {
+      if (views.settings && views.settings.classList.contains('active') && startInput) {
+        startInput.focus();
+      }
+    }, 50);
   }
 
   function clearSettingsErrors() {
@@ -2996,16 +3003,31 @@
     }
   }
 
-  [startInput, endInput].forEach(inp => {
-    if (!inp) return;
-    inp.addEventListener('blur', () => handleTimeFieldBlur(inp));
-    inp.addEventListener('keydown', (e) => {
+  if (startInput) {
+    startInput.addEventListener('blur', () => handleTimeFieldBlur(startInput));
+    startInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        handleTimeFieldBlur(inp);
-        inp.blur();
+        e.preventDefault();
+        handleTimeFieldBlur(startInput);
+        if (endInput) {
+          endInput.focus();
+        }
       }
     });
-  });
+  }
+
+  if (endInput) {
+    endInput.addEventListener('blur', () => handleTimeFieldBlur(endInput));
+    endInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleTimeFieldBlur(endInput);
+        if (settingsNextBtn && !settingsNextBtn.disabled) {
+          settingsNextBtn.click();
+        }
+      }
+    });
+  }
 
   settingsNextBtn.addEventListener('click', () => {
     clearSettingsErrors();
@@ -3301,6 +3323,17 @@
 
     // Update validation and buttons state
     updateSlotValidationUI();
+
+    // Auto-focus first relevant field in slot view
+    setTimeout(() => {
+      if (views.slot && views.slot.classList.contains('active')) {
+        if (slotEndSelect && !slotEndSelect.value) {
+          slotEndSelect.focus();
+        } else if (slotTaskInput) {
+          slotTaskInput.focus();
+        }
+      }
+    }, 50);
   }
 
   function adjustSlotTaskInputHeight() {
@@ -3490,6 +3523,28 @@
       }, 600);
     }
   });
+
+  if (slotEndSelect) {
+    slotEndSelect.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (slotTaskInput) {
+          slotTaskInput.focus();
+        }
+      }
+    });
+  }
+
+  if (slotTaskInput) {
+    slotTaskInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || !e.shiftKey)) {
+        if (slotNextBtn && !slotNextBtn.disabled) {
+          e.preventDefault();
+          slotNextBtn.click();
+        }
+      }
+    });
+  }
 
   slotTaskInput.addEventListener('input', () => {
     adjustSlotTaskInputHeight();
@@ -4036,6 +4091,37 @@
     }
   }
 
+  if (summaryEditSlotDialog) {
+    if (summaryEditStartInput) {
+      summaryEditStartInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleTimeFieldBlur(summaryEditStartInput);
+          if (summaryEditEndInput) summaryEditEndInput.focus();
+        }
+      });
+      summaryEditStartInput.addEventListener('blur', () => handleTimeFieldBlur(summaryEditStartInput));
+    }
+    if (summaryEditEndInput) {
+      summaryEditEndInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleTimeFieldBlur(summaryEditEndInput);
+          if (summaryEditTaskInput) summaryEditTaskInput.focus();
+        }
+      });
+      summaryEditEndInput.addEventListener('blur', () => handleTimeFieldBlur(summaryEditEndInput));
+    }
+    if (summaryEditTaskInput) {
+      summaryEditTaskInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          if (summaryEditDialogSaveBtn) summaryEditDialogSaveBtn.click();
+        }
+      });
+    }
+  }
+
   if (summaryEditDialogCloseBtn) {
     summaryEditDialogCloseBtn.addEventListener('click', closeEditSlotModal);
   }
@@ -4481,8 +4567,282 @@
     renderCalendarGrid();
   });
 
+  // Keyboard Shortcuts Dialog & Search Elements
+  const btnTopShortcutsHelp = document.getElementById('btn-top-shortcuts-help');
+  const shortcutsHelpDialog = document.getElementById('shortcuts-help-dialog');
+  const shortcutsDialogCloseBtn = document.getElementById('shortcuts-dialog-close-btn');
+  const shortcutsDialogOkBtn = document.getElementById('shortcuts-dialog-ok-btn');
+
+  const taskSearchDialog = document.getElementById('task-search-dialog');
+  const taskSearchInput = document.getElementById('task-search-input');
+  const taskSearchResults = document.getElementById('task-search-results');
+  const taskSearchCloseBtn = document.getElementById('task-search-close-btn');
+
+  function openShortcutsDialog() {
+    if (shortcutsHelpDialog) {
+      if (typeof shortcutsHelpDialog.showModal === 'function') {
+        shortcutsHelpDialog.showModal();
+      } else {
+        shortcutsHelpDialog.setAttribute('open', '');
+      }
+    }
+  }
+
+  function closeShortcutsDialog() {
+    if (shortcutsHelpDialog) {
+      if (typeof shortcutsHelpDialog.close === 'function') {
+        shortcutsHelpDialog.close();
+      } else {
+        shortcutsHelpDialog.removeAttribute('open');
+      }
+    }
+  }
+
+  if (btnTopShortcutsHelp) {
+    btnTopShortcutsHelp.addEventListener('click', openShortcutsDialog);
+  }
+  if (shortcutsDialogCloseBtn) {
+    shortcutsDialogCloseBtn.addEventListener('click', closeShortcutsDialog);
+  }
+  if (shortcutsDialogOkBtn) {
+    shortcutsDialogOkBtn.addEventListener('click', closeShortcutsDialog);
+  }
+
+  // Task Search Dialog Functions (Ctrl + K)
+  function openTaskSearchDialog() {
+    if (taskSearchDialog) {
+      if (typeof taskSearchDialog.showModal === 'function') {
+        taskSearchDialog.showModal();
+      } else {
+        taskSearchDialog.setAttribute('open', '');
+      }
+      if (taskSearchInput) {
+        taskSearchInput.value = '';
+        taskSearchInput.focus();
+      }
+      renderTaskSearchResults('');
+    }
+  }
+
+  function closeTaskSearchDialog() {
+    if (taskSearchDialog) {
+      if (typeof taskSearchDialog.close === 'function') {
+        taskSearchDialog.close();
+      } else {
+        taskSearchDialog.removeAttribute('open');
+      }
+    }
+  }
+
+  if (taskSearchCloseBtn) {
+    taskSearchCloseBtn.addEventListener('click', closeTaskSearchDialog);
+  }
+
+  function renderTaskSearchResults(query) {
+    if (!taskSearchResults) return;
+    const q = (query || '').toLowerCase().trim();
+    if (!q) {
+      taskSearchResults.innerHTML = '<p class="task-search-empty-hint">Type above to search through your tasks.</p>';
+      return;
+    }
+
+    const matched = [];
+    const daysKeys = Object.keys(state.days || {}).sort().reverse();
+    daysKeys.forEach((dKey) => {
+      const dayData = state.days[dKey];
+      if (!dayData || !Array.isArray(dayData.slots)) return;
+      dayData.slots.forEach((s, idx) => {
+        const text = (s.taskText || s.text || '').trim();
+        if (text && text.toLowerCase().includes(q)) {
+          matched.push({
+            dateKey: dKey,
+            slotIndex: idx,
+            slotNumber: idx + 1,
+            start: s.start,
+            end: s.end,
+            taskText: text,
+            status: s.status,
+          });
+        }
+      });
+    });
+
+    if (matched.length === 0) {
+      taskSearchResults.innerHTML = `<p class="task-search-empty-hint">No tasks found matching "${escapeHtml(q)}".</p>`;
+      return;
+    }
+
+    taskSearchResults.innerHTML = '';
+    matched.slice(0, 25).forEach((item) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'task-search-item-btn';
+
+      const taskP = document.createElement('span');
+      taskP.className = 'task-search-item-task';
+      taskP.textContent = item.taskText;
+
+      const metaP = document.createElement('span');
+      metaP.className = 'task-search-item-meta';
+      const dObj = parseLocalDateKey(item.dateKey);
+      const timeStr = typeof item.start === 'number' && typeof item.end === 'number'
+        ? `${formatMinutesTo12Hour(item.start)} - ${formatMinutesTo12Hour(item.end)}`
+        : '';
+      metaP.textContent = `${formatFullDisplayDate(dObj)} • Slot ${item.slotNumber} ${timeStr ? '• ' + timeStr : ''}`;
+
+      btn.appendChild(taskP);
+      btn.appendChild(metaP);
+
+      btn.addEventListener('click', () => {
+        closeTaskSearchDialog();
+        selectedDateKey = item.dateKey;
+        currentSlotIndex = item.slotIndex;
+        renderSlotPage();
+        switchView('slot');
+      });
+
+      taskSearchResults.appendChild(btn);
+    });
+  }
+
+  if (taskSearchInput) {
+    taskSearchInput.addEventListener('input', () => {
+      renderTaskSearchResults(taskSearchInput.value);
+    });
+  }
+
+  // Helper to close currently open native modal/dialog (Esc handler)
+  function closeAnyOpenDialog() {
+    const dialogs = [
+      shortcutsHelpDialog,
+      taskSearchDialog,
+      summaryEditSlotDialog,
+      calendarDialog,
+      workDetailDialog,
+      changePasswordDialog,
+      conflictConfirmDialog,
+      settingsConfirmDialog,
+      durationConfirmDialog,
+    ];
+    let closedAny = false;
+    for (const d of dialogs) {
+      if (d && (d.open || d.hasAttribute('open'))) {
+        if (typeof d.close === 'function') {
+          d.close();
+        } else {
+          d.removeAttribute('open');
+        }
+        closedAny = true;
+      }
+    }
+    return closedAny;
+  }
+
+  // Helper to trigger Save action (Ctrl + S)
+  function triggerSaveAction() {
+    // 1. If inside Edit Slot Modal, trigger modal save
+    if (summaryEditSlotDialog && (summaryEditSlotDialog.open || summaryEditSlotDialog.hasAttribute('open'))) {
+      if (summaryEditDialogSaveBtn && !summaryEditDialogSaveBtn.disabled) {
+        summaryEditDialogSaveBtn.click();
+        return;
+      }
+    }
+    // 2. If inside Change Password Modal, trigger submit
+    if (changePasswordDialog && (changePasswordDialog.open || changePasswordDialog.hasAttribute('open'))) {
+      if (changePasswordForm) {
+        if (typeof changePasswordForm.requestSubmit === 'function') {
+          changePasswordForm.requestSubmit();
+        } else if (changePwdSubmitBtn) {
+          changePwdSubmitBtn.click();
+        }
+        return;
+      }
+    }
+    // 3. If in Summary View, click Save Day
+    if (views.summary && views.summary.classList.contains('active')) {
+      if (summarySaveBtn && !summarySaveBtn.disabled) {
+        summarySaveBtn.click();
+        return;
+      }
+    }
+    // 4. If in Slot View, advance/save current slot
+    if (views.slot && views.slot.classList.contains('active')) {
+      if (slotNextBtn && !slotNextBtn.disabled) {
+        slotNextBtn.click();
+        return;
+      }
+    }
+    // 5. If in Settings View, advance
+    if (views.settings && views.settings.classList.contains('active')) {
+      if (settingsNextBtn && !settingsNextBtn.disabled) {
+        settingsNextBtn.click();
+        return;
+      }
+    }
+    // Fallback: flush pending debounced save
+    flushPendingDebouncedSave();
+  }
+
+  // Helper to trigger New Task (Alt + N)
+  function triggerNewTaskAction() {
+    // Directly starts planning/adding task for Today
+    const todayStr = getLocalDateKey(todayDate);
+    selectedDateKey = todayStr;
+    updateDateButtonsState();
+    initSettingsView();
+    switchView('settings');
+    if (startInput) startInput.focus();
+  }
+
+  // Global Keyboard Shortcuts Handler
+  window.addEventListener('keydown', (e) => {
+    const activeEl = document.activeElement;
+    const isEditingText = activeEl && (
+      activeEl.tagName === 'INPUT' ||
+      activeEl.tagName === 'TEXTAREA' ||
+      activeEl.isContentEditable
+    );
+
+    // 1. Ctrl + S / Cmd + S – Save the current work or form (allowed inside textboxes)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      triggerSaveAction();
+      return;
+    }
+
+    // 2. Ctrl + K / Cmd + K – Focus task search field / open search dialog
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      openTaskSearchDialog();
+      return;
+    }
+
+    // 3. Alt + H – Navigate to My Work Board
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'h' || e.key === 'H')) {
+      e.preventDefault();
+      handleGoToHome(e);
+      return;
+    }
+
+    // 4. Alt + N – Open New Task form
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'n' || e.key === 'N')) {
+      e.preventDefault();
+      triggerNewTaskAction();
+      return;
+    }
+
+    // 5. Esc – Close open modal/popup
+    if (e.key === 'Escape') {
+      const closed = closeAnyOpenDialog();
+      if (closed) {
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+
   // Dialog backdrop close listeners
-  [settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog, changePasswordDialog].filter(Boolean).forEach((diag) => {
+  [settingsConfirmDialog, durationConfirmDialog, calendarDialog, workDetailDialog, changePasswordDialog, shortcutsHelpDialog, taskSearchDialog].filter(Boolean).forEach((diag) => {
     diag.addEventListener('click', (e) => {
       const rect = diag.getBoundingClientRect();
       const isInDialog =
@@ -4569,6 +4929,37 @@
   if (changePwdCancelBtn && changePasswordDialog) {
     changePwdCancelBtn.addEventListener('click', () => {
       changePasswordDialog.close();
+    });
+  }
+
+  if (changePwdPrevInput) {
+    changePwdPrevInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (changePwdNewInput) changePwdNewInput.focus();
+      }
+    });
+  }
+  if (changePwdNewInput) {
+    changePwdNewInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (changePwdConfirmInput) changePwdConfirmInput.focus();
+      }
+    });
+  }
+  if (changePwdConfirmInput) {
+    changePwdConfirmInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (changePasswordForm) {
+          if (typeof changePasswordForm.requestSubmit === 'function') {
+            changePasswordForm.requestSubmit();
+          } else if (changePwdSubmitBtn) {
+            changePwdSubmitBtn.click();
+          }
+        }
+      }
     });
   }
 

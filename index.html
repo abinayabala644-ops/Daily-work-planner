@@ -90,7 +90,8 @@
       justify-content: center;
     }
 
-    .btn-top-theme {
+    .btn-top-theme,
+    .btn-top-shortcuts {
       min-height: 44px;
       padding: 8px 14px;
       font-size: 0.88rem;
@@ -108,15 +109,181 @@
       gap: 6px;
     }
 
-    .btn-top-theme:hover {
+    .btn-top-theme:hover,
+    .btn-top-shortcuts:hover {
       background: var(--slate-200);
       color: var(--slate-900);
       border-color: var(--slate-400);
     }
 
-    .btn-top-theme:focus-visible {
+    .btn-top-theme:focus-visible,
+    .btn-top-shortcuts:focus-visible {
       outline: 2px solid var(--blue-700);
       outline-offset: 2px;
+    }
+
+    /* Keyboard Shortcuts Modal Styling */
+    .shortcuts-modal-box {
+      max-width: 520px;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .shortcuts-dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .shortcuts-dialog-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .shortcuts-title-icon {
+      font-size: 1.25rem;
+    }
+
+    .shortcuts-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--slate-900);
+    }
+
+    .shortcuts-desc {
+      font-size: 0.92rem;
+      color: var(--slate-600);
+      margin-bottom: 16px;
+    }
+
+    .shortcuts-table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    .shortcuts-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.92rem;
+    }
+
+    .shortcuts-table th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--slate-200);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .shortcuts-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--slate-200);
+      color: var(--slate-800);
+      vertical-align: middle;
+    }
+
+    .shortcuts-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .shortcuts-table kbd {
+      display: inline-block;
+      padding: 3px 7px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1;
+      color: #1e293b;
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      white-space: nowrap;
+    }
+
+    /* Task Search Dialog (Ctrl + K) */
+    .task-search-modal-box {
+      max-width: 520px;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .task-search-input-wrap {
+      margin-bottom: 14px;
+    }
+
+    .task-search-input {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 1rem;
+      padding: 10px 14px;
+      border-radius: 8px;
+    }
+
+    .task-search-results-list {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--slate-200);
+      border-radius: 8px;
+      background: #fafafa;
+      padding: 8px;
+    }
+
+    .task-search-empty-hint {
+      text-align: center;
+      padding: 24px 12px;
+      color: var(--slate-500);
+      font-size: 0.92rem;
+      margin: 0;
+    }
+
+    .task-search-item-btn {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      font-family: inherit;
+    }
+
+    .task-search-item-btn:last-child {
+      margin-bottom: 0;
+    }
+
+    .task-search-item-btn:hover,
+    .task-search-item-btn:focus-visible {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      outline: none;
+    }
+
+    .task-search-item-task {
+      font-weight: 600;
+      color: #0f172a;
+      font-size: 0.93rem;
+    }
+
+    .task-search-item-meta {
+      font-size: 0.82rem;
+      color: #64748b;
+      display: flex;
+      gap: 8px;
     }
 
     .btn-top-board:hover {
@@ -312,10 +479,12 @@
       transition: border-color 0.15s ease;
     }
 
+    .change-pwd-input:focus,
     .change-pwd-input:focus-visible {
-      border-color: var(--slate-900);
-      outline: 2px solid var(--slate-900);
+      border-color: #2563eb;
+      outline: 2px solid #2563eb;
       outline-offset: 1px;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     }
 
     .change-pwd-show-row {
@@ -677,10 +846,12 @@
       font-family: inherit;
     }
 
+    .time-input:focus,
     .time-input:focus-visible {
-      border-color: var(--slate-900);
-      outline: 2px solid var(--slate-900);
+      border-color: #2563eb;
+      outline: 2px solid #2563eb;
       outline-offset: 1px;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     }
 
     .duration-input-wrapper {
@@ -700,10 +871,12 @@
       font-family: inherit;
     }
 
+    .duration-number-input:focus,
     .duration-number-input:focus-visible {
-      border-color: var(--slate-900);
-      outline: 2px solid var(--slate-900);
+      border-color: #2563eb;
+      outline: 2px solid #2563eb;
       outline-offset: 1px;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     }
 
     .duration-unit-hint {
@@ -769,10 +942,12 @@
       box-sizing: border-box;
     }
 
+    .textarea-box:focus,
     .textarea-box:focus-visible {
-      border-color: var(--slate-900);
-      outline: 2px solid var(--slate-900);
+      border-color: #2563eb;
+      outline: 2px solid #2563eb;
       outline-offset: 1px;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     }
 
 
@@ -1461,10 +1636,14 @@
       font-family: inherit;
     }
 
+    .summary-edit-field input:focus,
     .summary-edit-field input:focus-visible,
+    .summary-edit-field textarea:focus,
     .summary-edit-field textarea:focus-visible {
-      outline: 2px solid var(--slate-900);
-      border-color: var(--slate-900);
+      border-color: #2563eb;
+      outline: 2px solid #2563eb;
+      outline-offset: 1px;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     }
 
     .summary-edit-actions {
@@ -2148,10 +2327,12 @@
       cursor: pointer;
     }
 
+    .time-select:focus,
     .time-select:focus-visible {
-      border-color: var(--slate-900);
-      outline: 2px solid var(--slate-900);
+      border-color: #2563eb;
+      outline: 2px solid #2563eb;
       outline-offset: 1px;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -3348,7 +3529,8 @@
     [data-theme="dark"] .btn-top-board,
     [data-theme="dark"] .btn-top-summary,
     [data-theme="dark"] .btn-top-change-pwd,
-    [data-theme="dark"] .btn-top-theme {
+    [data-theme="dark"] .btn-top-theme,
+    [data-theme="dark"] .btn-top-shortcuts {
       background: #1f2937;
       color: #f3f4f6;
       border-color: #374151;
@@ -3357,7 +3539,8 @@
     [data-theme="dark"] .btn-top-board:hover,
     [data-theme="dark"] .btn-top-summary:hover,
     [data-theme="dark"] .btn-top-change-pwd:hover,
-    [data-theme="dark"] .btn-top-theme:hover {
+    [data-theme="dark"] .btn-top-theme:hover,
+    [data-theme="dark"] .btn-top-shortcuts:hover {
       background: #374151;
       color: #ffffff;
       border-color: #4b5563;
@@ -3399,12 +3582,29 @@
     }
 
     [data-theme="dark"] .time-input:focus,
+    [data-theme="dark"] .time-input:focus-visible,
     [data-theme="dark"] .task-input:focus,
+    [data-theme="dark"] .task-input:focus-visible,
     [data-theme="dark"] .form-input:focus,
+    [data-theme="dark"] .form-input:focus-visible,
     [data-theme="dark"] .select-input:focus,
-    [data-theme="dark"] .summary-edit-input:focus {
-      border-color: var(--blue-700);
-      outline-color: var(--blue-700);
+    [data-theme="dark"] .select-input:focus-visible,
+    [data-theme="dark"] .summary-edit-input:focus,
+    [data-theme="dark"] .summary-edit-input:focus-visible,
+    [data-theme="dark"] .time-select:focus,
+    [data-theme="dark"] .time-select:focus-visible,
+    [data-theme="dark"] .textarea-box:focus,
+    [data-theme="dark"] .textarea-box:focus-visible,
+    [data-theme="dark"] .change-pwd-input:focus,
+    [data-theme="dark"] .change-pwd-input:focus-visible,
+    [data-theme="dark"] .summary-edit-field input:focus,
+    [data-theme="dark"] .summary-edit-field input:focus-visible,
+    [data-theme="dark"] .summary-edit-field textarea:focus,
+    [data-theme="dark"] .summary-edit-field textarea:focus-visible {
+      border-color: #3b82f6 !important;
+      outline: 2px solid #3b82f6 !important;
+      outline-offset: 1px !important;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35) !important;
     }
 
     [data-theme="dark"] .header-title,
@@ -3468,11 +3668,68 @@
     [data-theme="dark"] .calendar-modal-box,
     [data-theme="dark"] .summary-edit-modal-box,
     [data-theme="dark"] .work-detail-modal-box,
-    [data-theme="dark"] .change-pwd-modal-box {
+    [data-theme="dark"] .change-pwd-modal-box,
+    [data-theme="dark"] .shortcuts-modal-box,
+    [data-theme="dark"] .task-search-modal-box {
       background: var(--modal-bg);
       border-color: var(--modal-border);
       color: var(--text-main);
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .shortcuts-title {
+      color: #f9fafb !important;
+    }
+
+    [data-theme="dark"] .shortcuts-desc {
+      color: #9ca3af !important;
+    }
+
+    [data-theme="dark"] .shortcuts-table-container,
+    [data-theme="dark"] .task-search-results-list {
+      border-color: #374151;
+      background: #111827;
+    }
+
+    [data-theme="dark"] .shortcuts-table th {
+      background: #1e293b;
+      color: #94a3b8;
+      border-bottom-color: #374151;
+    }
+
+    [data-theme="dark"] .shortcuts-table td {
+      border-bottom-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    [data-theme="dark"] .shortcuts-table kbd {
+      color: #f8fafc;
+      background-color: #1e293b;
+      border-color: #475569;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .task-search-empty-hint {
+      color: #9ca3af;
+    }
+
+    [data-theme="dark"] .task-search-item-btn {
+      background: #1f2937;
+      border-color: #374151;
+    }
+
+    [data-theme="dark"] .task-search-item-btn:hover,
+    [data-theme="dark"] .task-search-item-btn:focus-visible {
+      background: #2563eb20;
+      border-color: #3b82f6;
+    }
+
+    [data-theme="dark"] .task-search-item-task {
+      color: #f9fafb;
+    }
+
+    [data-theme="dark"] .task-search-item-meta {
+      color: #9ca3af;
     }
 
     [data-theme="dark"] .calendar-modal-header,
@@ -3708,6 +3965,11 @@
 
       <!-- Row 2: Right-aligned buttons -->
       <div class="top-buttons-row">
+        <button type="button" id="btn-top-shortcuts-help" class="btn-top-shortcuts"
+          aria-label="Keyboard Shortcuts" title="View Keyboard Shortcuts (?)">
+          <span class="shortcuts-btn-icon" aria-hidden="true">⌨️</span>
+          <span class="shortcuts-btn-text">Shortcuts (?)</span>
+        </button>
         <button type="button" id="btn-top-theme-toggle" class="btn-top-theme" aria-label="Switch Theme"
           title="Toggle Dark/Light Theme">
           <span class="theme-btn-icon" aria-hidden="true">
@@ -4284,6 +4546,91 @@
         <button type="button" id="settings-dialog-cancel" class="btn btn-secondary">Cancel</button>
         <button type="button" id="settings-dialog-continue" class="btn"
           style="background: var(--rose-600); color: #fff;">Continue</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Native Dialog: Keyboard Shortcuts Help Modal -->
+  <dialog id="shortcuts-help-dialog">
+    <div class="modal-box shortcuts-modal-box">
+      <div class="shortcuts-dialog-header">
+        <div class="shortcuts-dialog-title-wrap">
+          <span class="shortcuts-title-icon" aria-hidden="true">⌨️</span>
+          <h3 class="modal-title shortcuts-title" style="margin: 0;">Keyboard Shortcuts</h3>
+        </div>
+        <button type="button" id="shortcuts-dialog-close-btn" class="calendar-close-btn" aria-label="Close shortcuts dialog">&times;</button>
+      </div>
+      <p class="modal-desc shortcuts-desc">Quickly navigate and manage your work using your keyboard.</p>
+
+      <div class="shortcuts-table-container">
+        <table class="shortcuts-table" aria-label="Keyboard shortcuts and actions">
+          <thead>
+            <tr>
+              <th scope="col">Shortcut</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><kbd>Ctrl</kbd> + <kbd>K</kbd></td>
+              <td>Search Tasks</td>
+            </tr>
+            <tr>
+              <td><kbd>Alt</kbd> + <kbd>N</kbd></td>
+              <td>Create New Task</td>
+            </tr>
+            <tr>
+              <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+              <td>Save Work</td>
+            </tr>
+            <tr>
+              <td><kbd>Esc</kbd></td>
+              <td>Close Popup</td>
+            </tr>
+            <tr>
+              <td><kbd>Tab</kbd></td>
+              <td>Next Field or Button</td>
+            </tr>
+            <tr>
+              <td><kbd>Shift</kbd> + <kbd>Tab</kbd></td>
+              <td>Previous Field or Button</td>
+            </tr>
+            <tr>
+              <td><kbd>Enter</kbd></td>
+              <td>Submit or Confirm</td>
+            </tr>
+            <tr>
+              <td><kbd>Alt</kbd> + <kbd>H</kbd></td>
+              <td>Go to My Work Board</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 18px;">
+        <button type="button" id="shortcuts-dialog-ok-btn" class="btn btn-primary" style="min-width: 90px;">Got it</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Native Dialog: Task Search Modal (Ctrl + K) -->
+  <dialog id="task-search-dialog">
+    <div class="modal-box task-search-modal-box">
+      <div class="shortcuts-dialog-header">
+        <div class="shortcuts-dialog-title-wrap">
+          <span class="shortcuts-title-icon" aria-hidden="true">🔍</span>
+          <h3 class="modal-title shortcuts-title" style="margin: 0;">Search Tasks</h3>
+        </div>
+        <button type="button" id="task-search-close-btn" class="calendar-close-btn" aria-label="Close search">&times;</button>
+      </div>
+      <p class="modal-desc shortcuts-desc">Find any scheduled task across your saved days.</p>
+
+      <div class="task-search-input-wrap">
+        <input type="text" id="task-search-input" class="form-input task-search-input" placeholder="Type keywords to search tasks…" autocomplete="off" />
+      </div>
+
+      <div id="task-search-results" class="task-search-results-list" role="region" aria-live="polite">
+        <p class="task-search-empty-hint">Type above to search through your tasks.</p>
       </div>
     </div>
   </dialog>

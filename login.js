@@ -250,6 +250,17 @@
       }
       if (backToSignInBtn) backToSignInBtn.style.display = 'none';
     }
+
+    // Automatically focus the first relevant textbox when opening/switching the form
+    setTimeout(() => {
+      if (currentMode === 'signup') {
+        if (fullNameInput) fullNameInput.focus();
+      } else if (currentMode === 'reset') {
+        if (passwordInput) passwordInput.focus();
+      } else {
+        if (emailInput) emailInput.focus();
+      }
+    }, 60);
   }
 
   // Toggle Password Visibility
@@ -572,5 +583,14 @@
 
   resetLoginFormInputs();
   setTimeout(resetLoginFormInputs, 50);
-  setTimeout(resetLoginFormInputs, 200);
+  setTimeout(() => {
+    resetLoginFormInputs();
+    if (currentMode === 'signup') {
+      if (fullNameInput) fullNameInput.focus();
+    } else if (currentMode === 'reset') {
+      if (passwordInput) passwordInput.focus();
+    } else {
+      if (emailInput) emailInput.focus();
+    }
+  }, 200);
 })();
