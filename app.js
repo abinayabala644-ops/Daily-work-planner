@@ -469,6 +469,122 @@
     });
   }
 
+  function mergeSlotsArrays(existingSlots = [], incomingSlots = [], defaultStart = MIN_WORK_TIME) {
+    const sanitizedExisting = sanitizeSlots(existingSlots, defaultStart);
+    const sanitizedIncoming = sanitizeSlots(incomingSlots, defaultStart);
+    const result = [];
+
+    function findMatchingIndex(target) {
+      return result.findIndex(s => {
+        // Direct match on start and end
+        if (typeof target.start === "number" && typeof target.end === "number" &&
+            typeof s.start === "number" && typeof s.end === "number") {
+          if (s.start === target.start && s.end === target.end) return true;
+        }
+        // Match by unique ID if present and not generic
+        if (target.id && s.id && target.id === s.id && !target.id.startsWith("slot-")) {
+          return true;
+        }
+        // Match by taskText and start time if start is identical
+        const sText = (s.taskText || s.text || "").trim();
+        const tText = (target.taskText || target.text || "").trim();
+        if (sText && tText && sText === tText && s.start === target.start) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // 1. Add all sanitized existing slots
+    sanitizedExisting.forEach(s => {
+      result.push({ ...s });
+    });
+
+    // 2. Merge incoming slots
+    sanitizedIncoming.forEach(inc => {
+      const matchIdx = findMatchingIndex(inc);
+      if (matchIdx !== -1) {
+        // Merge without overwriting valid details
+        const cur = result[matchIdx];
+        const curText = (cur.taskText || cur.text || "").trim();
+        const incText = (inc.taskText || inc.text || "").trim();
+        if (!curText && incText) {
+          cur.taskText = incText;
+          cur.text = incText;
+        }
+        if (inc.status && inc.status !== "NONE") {
+          cur.status = inc.status;
+          cur.markedAt = inc.markedAt || cur.markedAt || null;
+        }
+        if (typeof inc.start === "number" && (typeof cur.start !== "number" || isNaN(cur.start))) {
+          cur.start = inc.start;
+        }
+        if (typeof inc.end === "number" && (typeof cur.end !== "number" || isNaN(cur.end))) {
+          cur.end = inc.end;
+        }
+      } else {
+        result.push({ ...inc });
+      }
+    });
+
+    // Filter out trailing empty unstarted slots if other valid slots exist
+    const hasValid = result.some(s => !isSlotEmpty(s));
+    let cleaned = result;
+    if (hasValid) {
+      cleaned = result.filter(s => !isSlotEmpty(s));
+    }
+
+    // Sort chronologically by startMinutes
+    cleaned.sort((a, b) => {
+      const aStart = typeof a.start === "number" ? a.start : 0;
+      const bStart = typeof b.start === "number" ? b.start : 0;
+      return aStart - bStart;
+    });
+
+    // Re-assign stable IDs if generic
+    cleaned.forEach((s, idx) => {
+      if (!s.id || s.id.startsWith("slot-")) {
+        s.id = `slot-${idx + 1}`;
+      }
+    });
+
+    return cleaned;
+  }
+
+  function mergeDayData(dateKey, incomingStart, incomingEnd, incomingSlots = [], incomingSavedAt = null) {
+    const existing = state.days[dateKey];
+    const sMin = typeof incomingStart === "number" ? incomingStart : (existing && typeof existing.startMinutes === "number" ? existing.startMinutes : MIN_WORK_TIME);
+    const eMin = typeof incomingEnd === "number" ? incomingEnd : (existing && typeof existing.endMinutes === "number" ? existing.endMinutes : MAX_WORK_TIME);
+
+    if (!existing) {
+      state.days[dateKey] = {
+        startMinutes: sMin,
+        endMinutes: eMin,
+        slots: sanitizeSlots(incomingSlots, sMin),
+        savedAt: typeof incomingSavedAt === "string" ? incomingSavedAt : null,
+      };
+      return;
+    }
+
+    // Merge existing and incoming slots without overwriting
+    const mergedSlots = mergeSlotsArrays(existing.slots || [], incomingSlots || [], sMin);
+    
+    // Expand day boundary to encompass all saved slots
+    let finalStart = sMin;
+    let finalEnd = eMin;
+    mergedSlots.forEach(s => {
+      if (typeof s.start === "number" && s.start < finalStart) finalStart = s.start;
+      if (typeof s.end === "number" && s.end > finalEnd) finalEnd = s.end;
+    });
+
+    existing.startMinutes = finalStart;
+    existing.endMinutes = finalEnd;
+    existing.slots = mergedSlots;
+    if (typeof incomingSavedAt === "string" && incomingSavedAt) {
+      existing.savedAt = incomingSavedAt;
+    }
+  }
+
   function loadFromLocalStorage() {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -591,12 +707,7 @@
             if (row && typeof row.day === "string") {
               const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
               const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-              state.days[row.day] = {
-                startMinutes: sMin,
-                endMinutes: eMin,
-                slots: sanitizeSlots(row.slots, sMin),
-                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-              };
+              mergeDayData(row.day, sMin, eMin, row.slots, row.saved_at);
             }
           });
 
@@ -649,12 +760,7 @@
             if (row && typeof row.day === "string") {
               const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
               const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-              state.days[row.day] = {
-                startMinutes: sMin,
-                endMinutes: eMin,
-                slots: sanitizeSlots(row.slots, sMin),
-                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-              };
+              mergeDayData(row.day, sMin, eMin, row.slots, row.saved_at);
             }
           });
 
@@ -704,12 +810,7 @@
             if (row && typeof row.day === "string") {
               const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
               const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-              state.days[row.day] = {
-                startMinutes: sMin,
-                endMinutes: eMin,
-                slots: sanitizeSlots(row.slots, sMin),
-                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-              };
+              mergeDayData(row.day, sMin, eMin, row.slots, row.saved_at);
             }
           });
 
@@ -744,12 +845,7 @@
             if (row && typeof row.day === "string") {
               const sMin = typeof row.start_min === "number" ? row.start_min : MIN_WORK_TIME;
               const eMin = typeof row.end_min === "number" ? row.end_min : MAX_WORK_TIME;
-              state.days[row.day] = {
-                startMinutes: sMin,
-                endMinutes: eMin,
-                slots: sanitizeSlots(row.slots, sMin),
-                savedAt: typeof row.saved_at === "string" ? row.saved_at : null,
-              };
+              mergeDayData(row.day, sMin, eMin, row.slots, row.saved_at);
             }
           });
           // Update local cache
@@ -766,6 +862,11 @@
     const dateToSync = syncDateKey || selectedDateKey;
     if (dateToSync) {
       syncDayToSupabase(dateToSync);
+    }
+    const todayStr = getLocalDateKey(todayDate);
+    if (dateToSync === todayStr && views.home && views.home.classList.contains('active')) {
+      cachedTodaySlots = getTodayWorkProgressSlots();
+      renderTodayWorkProgressInPlace();
     }
   }
 
@@ -795,6 +896,11 @@
   }
 
   function getEffectiveSlotStart(dayData, slotIndex) {
+    if (!dayData || !dayData.slots || !dayData.slots[slotIndex]) return MIN_WORK_TIME;
+    const slot = dayData.slots[slotIndex];
+    if (typeof slot.start === "number" && !isNaN(slot.start)) {
+      return slot.start;
+    }
     return getExpectedSlotStart(dayData, slotIndex);
   }
 
@@ -2330,7 +2436,9 @@
     }
 
     // Render / update each row
+    const renderedIndices = new Set();
     cachedTodaySlots.forEach((slotItem) => {
+      renderedIndices.add(String(slotItem.slotIndex));
       const isRunning = slotItem.startMinutes <= currentMin && currentMin < slotItem.endMinutes;
       const timeRangeText = `${formatMinutesTo12Hour(slotItem.startMinutes)} - ${formatMinutesTo12Hour(slotItem.endMinutes)}`;
 
@@ -2416,6 +2524,11 @@
           badge.style.display = isRunning ? 'inline-flex' : 'none';
         }
 
+        const timeSpan = rowBtn.querySelector('.today-slot-time-range');
+        if (timeSpan) {
+          timeSpan.textContent = timeRangeText;
+        }
+
         const statusLabel = rowBtn.querySelector('.today-slot-status-label');
         if (statusLabel) {
           statusLabel.textContent = statusWord;
@@ -2429,6 +2542,13 @@
         // Accessible label
         const statusAccessible = slotItem.status === 'COMPLETED' ? 'Completed' : (slotItem.status === 'CANCELLED' ? 'Cancelled' : (slotItem.status === 'NOT_COMPLETED' ? 'Not Completed' : (currentMin < slotItem.startMinutes ? 'Upcoming' : 'Not marked yet')));
         rowBtn.setAttribute('aria-label', `Open slot ${slotItem.slotNumber}: ${timeRangeText}, ${slotItem.taskText}, ${statusAccessible}.`);
+      }
+    });
+
+    // Clean up any stale DOM items no longer in cachedTodaySlots
+    Array.from(ul.querySelectorAll('li[data-slot-idx]')).forEach(li => {
+      if (!renderedIndices.has(li.dataset.slotIdx)) {
+        li.remove();
       }
     });
   }
@@ -3023,7 +3143,13 @@
         }
       }
       saveStorage(selectedDateKey);
-      currentSlotIndex = 0;
+      // Navigate to the first unfinished slot, or the first slot if all or none are filled
+      const existingDay = state.days[selectedDateKey];
+      if (existingDay && Array.isArray(existingDay.slots) && existingDay.slots.length > 0) {
+        currentSlotIndex = getFirstUnfinishedSlotIndex(existingDay);
+      } else {
+        currentSlotIndex = 0;
+      }
       renderSlotPage();
       switchView('slot');
     }
